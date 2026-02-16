@@ -24,7 +24,8 @@ import {
   MessageSquare,
   Layers,
   RefreshCw,
-  Activity
+  Activity,
+  Truck
 } from 'lucide-react';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { supabase, ServiceRequest } from '../../lib/supabase';
