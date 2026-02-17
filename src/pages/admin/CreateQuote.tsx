@@ -117,7 +117,6 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
         quoteData.public_quote_request_id = lead.id;
       } else {
         quoteData.service_request_id = lead.id;
-        quoteData.customer_id = lead.customer_id;
       }
 
       const { data: quote, error: quoteError } = await supabase
@@ -191,7 +190,6 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
           quoteData.public_quote_request_id = lead.id;
         } else {
           quoteData.service_request_id = lead.id;
-          quoteData.customer_id = lead.customer_id;
         }
 
         const { data: quote, error: quoteError } = await supabase
