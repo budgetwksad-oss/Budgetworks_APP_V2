@@ -24,10 +24,28 @@ export function AvailableJobs({ sidebarSections, onBack }: AvailableJobsProps = 
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [canDrive, setCanDrive] = useState<boolean>(false);
 
   useEffect(() => {
     loadAvailableJobs();
+    loadUserProfile();
   }, []);
+
+  const loadUserProfile = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('can_drive')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setCanDrive(data?.can_drive || false);
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    }
+  };
 
   const loadAvailableJobs = async () => {
     try {
@@ -274,14 +292,20 @@ export function AvailableJobs({ sidebarSections, onBack }: AvailableJobsProps = 
                         <p className="text-sm text-gray-700 mb-4 font-medium">
                           {available.drivers} position{available.drivers !== 1 ? 's' : ''} available
                         </p>
-                        <Button
-                          variant="primary"
-                          onClick={() => handleClaimPosition('driver')}
-                          disabled={claiming}
-                          className="w-full text-lg py-4"
-                        >
-                          {claiming ? 'Claiming...' : 'Claim Driver Position'}
-                        </Button>
+                        {canDrive ? (
+                          <Button
+                            variant="primary"
+                            onClick={() => handleClaimPosition('driver')}
+                            disabled={claiming}
+                            className="w-full text-lg py-4"
+                          >
+                            {claiming ? 'Claiming...' : 'Claim Driver Position'}
+                          </Button>
+                        ) : (
+                          <p className="text-sm text-gray-600 italic">
+                            Driver role requires driving eligibility.
+                          </p>
+                        )}
                       </div>
                     </Card>
                   )}
