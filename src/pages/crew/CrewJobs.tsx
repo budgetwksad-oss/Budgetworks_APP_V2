@@ -5,7 +5,7 @@ import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { ArrowLeft, MapPin, Calendar, Clock, Camera, Play, Square, CheckCircle, Navigation } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Clock, Play, Square, Navigation } from 'lucide-react';
 
 type JobWithDetails = Job & {
   quote: Quote;
@@ -25,7 +25,6 @@ export function CrewJobs({ sidebarSections, onBack, onViewJob }: CrewJobsProps =
   const [timeEntry, setTimeEntry] = useState<TimeEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   useEffect(() => {
     loadMyJobs();
@@ -152,102 +151,6 @@ export function CrewJobs({ sidebarSections, onBack, onViewJob }: CrewJobsProps =
     }
   };
 
-  const handleUpdateStatus = async (newStatus: 'scheduled' | 'in_progress' | 'completed') => {
-    if (!selectedJob) return;
-    setUpdating(true);
-
-    try {
-      const updates: any = { status: newStatus };
-
-      if (newStatus === 'completed') {
-        updates.completed_at = new Date().toISOString();
-
-        if (timeEntry && !timeEntry.clock_out) {
-          await handleClockOut();
-        }
-      }
-
-      const { error } = await supabase
-        .from('jobs')
-        .update(updates)
-        .eq('id', selectedJob.id);
-
-      if (error) throw error;
-
-      await loadMyJobs();
-      const updatedJob = myJobs.find(j => j.id === selectedJob.id);
-      if (updatedJob) {
-        const { data } = await supabase
-          .from('jobs')
-          .select('*')
-          .eq('id', selectedJob.id)
-          .maybeSingle();
-
-        if (data) {
-          setSelectedJob({
-            ...updatedJob,
-            ...data,
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error updating status:', error);
-      alert('Failed to update status');
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handlePhotoUpload = async (type: 'before' | 'after', event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!selectedJob || !user || !event.target.files || event.target.files.length === 0) return;
-
-    const file = event.target.files[0];
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${selectedJob.id}/${type}/${Date.now()}.${fileExt}`;
-
-    setUploadingPhoto(true);
-
-    try {
-      const { error: uploadError } = await supabase.storage
-        .from('job-photos')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('job-photos')
-        .getPublicUrl(fileName);
-
-      const currentPhotos = selectedJob.crew_photos || { before: [], after: [] };
-      const photoEntry = {
-        url: publicUrl,
-        uploaded_by: user.id,
-        uploaded_at: new Date().toISOString(),
-      };
-
-      const updatedPhotos = {
-        ...currentPhotos,
-        [type]: [...(currentPhotos[type] || []), photoEntry],
-      };
-
-      const { error: updateError } = await supabase
-        .from('jobs')
-        .update({ crew_photos: updatedPhotos })
-        .eq('id', selectedJob.id);
-
-      if (updateError) throw updateError;
-
-      const updatedJob = { ...selectedJob, crew_photos: updatedPhotos };
-      setSelectedJob(updatedJob);
-
-      await loadMyJobs();
-    } catch (error) {
-      console.error('Error uploading photo:', error);
-      alert('Failed to upload photo');
-    } finally {
-      setUploadingPhoto(false);
-    }
-  };
 
   const getServiceLabel = (type: string) => {
     switch (type) {
@@ -304,7 +207,6 @@ export function CrewJobs({ sidebarSections, onBack, onViewJob }: CrewJobsProps =
 
   if (selectedJob) {
     const myRole = getMyRole(selectedJob);
-    const crewPhotos = selectedJob.crew_photos || { before: [], after: [] };
 
     return (
       <PortalLayout
@@ -438,126 +340,10 @@ export function CrewJobs({ sidebarSections, onBack, onViewJob }: CrewJobsProps =
               )}
             </div>
 
-            <div className="border-t pt-6 mb-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Job Status</h3>
-
-              <div className="space-y-3">
-                {selectedJob.status === 'scheduled' && (
-                  <Button
-                    variant="primary"
-                    onClick={() => handleUpdateStatus('in_progress')}
-                    disabled={updating}
-                    className="w-full text-lg py-4"
-                  >
-                    Start Job
-                  </Button>
-                )}
-
-                {selectedJob.status === 'in_progress' && (
-                  <Button
-                    variant="primary"
-                    onClick={() => handleUpdateStatus('completed')}
-                    disabled={updating}
-                    className="w-full text-lg py-4 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700"
-                  >
-                    <CheckCircle className="w-6 h-6" />
-                    Complete Job
-                  </Button>
-                )}
-
-                {selectedJob.status === 'completed' && (
-                  <div className="p-6 bg-green-50 rounded-lg text-center border-2 border-green-200">
-                    <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-3" />
-                    <p className="text-green-700 font-bold text-lg">Job Completed!</p>
-                    <p className="text-sm text-green-600 mt-1">
-                      {selectedJob.completed_at && `Finished at ${formatTimestamp(selectedJob.completed_at)}`}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
             <div className="border-t pt-6">
               <h3 className="text-xl font-bold text-gray-900 mb-4">Photos</h3>
-
-              <div className="space-y-6">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-bold text-gray-700">Before Photos</h4>
-                    <span className="text-xs text-gray-500">{crewPhotos.before?.length || 0} photos</span>
-                  </div>
-
-                  {crewPhotos.before && crewPhotos.before.length > 0 && (
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                      {crewPhotos.before.map((photo, index) => (
-                        <img
-                          key={index}
-                          src={photo.url}
-                          alt={`Before ${index + 1}`}
-                          className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {selectedJob.status !== 'completed' && (
-                    <label className="block">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={(e) => handlePhotoUpload('before', e)}
-                        disabled={uploadingPhoto}
-                        className="hidden"
-                      />
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-orange-500 hover:bg-orange-50 transition-colors">
-                        <Camera className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm font-medium text-gray-600">
-                          {uploadingPhoto ? 'Uploading...' : 'Take Before Photo'}
-                        </p>
-                      </div>
-                    </label>
-                  )}
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-bold text-gray-700">After Photos</h4>
-                    <span className="text-xs text-gray-500">{crewPhotos.after?.length || 0} photos</span>
-                  </div>
-
-                  {crewPhotos.after && crewPhotos.after.length > 0 && (
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                      {crewPhotos.after.map((photo, index) => (
-                        <img
-                          key={index}
-                          src={photo.url}
-                          alt={`After ${index + 1}`}
-                          className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {selectedJob.status !== 'completed' && (
-                    <label className="block">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={(e) => handlePhotoUpload('after', e)}
-                        disabled={uploadingPhoto}
-                        className="hidden"
-                      />
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-green-500 hover:bg-green-50 transition-colors">
-                        <Camera className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm font-medium text-gray-600">
-                          {uploadingPhoto ? 'Uploading...' : 'Take After Photo'}
-                        </p>
-                      </div>
-                    </label>
-                  )}
-                </div>
+              <div className="p-6 bg-gray-50 rounded-lg text-center">
+                <p className="text-sm text-gray-500">Photos will be enabled later.</p>
               </div>
             </div>
           </Card>
