@@ -31,7 +31,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       crewRes,
       quotesRes
     ] = await Promise.all([
-      supabase.from('invoices').select('status, total'),
+      supabase.from('invoices').select('status, total_amount, due_date'),
       supabase.from('jobs').select('status'),
       supabase.from('profiles').select('id').eq('role', 'customer'),
       supabase.from('profiles').select('id').eq('role', 'crew'),
@@ -43,16 +43,26 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
     const totalRevenue = invoices
       .filter(inv => inv.status === 'paid')
-      .reduce((sum, inv) => sum + inv.total, 0);
+      .reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
 
     const pendingRevenue = invoices
-      .filter(inv => ['sent', 'partial', 'overdue'].includes(inv.status))
-      .reduce((sum, inv) => sum + inv.total, 0);
+      .filter(inv => ['sent', 'unpaid', 'partial'].includes(inv.status))
+      .reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
 
     const completedJobs = jobs.filter(job => job.status === 'completed').length;
     const activeJobs = jobs.filter(job => ['scheduled', 'in_progress'].includes(job.status)).length;
-    const overdueInvoices = invoices.filter(inv => inv.status === 'overdue').length;
-    const pendingQuotes = (quotesRes.data || []).filter(q => q.status === 'pending').length;
+
+    // Calculate overdue invoices dynamically
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const overdueInvoices = invoices.filter(inv => {
+      if (!['sent', 'unpaid', 'partial'].includes(inv.status)) return false;
+      const dueDate = new Date(inv.due_date);
+      return dueDate < today;
+    }).length;
+
+    // Quotes use 'sent' status (not 'pending')
+    const pendingQuotes = (quotesRes.data || []).filter(q => q.status === 'sent').length;
 
     return {
       totalRevenue,
@@ -77,7 +87,7 @@ export async function getRevenueByMonth(months: number = 6): Promise<RevenueByMo
 
     const { data, error } = await supabase
       .from('invoices')
-      .select('created_at, total, status')
+      .select('created_at, total_amount, status')
       .eq('status', 'paid')
       .gte('created_at', startDate.toISOString());
 
@@ -91,7 +101,7 @@ export async function getRevenueByMonth(months: number = 6): Promise<RevenueByMo
 
       const existing = revenueMap.get(monthKey) || { revenue: 0, count: 0 };
       revenueMap.set(monthKey, {
-        revenue: existing.revenue + invoice.total,
+        revenue: existing.revenue + (invoice.total_amount || 0),
         count: existing.count + 1
       });
     });

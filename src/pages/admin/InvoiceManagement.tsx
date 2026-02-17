@@ -16,7 +16,7 @@ interface Invoice {
   status: string;
   subtotal: number;
   tax_amount: number;
-  total: number;
+  total_amount: number;
   due_date: string;
   created_at: string;
   notes: string;
@@ -69,7 +69,11 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
     let filtered = invoices;
 
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(inv => inv.status === statusFilter);
+      if (statusFilter === 'overdue') {
+        filtered = filtered.filter(inv => isInvoiceOverdue(inv.due_date, inv.status));
+      } else {
+        filtered = filtered.filter(inv => inv.status === statusFilter);
+      }
     }
 
     if (searchTerm) {
@@ -159,7 +163,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
               customer_email: invoice.profiles.email,
               customer_name: invoice.profiles.full_name || 'Valued Customer',
               invoice_number: invoice.invoice_number,
-              invoice_total: invoice.total,
+              invoice_total: invoice.total_amount,
               due_date: invoice.due_date
             })
           });
@@ -196,17 +200,18 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
         if (!invoice) continue;
 
         await downloadInvoicePDF({
-          invoiceNumber: invoice.invoice_number,
-          customerName: invoice.profiles?.full_name || 'N/A',
-          customerEmail: invoice.profiles?.email || '',
-          customerAddress: '',
-          issueDate: invoice.created_at,
-          dueDate: invoice.due_date,
-          lineItems: invoice.line_items || [],
+          invoice_number: invoice.invoice_number,
+          customer_name: invoice.profiles?.full_name || 'N/A',
+          customer_email: invoice.profiles?.email || '',
+          customer_address: '',
+          created_at: invoice.created_at,
+          due_date: invoice.due_date,
+          line_items: invoice.line_items || [],
           subtotal: invoice.subtotal,
-          taxAmount: invoice.tax_amount,
-          total: invoice.total,
-          notes: invoice.notes
+          tax_amount: invoice.tax_amount,
+          total: invoice.total_amount,
+          notes: invoice.notes,
+          status: invoice.status
         });
 
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -290,7 +295,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
       inv.status,
       inv.subtotal.toFixed(2),
       inv.tax_amount.toFixed(2),
-      inv.total.toFixed(2),
+      inv.total_amount.toFixed(2),
       new Date(inv.due_date).toLocaleDateString(),
       new Date(inv.created_at).toLocaleDateString()
     ]);
@@ -334,7 +339,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
       ]);
 
       const totalPaid = (paymentsRes.data || []).reduce((sum, p) => sum + p.amount, 0);
-      const remainingBalance = invoice.total - totalPaid;
+      const remainingBalance = invoice.total_amount - totalPaid;
 
       setSelectedInvoice({
         ...invoice,
@@ -418,7 +423,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
       line_items: invoice.line_items || [],
       subtotal: invoice.subtotal,
       tax_amount: invoice.tax_amount,
-      total: invoice.total,
+      total: invoice.total_amount,
       notes: invoice.notes || '',
       status: invoice.status
     };
@@ -441,7 +446,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
         customer_email: invoice.customer_email,
         customer_name: invoice.customer_name,
         invoice_number: invoice.invoice_number,
-        invoice_total: invoice.total,
+        invoice_total: invoice.total_amount,
         due_date: invoice.due_date
       };
 
@@ -552,7 +557,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
                   <DollarSign className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(selectedInvoice.total)}</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(selectedInvoice.total_amount)}</p>
                   <p className="text-sm text-gray-600">Total Amount</p>
                 </div>
               </div>
@@ -565,7 +570,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-gray-900">
-                    {formatCurrency(selectedInvoice.total - selectedInvoice.remaining_balance)}
+                    {formatCurrency(selectedInvoice.total_amount - selectedInvoice.remaining_balance)}
                   </p>
                   <p className="text-sm text-gray-600">Paid</p>
                 </div>
@@ -657,7 +662,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
                   </tr>
                   <tr className="border-t border-gray-200">
                     <td colSpan={3} className="py-2 px-3 text-right font-bold text-gray-900">Total:</td>
-                    <td className="py-2 px-3 text-right font-bold text-gray-900">{formatCurrency(selectedInvoice.total)}</td>
+                    <td className="py-2 px-3 text-right font-bold text-gray-900">{formatCurrency(selectedInvoice.total_amount)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -817,27 +822,19 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
           </Button>
         </div>
 
-        {invoices.filter(inv => inv.status === 'overdue').length > 0 && (
+        {invoices.filter(inv => isInvoiceOverdue(inv.due_date, inv.status)).length > 0 && (
           <Card className="p-4 bg-red-50 border-red-200">
             <div className="flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
               <div>
                 <p className="font-semibold text-red-900">
-                  {invoices.filter(inv => inv.status === 'overdue').length} Overdue Invoice
-                  {invoices.filter(inv => inv.status === 'overdue').length > 1 ? 's' : ''}
+                  {invoices.filter(inv => isInvoiceOverdue(inv.due_date, inv.status)).length} Overdue Invoice
+                  {invoices.filter(inv => isInvoiceOverdue(inv.due_date, inv.status)).length > 1 ? 's' : ''}
                 </p>
                 <p className="text-sm text-red-700">
                   These invoices require immediate attention
                 </p>
               </div>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setStatusFilter('overdue')}
-                className="ml-auto"
-              >
-                View Overdue
-              </Button>
             </div>
           </Card>
         )}
@@ -1008,7 +1005,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
                         <p className="text-xs text-gray-500">{invoice.profiles?.email || ''}</p>
                       </td>
                       <td className="py-3 px-4">
-                        <p className="font-medium text-gray-900">{formatCurrency(invoice.total)}</p>
+                        <p className="font-medium text-gray-900">{formatCurrency(invoice.total_amount)}</p>
                       </td>
                       <td className="py-3 px-4">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>

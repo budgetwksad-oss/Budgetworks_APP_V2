@@ -40,7 +40,7 @@ export function Settings({ onBack }: SettingsProps) {
   const loadSettings = async () => {
     try {
       const { data, error } = await supabase
-        .from('settings')
+        .from('company_settings')
         .select('*')
         .maybeSingle();
 
@@ -48,11 +48,11 @@ export function Settings({ onBack }: SettingsProps) {
 
       if (data) {
         setSettings({
-          company_name: data.company_name || 'Service Company',
-          company_email: data.company_email || 'info@servicecompany.com',
-          company_phone: data.company_phone || '(555) 123-4567',
-          company_address: data.company_address || '123 Business St, City, State 12345',
-          tax_rate: data.default_tax_rate || 0.08,
+          company_name: data.business_name || 'Service Company',
+          company_email: data.email || 'info@servicecompany.com',
+          company_phone: data.phone || '(555) 123-4567',
+          company_address: data.address || '123 Business St, City, State 12345',
+          tax_rate: data.tax_rate || 0.14,
           invoice_terms: data.invoice_terms || 'Payment due within 30 days',
           invoice_footer: data.invoice_footer || 'Thank you for your business!'
         });
@@ -68,30 +68,30 @@ export function Settings({ onBack }: SettingsProps) {
     setSaving(true);
     try {
       const { data: existing } = await supabase
-        .from('settings')
+        .from('company_settings')
         .select('id')
         .maybeSingle();
 
       const settingsData = {
-        company_name: settings.company_name,
-        company_email: settings.company_email,
-        company_phone: settings.company_phone,
-        company_address: settings.company_address,
-        default_tax_rate: settings.tax_rate,
+        business_name: settings.company_name,
+        email: settings.company_email,
+        phone: settings.company_phone,
+        address: settings.company_address,
+        tax_rate: settings.tax_rate,
         invoice_terms: settings.invoice_terms,
         invoice_footer: settings.invoice_footer
       };
 
       if (existing) {
         const { error } = await supabase
-          .from('settings')
+          .from('company_settings')
           .update(settingsData)
           .eq('id', existing.id);
 
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('settings')
+          .from('company_settings')
           .insert([settingsData]);
 
         if (error) throw error;

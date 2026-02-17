@@ -1,29 +1,12 @@
-import { supabase } from './supabase';
-
 export async function updateOverdueInvoices() {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-
-    const { error } = await supabase
-      .from('invoices')
-      .update({ status: 'overdue' })
-      .lt('due_date', today)
-      .in('status', ['sent', 'partial']);
-
-    if (error) {
-      console.error('Error updating overdue invoices:', error);
-      return { success: false, error };
-    }
-
-    return { success: true };
-  } catch (err) {
-    console.error('Error in updateOverdueInvoices:', err);
-    return { success: false, error: err };
-  }
+  // DO NOT update invoice status to 'overdue' in the database
+  // 'overdue' is not in the DB enum and should be computed dynamically
+  // This function is kept for backwards compatibility but does nothing
+  return { success: true };
 }
 
 export function isInvoiceOverdue(dueDate: string, status: string): boolean {
-  if (status === 'paid' || status === 'closed') {
+  if (!['sent', 'unpaid', 'partial'].includes(status)) {
     return false;
   }
 
