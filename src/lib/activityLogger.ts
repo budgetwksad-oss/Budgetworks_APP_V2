@@ -13,6 +13,7 @@ export type ActivityAction =
 
 export type ResourceType =
   | 'service_request'
+  | 'public_quote_request'
   | 'quote'
   | 'job'
   | 'invoice'

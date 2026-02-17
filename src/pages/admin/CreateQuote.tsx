@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { logActivity } from '../../lib/activityLogger';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
@@ -128,6 +129,19 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
       if (quoteError) throw quoteError;
 
       setQuoteId(quote.id);
+
+      await logActivity({
+        action: 'created',
+        resourceType: lead.type === 'public_quote_request' ? 'public_quote_request' : 'service_request',
+        resourceId: lead.id,
+        description: `Quote ${quoteData.quote_number} saved as draft`,
+        metadata: {
+          quote_id: quote.id,
+          estimate_low: lowValue,
+          estimate_high: highValue,
+        }
+      });
+
       alert('Quote saved as draft');
     } catch (err: any) {
       setError(err.message || 'Failed to save quote');
@@ -238,6 +252,21 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
         .eq('id', lead.id);
 
       if (leadUpdateError) throw leadUpdateError;
+
+      await logActivity({
+        action: 'sent',
+        resourceType: lead.type === 'public_quote_request' ? 'public_quote_request' : 'service_request',
+        resourceId: lead.id,
+        description: `Quote sent via magic link to ${lead.contact_name}`,
+        metadata: {
+          quote_id: currentQuoteId,
+          magic_link: fullLink,
+          estimate_low: lowValue,
+          estimate_high: highValue,
+          recipient_email: lead.contact_email,
+          recipient_phone: lead.contact_phone,
+        }
+      });
 
     } catch (err: any) {
       setError(err.message || 'Failed to send quote');

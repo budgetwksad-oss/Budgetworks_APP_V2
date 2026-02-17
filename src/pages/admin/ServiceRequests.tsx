@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase, PublicQuoteRequest, ServiceRequest } from '../../lib/supabase';
+import { logActivity } from '../../lib/activityLogger';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { MapPin, Phone, Calendar, ArrowLeft, Mail, User, FileText } from 'lucide-react';
+import { ActivityTimeline } from '../../components/ui/ActivityTimeline';
+import { MapPin, Phone, Calendar, ArrowLeft, Mail, User, FileText, Save } from 'lucide-react';
 import { CreateQuote } from './CreateQuote';
 
 interface ServiceRequestsProps {
@@ -26,6 +28,7 @@ type UnifiedRequest = {
   created_at: string;
   customer_id?: string;
   preferred_contact_method?: string;
+  internal_notes?: string;
 };
 
 export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProps = {}) {
@@ -33,6 +36,8 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
   const [selectedRequest, setSelectedRequest] = useState<UnifiedRequest | null>(null);
   const [showCreateQuote, setShowCreateQuote] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [internalNotes, setInternalNotes] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
 
   useEffect(() => {
     loadRequests();
@@ -66,7 +71,8 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
         description: req.description,
         status: req.status,
         created_at: req.created_at,
-        preferred_contact_method: req.preferred_contact_method
+        preferred_contact_method: req.preferred_contact_method,
+        internal_notes: req.internal_notes || ''
       }));
 
       const serviceRequests: UnifiedRequest[] = (serviceRes.data || []).map(req => ({
@@ -81,7 +87,8 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
         description: req.description,
         status: req.status,
         created_at: req.created_at,
-        customer_id: req.customer_id
+        customer_id: req.customer_id,
+        internal_notes: req.internal_notes || ''
       }));
 
       const allRequests = [...publicRequests, ...serviceRequests].sort((a, b) =>
@@ -105,6 +112,15 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
         .eq('id', id);
 
       if (error) throw error;
+
+      await logActivity({
+        action: 'updated',
+        resourceType: type === 'public_quote_request' ? 'public_quote_request' : 'service_request',
+        resourceId: id,
+        description: `Lead status changed to ${getStatusLabel(newStatus)}`,
+        metadata: { old_status: selectedRequest?.status, new_status: newStatus }
+      });
+
       await loadRequests();
       if (selectedRequest?.id === id) {
         setSelectedRequest({ ...selectedRequest, status: newStatus });
@@ -112,6 +128,37 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
     } catch (error) {
       console.error('Error updating status:', error);
       alert('Failed to update status');
+    }
+  };
+
+  const saveInternalNotes = async () => {
+    if (!selectedRequest) return;
+
+    setSavingNotes(true);
+    try {
+      const table = selectedRequest.type === 'public_quote_request' ? 'public_quote_requests' : 'service_requests';
+      const { error } = await supabase
+        .from(table)
+        .update({ internal_notes: internalNotes })
+        .eq('id', selectedRequest.id);
+
+      if (error) throw error;
+
+      await logActivity({
+        action: 'updated',
+        resourceType: selectedRequest.type === 'public_quote_request' ? 'public_quote_request' : 'service_request',
+        resourceId: selectedRequest.id,
+        description: 'Updated internal notes',
+        metadata: { notes_length: internalNotes.length }
+      });
+
+      setSelectedRequest({ ...selectedRequest, internal_notes: internalNotes });
+      alert('Notes saved successfully');
+    } catch (error) {
+      console.error('Error saving notes:', error);
+      alert('Failed to save notes');
+    } finally {
+      setSavingNotes(false);
     }
   };
 
@@ -177,6 +224,10 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
   }
 
   if (selectedRequest) {
+    if (internalNotes === '' && selectedRequest.internal_notes) {
+      setInternalNotes(selectedRequest.internal_notes);
+    }
+
     return (
       <PortalLayout
         portalName="Admin Portal"
@@ -184,14 +235,20 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
         activeItemId="service-requests"
         breadcrumbs={[
           { label: 'Dashboard', onClick: onBack },
-          { label: 'Leads', onClick: () => setSelectedRequest(null) },
+          { label: 'Leads', onClick: () => {
+            setSelectedRequest(null);
+            setInternalNotes('');
+          }},
           { label: selectedRequest.contact_name }
         ]}
       >
         <div className="space-y-6">
           <Button
             variant="ghost"
-            onClick={() => setSelectedRequest(null)}
+            onClick={() => {
+              setSelectedRequest(null);
+              setInternalNotes('');
+            }}
             className="flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -302,6 +359,29 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
               </div>
             )}
 
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-500 mb-2">Internal Notes</h3>
+              <p className="text-xs text-gray-500 mb-2">Track conversations, follow-ups, and important details about this lead</p>
+              <textarea
+                value={internalNotes}
+                onChange={(e) => setInternalNotes(e.target.value)}
+                placeholder="Add notes about this lead..."
+                rows={4}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-colors duration-200"
+              />
+              <div className="flex justify-end mt-2">
+                <Button
+                  variant="secondary"
+                  onClick={saveInternalNotes}
+                  disabled={savingNotes || internalNotes === (selectedRequest.internal_notes || '')}
+                  className="flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  {savingNotes ? 'Saving...' : 'Save Notes'}
+                </Button>
+              </div>
+            </div>
+
             <div className="flex gap-3 pt-6 border-t">
               <div className="flex gap-2 flex-wrap">
                 {(['new', 'pending', 'in_review'].includes(selectedRequest.status)) && (
@@ -346,6 +426,12 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
               </div>
             </div>
           </Card>
+
+          <ActivityTimeline
+            resourceType={selectedRequest.type === 'public_quote_request' ? 'public_quote_request' : 'service_request'}
+            resourceId={selectedRequest.id}
+            title="Lead Activity"
+          />
         </div>
       </PortalLayout>
     );
