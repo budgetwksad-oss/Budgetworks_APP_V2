@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase, PublicQuoteRequest } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
@@ -8,8 +8,24 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ArrowLeft, Copy, CheckCircle, MapPin, Calendar, Mail, Phone, User } from 'lucide-react';
 
+type UnifiedRequest = {
+  id: string;
+  type: 'service_request' | 'public_quote_request';
+  service_type: string;
+  contact_name: string;
+  contact_email: string;
+  contact_phone: string | null;
+  location_address: string;
+  preferred_date: string | null;
+  description: string | null;
+  status: string;
+  created_at: string;
+  customer_id?: string;
+  preferred_contact_method?: string;
+};
+
 interface CreateQuoteProps {
-  lead: PublicQuoteRequest;
+  lead: UnifiedRequest;
   onBack: () => void;
   onSuccess: () => void;
   sidebarSections?: MenuSection[];
@@ -74,32 +90,39 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
       const validUntil = new Date();
       validUntil.setDate(validUntil.getDate() + 14);
 
+      const quoteData: any = {
+        quote_number: quoteNumberData,
+        line_items: [],
+        subtotal: 0,
+        tax_rate: 0,
+        tax_amount: 0,
+        total_amount: 0,
+        estimate_low: lowValue,
+        estimate_high: highValue,
+        expected_price: highValue || lowValue,
+        cap_amount: capValue,
+        valid_until: validUntil.toISOString().split('T')[0],
+        notes: notes || null,
+        status: 'draft',
+        created_by: user?.id,
+        pricing_snapshot: {
+          service_type: lead.service_type,
+          location: lead.location_address,
+          preferred_date: lead.preferred_date,
+          description: lead.description,
+        },
+      };
+
+      if (lead.type === 'public_quote_request') {
+        quoteData.public_quote_request_id = lead.id;
+      } else {
+        quoteData.service_request_id = lead.id;
+        quoteData.customer_id = lead.customer_id;
+      }
+
       const { data: quote, error: quoteError } = await supabase
         .from('quotes')
-        .insert({
-          public_quote_request_id: lead.id,
-          service_request_id: lead.id,
-          quote_number: quoteNumberData,
-          line_items: [],
-          subtotal: 0,
-          tax_rate: 0,
-          tax_amount: 0,
-          total_amount: 0,
-          estimate_low: lowValue,
-          estimate_high: highValue,
-          expected_price: highValue || lowValue,
-          cap_amount: capValue,
-          valid_until: validUntil.toISOString().split('T')[0],
-          notes: notes || null,
-          status: 'draft',
-          created_by: user?.id,
-          pricing_snapshot: {
-            service_type: lead.service_type,
-            location: lead.location_address,
-            preferred_date: lead.preferred_date,
-            description: lead.description,
-          },
-        })
+        .insert(quoteData)
         .select()
         .single();
 
@@ -141,32 +164,39 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
         const validUntil = new Date();
         validUntil.setDate(validUntil.getDate() + 14);
 
+        const quoteData: any = {
+          quote_number: quoteNumberData,
+          line_items: [],
+          subtotal: 0,
+          tax_rate: 0,
+          tax_amount: 0,
+          total_amount: 0,
+          estimate_low: lowValue,
+          estimate_high: highValue,
+          expected_price: highValue || lowValue,
+          cap_amount: capValue,
+          valid_until: validUntil.toISOString().split('T')[0],
+          notes: notes || null,
+          status: 'sent',
+          created_by: user?.id,
+          pricing_snapshot: {
+            service_type: lead.service_type,
+            location: lead.location_address,
+            preferred_date: lead.preferred_date,
+            description: lead.description,
+          },
+        };
+
+        if (lead.type === 'public_quote_request') {
+          quoteData.public_quote_request_id = lead.id;
+        } else {
+          quoteData.service_request_id = lead.id;
+          quoteData.customer_id = lead.customer_id;
+        }
+
         const { data: quote, error: quoteError } = await supabase
           .from('quotes')
-          .insert({
-            public_quote_request_id: lead.id,
-            service_request_id: lead.id,
-            quote_number: quoteNumberData,
-            line_items: [],
-            subtotal: 0,
-            tax_rate: 0,
-            tax_amount: 0,
-            total_amount: 0,
-            estimate_low: lowValue,
-            estimate_high: highValue,
-            expected_price: highValue || lowValue,
-            cap_amount: capValue,
-            valid_until: validUntil.toISOString().split('T')[0],
-            notes: notes || null,
-            status: 'sent',
-            created_by: user?.id,
-            pricing_snapshot: {
-              service_type: lead.service_type,
-              location: lead.location_address,
-              preferred_date: lead.preferred_date,
-              description: lead.description,
-            },
-          })
+          .insert(quoteData)
           .select()
           .single();
 
@@ -203,8 +233,9 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
       const fullLink = `${window.location.origin}/q/${linkData.token}`;
       setMagicLink(fullLink);
 
+      const tableName = lead.type === 'public_quote_request' ? 'public_quote_requests' : 'service_requests';
       const { error: leadUpdateError } = await supabase
-        .from('public_quote_requests')
+        .from(tableName)
         .update({ status: 'quoted' })
         .eq('id', lead.id);
 
@@ -241,7 +272,7 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Quote Link Created!</h2>
             <p className="text-gray-600 mb-6 text-center">
-              Share this link with {lead.contact_name} via their preferred method: {lead.preferred_contact_method}
+              Share this link with {lead.contact_name}{lead.preferred_contact_method ? ` via their preferred method: ${lead.preferred_contact_method}` : ''}
             </p>
 
             <div className="space-y-4">
@@ -408,10 +439,12 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
                   </div>
                 </div>
 
-                <div>
-                  <h4 className="text-xs font-medium text-gray-500 mb-1">Preferred Contact</h4>
-                  <p className="text-sm text-gray-900 capitalize">{lead.preferred_contact_method}</p>
-                </div>
+                {lead.preferred_contact_method && (
+                  <div>
+                    <h4 className="text-xs font-medium text-gray-500 mb-1">Preferred Contact</h4>
+                    <p className="text-sm text-gray-900 capitalize">{lead.preferred_contact_method}</p>
+                  </div>
+                )}
 
                 <div>
                   <h4 className="text-xs font-medium text-gray-500 mb-1">Location</h4>
