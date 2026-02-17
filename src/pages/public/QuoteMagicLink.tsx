@@ -49,12 +49,26 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
         return;
       }
 
-      if (!data) {
+      if (!data || !data.success) {
+        console.error('Invalid token or quote not found:', data?.error);
         setError('invalid');
         return;
       }
 
-      setQuote(data);
+      const quoteData: QuoteData = {
+        quote_id: data.quote.id,
+        service_type: data.service?.service_type || 'unknown',
+        location: data.service?.location_address || data.service?.location,
+        estimate_low: data.quote.estimate_low,
+        estimate_high: data.quote.estimate_high,
+        expected_price: data.quote.expected_price,
+        cap_amount: data.quote.cap_amount,
+        status: data.quote.status,
+        customer_name: data.customer?.name,
+        customer_email: data.customer?.email,
+      };
+
+      setQuote(quoteData);
     } catch (err) {
       console.error('Error:', err);
       setError('invalid');
