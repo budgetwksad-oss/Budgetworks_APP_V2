@@ -22,6 +22,7 @@ export function PublicQuoteForm({ onNavigate, onLogin, onSignup }: PublicQuoteFo
     address: '',
     preferredDate: '',
     description: '',
+    preferredContactMethod: 'email' as 'email' | 'sms' | 'call',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -38,14 +39,16 @@ export function PublicQuoteForm({ onNavigate, onLogin, onSignup }: PublicQuoteFo
     setIsSubmitting(true);
 
     try {
-      const { error: insertError } = await supabase.from('service_requests').insert({
-        customer_id: null,
+      const { error: insertError } = await supabase.from('public_quote_requests').insert({
+        contact_name: formData.fullName,
+        contact_email: formData.email,
+        contact_phone: formData.phone,
         service_type: formData.serviceType,
         location_address: formData.address,
         preferred_date: formData.preferredDate || null,
-        contact_phone: formData.phone,
-        description: `Guest request from ${formData.fullName} (${formData.email})\n\n${formData.description}`,
-        status: 'pending',
+        description: formData.description,
+        preferred_contact_method: formData.preferredContactMethod,
+        status: 'new',
       });
 
       if (insertError) throw insertError;
