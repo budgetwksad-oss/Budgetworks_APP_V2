@@ -31,9 +31,12 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
   const [driversNeeded, setDriversNeeded] = useState(1);
   const [helpersNeeded, setHelpersNeeded] = useState(2);
   const [isOpenForClaims, setIsOpenForClaims] = useState(false);
+  const [crewPayMin, setCrewPayMin] = useState(0);
+  const [crewPayMax, setCrewPayMax] = useState(0);
   const [selectedCrewForAssignment, setSelectedCrewForAssignment] = useState<string>('');
   const [selectedRole, setSelectedRole] = useState<'driver' | 'helper'>('helper');
   const [updating, setUpdating] = useState(false);
+  const [marketplaceError, setMarketplaceError] = useState<string>('');
 
   useEffect(() => {
     loadJobs();
@@ -48,6 +51,9 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
       setDriversNeeded(selectedJob.staffing_needs?.drivers || 1);
       setHelpersNeeded(selectedJob.staffing_needs?.helpers || 2);
       setIsOpenForClaims(selectedJob.is_open_for_claims || false);
+      setCrewPayMin(selectedJob.crew_pay_min || 0);
+      setCrewPayMax(selectedJob.crew_pay_max || 0);
+      setMarketplaceError('');
     }
   }, [selectedJob]);
 
@@ -106,6 +112,21 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
     }
   };
 
+  const handleOpenForClaimsChange = (checked: boolean) => {
+    if (checked) {
+      if (!scheduledDate) {
+        setMarketplaceError('A scheduled date is required to post to marketplace');
+        return;
+      }
+      if (driversNeeded + helpersNeeded === 0) {
+        setMarketplaceError('At least one driver or helper position is required');
+        return;
+      }
+    }
+    setMarketplaceError('');
+    setIsOpenForClaims(checked);
+  };
+
   const calculateStaffingStatus = (job: JobWithDetails) => {
     const needs = job.staffing_needs || { drivers: 0, helpers: 0 };
     const assignments = job.crew_assignments || [];
@@ -123,13 +144,33 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
 
   const handleUpdateScheduling = async () => {
     if (!selectedJob) return;
+
+    if (isOpenForClaims) {
+      if (!scheduledDate) {
+        setMarketplaceError('A scheduled date is required to post to marketplace');
+        return;
+      }
+      if (driversNeeded + helpersNeeded === 0) {
+        setMarketplaceError('At least one driver or helper position is required');
+        return;
+      }
+    }
+
     setUpdating(true);
+    setMarketplaceError('');
 
     try {
       const newStaffingStatus = calculateStaffingStatus({
         ...selectedJob,
         staffing_needs: { drivers: driversNeeded, helpers: helpersNeeded },
       });
+
+      const wasOpenForClaims = selectedJob.is_open_for_claims;
+      const marketplacePostedAt = isOpenForClaims && !wasOpenForClaims
+        ? new Date().toISOString()
+        : !isOpenForClaims
+          ? null
+          : selectedJob.marketplace_posted_at;
 
       const { error } = await supabase
         .from('jobs')
@@ -139,6 +180,9 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
           arrival_window_end: arrivalEnd || null,
           staffing_needs: { drivers: driversNeeded, helpers: helpersNeeded },
           is_open_for_claims: isOpenForClaims,
+          crew_pay_min: crewPayMin || null,
+          crew_pay_max: crewPayMax || null,
+          marketplace_posted_at: marketplacePostedAt,
           staffing_status: newStaffingStatus,
         })
         .eq('id', selectedJob.id);
@@ -295,7 +339,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
     switch (type) {
       case 'moving': return 'Moving';
       case 'junk_removal': return 'Junk Removal';
-      case 'demolition': return 'Demolition';
+      case 'demolition': return 'Light Demo';
       default: return type;
     }
   };
@@ -445,17 +489,53 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-2">
-                  <input
-                    type="checkbox"
-                    id="openForClaims"
-                    checked={isOpenForClaims}
-                    onChange={(e) => setIsOpenForClaims(e.target.checked)}
-                    className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
-                  />
-                  <label htmlFor="openForClaims" className="text-sm font-medium text-gray-700">
-                    Open for crew to claim positions
-                  </label>
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Crew Pay (Estimated)</h4>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Internal estimate shown to crew. Adjust if the job sits unclaimed.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Min ($)
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={crewPayMin}
+                        onChange={(e) => setCrewPayMin(parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Max ($)
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={crewPayMax}
+                        onChange={(e) => setCrewPayMax(parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="openForClaims"
+                      checked={isOpenForClaims}
+                      onChange={(e) => handleOpenForClaimsChange(e.target.checked)}
+                      className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                    />
+                    <label htmlFor="openForClaims" className="text-sm font-medium text-gray-700">
+                      Open for crew to claim positions
+                    </label>
+                  </div>
+                  {marketplaceError && (
+                    <p className="text-xs text-red-600 mt-2">{marketplaceError}</p>
+                  )}
                 </div>
 
                 <Button
