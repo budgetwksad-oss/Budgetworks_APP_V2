@@ -6,6 +6,7 @@ import { Input } from '../../components/ui/Input';
 import { Settings as SettingsIcon, Save, Building2, Mail, Phone, MapPin, Bell } from 'lucide-react';
 import { supabase, getNotificationPreference, upsertNotificationPreference, NotificationPreference } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { NotificationsTemplates } from './NotificationsTemplates';
 
 interface CompanySettings {
   company_name: string;
@@ -21,8 +22,11 @@ interface SettingsProps {
   onBack: () => void;
 }
 
+type SettingsTab = 'company' | 'notifications';
+
 export function Settings({ onBack }: SettingsProps) {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<SettingsTab>('company');
   const [settings, setSettings] = useState<CompanySettings>({
     company_name: 'Service Company',
     company_email: 'info@servicecompany.com',
@@ -186,6 +190,35 @@ export function Settings({ onBack }: SettingsProps) {
           </Button>
         </div>
 
+        <div className="border-b border-gray-200">
+          <nav className="flex gap-4">
+            <button
+              onClick={() => setActiveTab('company')}
+              className={`pb-3 px-2 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'company'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Company Settings
+            </button>
+            <button
+              onClick={() => setActiveTab('notifications')}
+              className={`pb-3 px-2 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'notifications'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Notification Templates
+            </button>
+          </nav>
+        </div>
+
+        {activeTab === 'notifications' ? (
+          <NotificationsTemplates />
+        ) : (
+          <>
         <Card className="p-6">
           <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <Building2 className="w-5 h-5 text-blue-600" />
@@ -367,6 +400,8 @@ export function Settings({ onBack }: SettingsProps) {
             {saving ? 'Saving...' : 'Save Settings'}
           </Button>
         </div>
+          </>
+        )}
       </div>
     </PortalLayout>
   );

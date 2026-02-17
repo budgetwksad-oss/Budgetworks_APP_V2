@@ -346,3 +346,81 @@ export async function getNotificationPreference(
     return { data: null, error };
   }
 }
+
+export type NotificationEventKey =
+  | 'lead_received'
+  | 'quote_sent'
+  | 'quote_accepted'
+  | 'quote_declined'
+  | 'job_scheduled'
+  | 'job_cancelled'
+  | 'job_claimed'
+  | 'invoice_sent'
+  | 'payment_received';
+
+export type NotificationTemplateV2 = {
+  id: string;
+  event_key: NotificationEventKey;
+  audience: NotificationAudience;
+  subject: string | null;
+  body: string;
+  enabled: boolean;
+  service_type: ServiceType | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getNotificationTemplatesV2(): Promise<{
+  data: NotificationTemplateV2[] | null;
+  error: any;
+}> {
+  try {
+    const { data, error } = await supabase
+      .from('notification_templates')
+      .select('*')
+      .order('event_key', { ascending: true });
+
+    return { data, error };
+  } catch (error) {
+    return { data: null, error };
+  }
+}
+
+export async function upsertNotificationTemplateV2(
+  template: Partial<NotificationTemplateV2> & { id?: string }
+): Promise<{ data: NotificationTemplateV2 | null; error: any }> {
+  try {
+    if (template.id) {
+      const { data, error } = await supabase
+        .from('notification_templates')
+        .update({
+          subject: template.subject,
+          body: template.body,
+          enabled: template.enabled,
+          service_type: template.service_type
+        })
+        .eq('id', template.id)
+        .select()
+        .single();
+
+      return { data, error };
+    } else {
+      const { data, error } = await supabase
+        .from('notification_templates')
+        .insert([{
+          event_key: template.event_key,
+          audience: template.audience,
+          subject: template.subject,
+          body: template.body,
+          enabled: template.enabled ?? true,
+          service_type: template.service_type
+        }])
+        .select()
+        .single();
+
+      return { data, error };
+    }
+  } catch (error) {
+    return { data: null, error };
+  }
+}
