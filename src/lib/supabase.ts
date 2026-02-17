@@ -116,6 +116,11 @@ export type Job = {
   internal_notes: string | null;
   completion_notes: string | null;
   completed_at: string | null;
+  source_quote_id: string | null;
+  customer_name: string | null;
+  customer_email: string | null;
+  customer_phone: string | null;
+  service_type: ServiceType | null;
   created_at: string;
   updated_at: string;
 };
