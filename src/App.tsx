@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { Login } from './pages/auth/Login';
 import { Signup } from './pages/auth/Signup';
@@ -12,6 +12,7 @@ import { About } from './pages/public/About';
 import { Contact } from './pages/public/Contact';
 import { PublicQuoteForm } from './pages/public/PublicQuoteForm';
 import { QuoteSuccess } from './pages/public/QuoteSuccess';
+import { QuoteMagicLink } from './pages/public/QuoteMagicLink';
 import { KeyboardShortcuts } from './components/ui/KeyboardShortcuts';
 
 type AuthView = 'login' | 'signup' | 'forgot-password';
@@ -22,6 +23,17 @@ function App() {
   const [authView, setAuthView] = useState<AuthView>('login');
   const [publicPage, setPublicPage] = useState<PublicPage>('home');
   const [showAuth, setShowAuth] = useState(false);
+  const [magicLinkToken, setMagicLinkToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const pathname = window.location.pathname;
+    if (pathname.startsWith('/q/')) {
+      const token = pathname.split('/q/')[1];
+      if (token) {
+        setMagicLinkToken(token);
+      }
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -35,6 +47,35 @@ function App() {
   }
 
   if (!user || !profile) {
+    const goToLogin = () => {
+      setAuthView('login');
+      setShowAuth(true);
+      setMagicLinkToken(null);
+    };
+    const goToSignup = () => {
+      setAuthView('signup');
+      setShowAuth(true);
+    };
+    const navigateTo = (page: PublicPage) => {
+      setPublicPage(page);
+      setMagicLinkToken(null);
+    };
+    const goToHome = () => {
+      setPublicPage('home');
+      setMagicLinkToken(null);
+      setShowAuth(false);
+    };
+
+    if (magicLinkToken) {
+      return (
+        <QuoteMagicLink
+          token={magicLinkToken}
+          onLogin={goToLogin}
+          onNavigateHome={goToHome}
+        />
+      );
+    }
+
     if (showAuth) {
       if (authView === 'signup') {
         return <Signup onSwitchToLogin={() => setAuthView('login')} />;
@@ -51,16 +92,6 @@ function App() {
         />
       );
     }
-
-    const navigateTo = (page: PublicPage) => setPublicPage(page);
-    const goToLogin = () => {
-      setAuthView('login');
-      setShowAuth(true);
-    };
-    const goToSignup = () => {
-      setAuthView('signup');
-      setShowAuth(true);
-    };
 
     switch (publicPage) {
       case 'services':
