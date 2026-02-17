@@ -29,13 +29,17 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       jobsRes,
       customersRes,
       crewRes,
-      quotesRes
+      quotesRes,
+      serviceRequestsRes,
+      publicQuoteRequestsRes
     ] = await Promise.all([
       supabase.from('invoices').select('status, total_amount, due_date'),
       supabase.from('jobs').select('status'),
       supabase.from('profiles').select('id').eq('role', 'customer'),
       supabase.from('profiles').select('id').eq('role', 'crew'),
-      supabase.from('quotes').select('status')
+      supabase.from('quotes').select('status'),
+      supabase.from('service_requests').select('status'),
+      supabase.from('public_quote_requests').select('status')
     ]);
 
     const invoices = invoicesRes.data || [];
@@ -61,8 +65,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       return dueDate < today;
     }).length;
 
-    // Quotes use 'sent' status (not 'pending')
-    const pendingQuotes = (quotesRes.data || []).filter(q => q.status === 'sent').length;
+    // Count pending requests from both service_requests and public_quote_requests
+    const pendingServiceRequests = (serviceRequestsRes.data || []).filter(r => r.status === 'pending').length;
+    const newPublicQuoteRequests = (publicQuoteRequestsRes.data || []).filter(r => ['new', 'in_review'].includes(r.status)).length;
+    const pendingQuotes = pendingServiceRequests + newPublicQuoteRequests;
 
     return {
       totalRevenue,
@@ -154,7 +160,7 @@ export async function getJobStatusBreakdown(): Promise<JobStatusBreakdown[]> {
 
 export async function getRecentActivity(limit: number = 10) {
   try {
-    const [jobsRes, invoicesRes, quotesRes] = await Promise.all([
+    const [jobsRes, invoicesRes, quotesRes, serviceRequestsRes, publicQuoteRequestsRes] = await Promise.all([
       supabase
         .from('jobs')
         .select('id, status, created_at, customer_id, profiles:customer_id(full_name)')
@@ -168,6 +174,16 @@ export async function getRecentActivity(limit: number = 10) {
       supabase
         .from('quotes')
         .select('id, quote_number, status, created_at, customer_id, profiles:customer_id(full_name)')
+        .order('created_at', { ascending: false })
+        .limit(limit),
+      supabase
+        .from('service_requests')
+        .select('id, status, created_at, customer_id, profiles:customer_id(full_name)')
+        .order('created_at', { ascending: false })
+        .limit(limit),
+      supabase
+        .from('public_quote_requests')
+        .select('id, status, created_at, contact_name')
         .order('created_at', { ascending: false })
         .limit(limit)
     ]);
@@ -195,6 +211,20 @@ export async function getRecentActivity(limit: number = 10) {
         status: quote.status,
         customer: (quote.profiles as any)?.full_name || 'Unknown',
         timestamp: quote.created_at
+      })),
+      ...(serviceRequestsRes.data || []).map(req => ({
+        id: req.id,
+        type: 'service_request' as const,
+        status: req.status,
+        customer: (req.profiles as any)?.full_name || 'Unknown',
+        timestamp: req.created_at
+      })),
+      ...(publicQuoteRequestsRes.data || []).map(req => ({
+        id: req.id,
+        type: 'public_quote_request' as const,
+        status: req.status,
+        customer: req.contact_name || 'Guest',
+        timestamp: req.created_at
       }))
     ];
 

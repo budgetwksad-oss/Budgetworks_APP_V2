@@ -22,7 +22,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { MenuSection } from '../../components/layout/Sidebar';
-import { supabase, ServiceRequest } from '../../lib/supabase';
+import { supabase, ServiceRequest, PublicQuoteRequest } from '../../lib/supabase';
 import { ServiceRequests } from '../admin/ServiceRequests';
 import { ManageJobs } from '../admin/ManageJobs';
 import { CrewManagement } from '../admin/CrewManagement';
@@ -56,6 +56,7 @@ interface Metrics {
 export function AdminPortal() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
+  const [publicQuoteRequests, setPublicQuoteRequests] = useState<PublicQuoteRequest[]>([]);
   const [todayJobs, setTodayJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<Metrics>({
@@ -77,7 +78,7 @@ export function AdminPortal() {
 
   const loadDashboardData = async () => {
     try {
-      const [stats, revenue, activity, requestsRes, jobsRes] = await Promise.all([
+      const [stats, revenue, activity, requestsRes, publicRequestsRes, jobsRes] = await Promise.all([
         getDashboardStats(),
         getRevenueByMonth(6),
         getRecentActivity(8),
@@ -85,6 +86,12 @@ export function AdminPortal() {
           .from('service_requests')
           .select('*')
           .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(5),
+        supabase
+          .from('public_quote_requests')
+          .select('*')
+          .in('status', ['new', 'in_review'])
           .order('created_at', { ascending: false })
           .limit(5),
         supabase
@@ -126,6 +133,7 @@ export function AdminPortal() {
       setRevenueData(revenue);
       setRecentActivity(activity);
       setServiceRequests(requestsRes.data || []);
+      setPublicQuoteRequests(publicRequestsRes.data || []);
       setTodayJobs(todayJobsList);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -499,35 +507,73 @@ export function AdminPortal() {
             <div className="space-y-3">
               {loading ? (
                 <p className="text-sm text-gray-500">Loading...</p>
-              ) : serviceRequests.length === 0 ? (
+              ) : serviceRequests.length === 0 && publicQuoteRequests.length === 0 ? (
                 <p className="text-sm text-gray-500">No pending quote requests</p>
               ) : (
-                serviceRequests.map((request) => (
-                  <div
-                    key={request.id}
-                    className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer"
-                    onClick={() => setCurrentPage('service-requests')}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <span className="inline-block px-2.5 py-1 text-xs font-semibold bg-orange-100 text-orange-700 rounded-full">
-                        {getServiceLabel(request.service_type)}
-                      </span>
-                      <span className="text-xs text-gray-500">{formatDate(request.created_at)}</span>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm text-gray-700">
-                        <MapPin className="w-4 h-4 text-gray-400" />
-                        <span className="truncate">{request.location_address}</span>
-                      </div>
-                      {request.contact_phone && (
-                        <div className="flex items-center gap-2 text-sm text-gray-700">
-                          <Phone className="w-4 h-4 text-gray-400" />
-                          <span>{request.contact_phone}</span>
+                <>
+                  {serviceRequests.map((request) => (
+                    <div
+                      key={request.id}
+                      className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer"
+                      onClick={() => setCurrentPage('service-requests')}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-block px-2.5 py-1 text-xs font-semibold bg-orange-100 text-orange-700 rounded-full">
+                            {getServiceLabel(request.service_type)}
+                          </span>
+                          <span className="inline-block px-2.5 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
+                            Customer
+                          </span>
                         </div>
-                      )}
+                        <span className="text-xs text-gray-500">{formatDate(request.created_at)}</span>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                          <MapPin className="w-4 h-4 text-gray-400" />
+                          <span className="truncate">{request.location_address}</span>
+                        </div>
+                        {request.contact_phone && (
+                          <div className="flex items-center gap-2 text-sm text-gray-700">
+                            <Phone className="w-4 h-4 text-gray-400" />
+                            <span>{request.contact_phone}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                  {publicQuoteRequests.map((request) => (
+                    <div
+                      key={request.id}
+                      className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer"
+                      onClick={() => setCurrentPage('service-requests')}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-block px-2.5 py-1 text-xs font-semibold bg-orange-100 text-orange-700 rounded-full">
+                            {getServiceLabel(request.service_type)}
+                          </span>
+                          <span className="inline-block px-2.5 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">
+                            Guest
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-500">{formatDate(request.created_at)}</span>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                          <MapPin className="w-4 h-4 text-gray-400" />
+                          <span className="truncate">{request.location_address}</span>
+                        </div>
+                        {request.contact_phone && (
+                          <div className="flex items-center gap-2 text-sm text-gray-700">
+                            <Phone className="w-4 h-4 text-gray-400" />
+                            <span>{request.contact_phone}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </>
               )}
             </div>
           </Card>
@@ -583,7 +629,16 @@ export function AdminPortal() {
               recentActivity.map((activity, index) => (
                 <div
                   key={`${activity.type}-${activity.id}-${index}`}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                  onClick={() => {
+                    if (activity.type === 'service_request' || activity.type === 'public_quote_request') {
+                      setCurrentPage('service-requests');
+                    } else if (activity.type === 'job') {
+                      setCurrentPage('jobs');
+                    } else if (activity.type === 'invoice') {
+                      setCurrentPage('invoices');
+                    }
+                  }}
                 >
                   <div className="flex items-center gap-3">
                     {activity.type === 'job' && (
@@ -601,11 +656,23 @@ export function AdminPortal() {
                         <FileText className="w-4 h-4 text-orange-600" />
                       </div>
                     )}
+                    {activity.type === 'service_request' && (
+                      <div className="bg-blue-100 p-2 rounded">
+                        <ClipboardList className="w-4 h-4 text-blue-600" />
+                      </div>
+                    )}
+                    {activity.type === 'public_quote_request' && (
+                      <div className="bg-green-100 p-2 rounded">
+                        <ClipboardList className="w-4 h-4 text-green-600" />
+                      </div>
+                    )}
                     <div>
                       <p className="text-sm font-medium text-gray-900">
                         {activity.type === 'job' && `Job ${activity.status}`}
                         {activity.type === 'invoice' && `Invoice ${activity.number} ${activity.status}`}
                         {activity.type === 'quote' && `Quote ${activity.number} ${activity.status}`}
+                        {activity.type === 'service_request' && `Customer request ${activity.status}`}
+                        {activity.type === 'public_quote_request' && `Guest quote ${activity.status}`}
                       </p>
                       <p className="text-xs text-gray-500">{activity.customer}</p>
                     </div>

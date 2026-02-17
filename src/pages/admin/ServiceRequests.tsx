@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase, PublicQuoteRequest } from '../../lib/supabase';
+import { supabase, PublicQuoteRequest, ServiceRequest } from '../../lib/supabase';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
@@ -12,9 +12,25 @@ interface ServiceRequestsProps {
   onBack?: () => void;
 }
 
+type UnifiedRequest = {
+  id: string;
+  type: 'service_request' | 'public_quote_request';
+  service_type: string;
+  contact_name: string;
+  contact_email: string;
+  contact_phone: string | null;
+  location_address: string;
+  preferred_date: string | null;
+  description: string | null;
+  status: string;
+  created_at: string;
+  customer_id?: string;
+  preferred_contact_method?: string;
+};
+
 export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProps = {}) {
-  const [requests, setRequests] = useState<PublicQuoteRequest[]>([]);
-  const [selectedRequest, setSelectedRequest] = useState<PublicQuoteRequest | null>(null);
+  const [requests, setRequests] = useState<UnifiedRequest[]>([]);
+  const [selectedRequest, setSelectedRequest] = useState<UnifiedRequest | null>(null);
   const [showCreateQuote, setShowCreateQuote] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -24,13 +40,55 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
 
   const loadRequests = async () => {
     try {
-      const { data, error } = await supabase
-        .from('public_quote_requests')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const [publicRes, serviceRes] = await Promise.all([
+        supabase
+          .from('public_quote_requests')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('service_requests')
+          .select('*, profiles:customer_id(full_name, email)')
+          .order('created_at', { ascending: false })
+      ]);
 
-      if (error) throw error;
-      setRequests(data || []);
+      if (publicRes.error) throw publicRes.error;
+      if (serviceRes.error) throw serviceRes.error;
+
+      const publicRequests: UnifiedRequest[] = (publicRes.data || []).map(req => ({
+        id: req.id,
+        type: 'public_quote_request' as const,
+        service_type: req.service_type,
+        contact_name: req.contact_name,
+        contact_email: req.contact_email,
+        contact_phone: req.contact_phone,
+        location_address: req.location_address,
+        preferred_date: req.preferred_date,
+        description: req.description,
+        status: req.status,
+        created_at: req.created_at,
+        preferred_contact_method: req.preferred_contact_method
+      }));
+
+      const serviceRequests: UnifiedRequest[] = (serviceRes.data || []).map(req => ({
+        id: req.id,
+        type: 'service_request' as const,
+        service_type: req.service_type,
+        contact_name: (req.profiles as any)?.full_name || req.contact_name || 'Unknown',
+        contact_email: (req.profiles as any)?.email || '',
+        contact_phone: req.contact_phone,
+        location_address: req.location_address,
+        preferred_date: req.preferred_date,
+        description: req.description,
+        status: req.status,
+        created_at: req.created_at,
+        customer_id: req.customer_id
+      }));
+
+      const allRequests = [...publicRequests, ...serviceRequests].sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      setRequests(allRequests);
     } catch (error) {
       console.error('Error loading requests:', error);
     } finally {
@@ -38,10 +96,11 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
     }
   };
 
-  const updateRequestStatus = async (id: string, newStatus: string) => {
+  const updateRequestStatus = async (id: string, type: string, newStatus: string) => {
     try {
+      const table = type === 'public_quote_request' ? 'public_quote_requests' : 'service_requests';
       const { error } = await supabase
-        .from('public_quote_requests')
+        .from(table)
         .update({ status: newStatus })
         .eq('id', id);
 
@@ -68,9 +127,12 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
   const getStatusBadge = (status: string) => {
     const styles = {
       new: 'bg-yellow-100 text-yellow-700',
+      pending: 'bg-yellow-100 text-yellow-700',
       in_review: 'bg-blue-100 text-blue-700',
       quoted: 'bg-green-100 text-green-700',
+      accepted: 'bg-green-100 text-green-700',
       closed: 'bg-gray-100 text-gray-700',
+      cancelled: 'bg-gray-100 text-gray-700',
     };
     return styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-700';
   };
@@ -78,9 +140,12 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
   const getStatusLabel = (status: string) => {
     const labels = {
       new: 'New',
+      pending: 'Pending',
       in_review: 'In Review',
       quoted: 'Quoted',
+      accepted: 'Accepted',
       closed: 'Closed',
+      cancelled: 'Cancelled',
     };
     return labels[status as keyof typeof labels] || status;
   };
@@ -137,11 +202,20 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
             <div className="flex items-start justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Lead Details</h2>
-                <p className="text-gray-600">Guest quote request</p>
+                <p className="text-gray-600">
+                  {selectedRequest.type === 'public_quote_request' ? 'Guest quote request' : 'Customer request'}
+                </p>
               </div>
-              <span className={`px-3 py-1.5 text-sm font-semibold rounded-full ${getStatusBadge(selectedRequest.status)}`}>
-                {getStatusLabel(selectedRequest.status)}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`px-3 py-1.5 text-xs font-semibold rounded-full ${
+                  selectedRequest.type === 'public_quote_request' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {selectedRequest.type === 'public_quote_request' ? 'Guest' : 'Customer'}
+                </span>
+                <span className={`px-3 py-1.5 text-sm font-semibold rounded-full ${getStatusBadge(selectedRequest.status)}`}>
+                  {getStatusLabel(selectedRequest.status)}
+                </span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -177,12 +251,14 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 mb-2">Preferred Contact</h3>
-                <p className="text-lg text-gray-900 capitalize">
-                  {selectedRequest.preferred_contact_method}
-                </p>
-              </div>
+              {selectedRequest.preferred_contact_method && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Preferred Contact</h3>
+                  <p className="text-lg text-gray-900 capitalize">
+                    {selectedRequest.preferred_contact_method}
+                  </p>
+                </div>
+              )}
 
               <div>
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Service Type</h3>
@@ -228,7 +304,7 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
 
             <div className="flex gap-3 pt-6 border-t">
               <div className="flex gap-2 flex-wrap">
-                {(selectedRequest.status === 'new' || selectedRequest.status === 'in_review') && (
+                {(['new', 'pending', 'in_review'].includes(selectedRequest.status)) && (
                   <Button
                     variant="primary"
                     onClick={() => setShowCreateQuote(true)}
@@ -238,10 +314,10 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
                     Create Quote
                   </Button>
                 )}
-                {selectedRequest.status === 'new' && (
+                {(selectedRequest.status === 'new' || selectedRequest.status === 'pending') && (
                   <Button
                     variant="secondary"
-                    onClick={() => updateRequestStatus(selectedRequest.id, 'in_review')}
+                    onClick={() => updateRequestStatus(selectedRequest.id, selectedRequest.type, 'in_review')}
                   >
                     Mark In Review
                   </Button>
@@ -251,10 +327,10 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
                     Quote sent
                   </div>
                 )}
-                {(selectedRequest.status === 'quoted' || selectedRequest.status === 'in_review') && (
+                {(['quoted', 'in_review', 'accepted'].includes(selectedRequest.status)) && (
                   <Button
                     variant="secondary"
-                    onClick={() => updateRequestStatus(selectedRequest.id, 'closed')}
+                    onClick={() => updateRequestStatus(selectedRequest.id, selectedRequest.type, 'closed')}
                   >
                     Close Lead
                   </Button>
@@ -262,7 +338,7 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
                 {selectedRequest.status === 'closed' && (
                   <Button
                     variant="secondary"
-                    onClick={() => updateRequestStatus(selectedRequest.id, 'new')}
+                    onClick={() => updateRequestStatus(selectedRequest.id, selectedRequest.type, selectedRequest.type === 'public_quote_request' ? 'new' : 'pending')}
                   >
                     Reopen
                   </Button>
@@ -282,14 +358,14 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
       activeItemId="service-requests"
       breadcrumbs={onBack ? [
         { label: 'Dashboard', onClick: onBack },
-        { label: 'Service Requests' }
+        { label: 'All Leads' }
       ] : undefined}
     >
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Guest Quote Leads</h2>
-            <p className="text-gray-600">Public quote submissions from potential customers</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">All Leads</h2>
+            <p className="text-gray-600">Quote requests from customers and guests</p>
           </div>
           {onBack && (
             <Button variant="secondary" onClick={onBack}>
@@ -310,7 +386,7 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
           <div className="space-y-4">
             {requests.map((request) => (
               <Card
-                key={request.id}
+                key={`${request.type}-${request.id}`}
                 className="p-6 hover:shadow-md transition-all cursor-pointer"
                 onClick={() => setSelectedRequest(request)}
               >
@@ -322,6 +398,11 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
                       </span>
                       <span className={`px-3 py-1 text-sm font-semibold rounded-full ${getStatusBadge(request.status)}`}>
                         {getStatusLabel(request.status)}
+                      </span>
+                      <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                        request.type === 'public_quote_request' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {request.type === 'public_quote_request' ? 'Guest' : 'Customer'}
                       </span>
                     </div>
 
