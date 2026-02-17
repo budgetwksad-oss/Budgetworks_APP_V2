@@ -1,25 +1,11 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase, PublicQuoteRequest } from '../../lib/supabase';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { MapPin, Phone, Calendar, ArrowLeft, Mail, User } from 'lucide-react';
-
-interface PublicQuoteRequest {
-  id: string;
-  service_type: string;
-  contact_name: string;
-  contact_email: string;
-  contact_phone: string | null;
-  preferred_contact_method: string;
-  location_address: string;
-  preferred_date: string | null;
-  description: string | null;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
+import { MapPin, Phone, Calendar, ArrowLeft, Mail, User, FileText } from 'lucide-react';
+import { CreateQuote } from './CreateQuote';
 
 interface ServiceRequestsProps {
   sidebarSections?: MenuSection[];
@@ -29,6 +15,7 @@ interface ServiceRequestsProps {
 export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProps = {}) {
   const [requests, setRequests] = useState<PublicQuoteRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<PublicQuoteRequest | null>(null);
+  const [showCreateQuote, setShowCreateQuote] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -105,6 +92,24 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
       year: 'numeric',
     });
   };
+
+  if (showCreateQuote && selectedRequest) {
+    return (
+      <CreateQuote
+        lead={selectedRequest}
+        onBack={() => {
+          setShowCreateQuote(false);
+          loadRequests();
+        }}
+        onSuccess={() => {
+          setShowCreateQuote(false);
+          setSelectedRequest(null);
+          loadRequests();
+        }}
+        sidebarSections={sidebarSections}
+      />
+    );
+  }
 
   if (selectedRequest) {
     return (
@@ -222,22 +227,29 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
             )}
 
             <div className="flex gap-3 pt-6 border-t">
-              <div className="flex gap-2">
-                {selectedRequest.status === 'new' && (
+              <div className="flex gap-2 flex-wrap">
+                {(selectedRequest.status === 'new' || selectedRequest.status === 'in_review') && (
                   <Button
                     variant="primary"
+                    onClick={() => setShowCreateQuote(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Create Quote
+                  </Button>
+                )}
+                {selectedRequest.status === 'new' && (
+                  <Button
+                    variant="secondary"
                     onClick={() => updateRequestStatus(selectedRequest.id, 'in_review')}
                   >
                     Mark In Review
                   </Button>
                 )}
-                {selectedRequest.status === 'in_review' && (
-                  <Button
-                    variant="primary"
-                    onClick={() => updateRequestStatus(selectedRequest.id, 'quoted')}
-                  >
-                    Mark as Quoted
-                  </Button>
+                {selectedRequest.status === 'quoted' && (
+                  <div className="px-4 py-2 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm font-medium">
+                    Quote sent
+                  </div>
                 )}
                 {(selectedRequest.status === 'quoted' || selectedRequest.status === 'in_review') && (
                   <Button

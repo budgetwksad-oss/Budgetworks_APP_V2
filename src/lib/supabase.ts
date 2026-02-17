@@ -46,7 +46,7 @@ export type QuoteLineItem = {
   total: number;
 };
 
-export type QuoteStatus = 'sent' | 'accepted' | 'declined' | 'expired';
+export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired';
 
 export type Quote = {
   id: string;
@@ -63,6 +63,15 @@ export type Quote = {
   created_by: string;
   created_at: string;
   updated_at: string;
+  public_quote_request_id: string | null;
+  estimate_low: number | null;
+  estimate_high: number | null;
+  expected_price: number | null;
+  cap_amount: number | null;
+  pricing_snapshot: any | null;
+  accepted_at: string | null;
+  declined_at: string | null;
+  accepted_method: 'magic_link' | 'phone' | null;
 };
 
 export type JobStatus = 'scheduled_draft' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
@@ -243,4 +252,22 @@ export type ContactMessage = {
   message: string;
   status: ContactMessageStatus;
   created_at: string;
+};
+
+export type PublicQuoteRequestStatus = 'new' | 'in_review' | 'quoted' | 'closed';
+export type PreferredContactMethod = 'sms' | 'email' | 'call';
+
+export type PublicQuoteRequest = {
+  id: string;
+  service_type: ServiceType;
+  contact_name: string;
+  contact_email: string;
+  contact_phone: string | null;
+  preferred_contact_method: PreferredContactMethod;
+  location_address: string;
+  preferred_date: string | null;
+  description: string | null;
+  status: PublicQuoteRequestStatus;
+  created_at: string;
+  updated_at: string;
 };

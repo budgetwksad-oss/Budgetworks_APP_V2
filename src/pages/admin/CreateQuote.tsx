@@ -1,154 +1,355 @@
 import { useState, FormEvent } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase, ServiceRequest, QuoteLineItem } from '../../lib/supabase';
+import { supabase, PublicQuoteRequest } from '../../lib/supabase';
 import { PortalLayout } from '../../components/layout/PortalLayout';
+import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { ArrowLeft, Plus, Trash2, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Copy, CheckCircle, MapPin, Calendar, Mail, Phone, User } from 'lucide-react';
 
 interface CreateQuoteProps {
-  request: ServiceRequest;
+  lead: PublicQuoteRequest;
   onBack: () => void;
+  onSuccess: () => void;
+  sidebarSections?: MenuSection[];
 }
 
-export function CreateQuote({ request, onBack }: CreateQuoteProps) {
+export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: CreateQuoteProps) {
   const { user } = useAuth();
-  const [lineItems, setLineItems] = useState<QuoteLineItem[]>([
-    { description: '', quantity: 1, unit_price: 0, total: 0 }
-  ]);
-  const [taxRate, setTaxRate] = useState(0.13);
-  const [validUntil, setValidUntil] = useState('');
+  const [estimateLow, setEstimateLow] = useState<string>('');
+  const [estimateHigh, setEstimateHigh] = useState<string>('');
+  const [capAmount, setCapAmount] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [quoteId, setQuoteId] = useState<string | null>(null);
+  const [magicLink, setMagicLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
 
-  const addLineItem = () => {
-    setLineItems([...lineItems, { description: '', quantity: 1, unit_price: 0, total: 0 }]);
-  };
-
-  const removeLineItem = (index: number) => {
-    if (lineItems.length > 1) {
-      setLineItems(lineItems.filter((_, i) => i !== index));
+  const getServiceLabel = (type: string) => {
+    switch (type) {
+      case 'moving': return 'Moving';
+      case 'junk_removal': return 'Junk Removal';
+      case 'demolition': return 'Light Demo';
+      default: return type;
     }
   };
 
-  const updateLineItem = (index: number, field: keyof QuoteLineItem, value: string | number) => {
-    const updated = [...lineItems];
-    updated[index] = { ...updated[index], [field]: value };
-
-    if (field === 'quantity' || field === 'unit_price') {
-      updated[index].total = updated[index].quantity * updated[index].unit_price;
-    }
-
-    setLineItems(updated);
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
   };
 
-  const calculateSubtotal = () => {
-    return lineItems.reduce((sum, item) => sum + item.total, 0);
+  const handleCopy = (text: string, type: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(type);
+    setTimeout(() => setCopied(null), 2000);
   };
 
-  const calculateTax = () => {
-    return calculateSubtotal() * taxRate;
-  };
-
-  const calculateTotal = () => {
-    return calculateSubtotal() + calculateTax();
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSaveDraft = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      const validLineItems = lineItems.filter(item => item.description && item.quantity > 0 && item.unit_price > 0);
-
-      if (validLineItems.length === 0) {
-        setError('Please add at least one valid line item');
+      if (!estimateLow && !estimateHigh) {
+        setError('Please provide at least an estimate range');
         setLoading(false);
         return;
       }
 
-      if (!validUntil) {
-        setError('Please set a valid until date');
-        setLoading(false);
-        return;
-      }
-
-      const subtotal = calculateSubtotal();
-      const taxAmount = calculateTax();
-      const totalAmount = calculateTotal();
+      const lowValue = estimateLow ? parseFloat(estimateLow) : null;
+      const highValue = estimateHigh ? parseFloat(estimateHigh) : null;
+      const capValue = capAmount ? parseFloat(capAmount) : null;
 
       const { data: quoteNumberData, error: quoteNumberError } = await supabase
         .rpc('generate_quote_number');
 
       if (quoteNumberError) throw quoteNumberError;
 
+      const validUntil = new Date();
+      validUntil.setDate(validUntil.getDate() + 14);
+
       const { data: quote, error: quoteError } = await supabase
         .from('quotes')
         .insert({
-          service_request_id: request.id,
+          public_quote_request_id: lead.id,
+          service_request_id: lead.id,
           quote_number: quoteNumberData,
-          line_items: validLineItems,
-          subtotal: subtotal.toFixed(2),
-          tax_rate: taxRate,
-          tax_amount: taxAmount.toFixed(2),
-          total_amount: totalAmount.toFixed(2),
-          valid_until: validUntil,
+          line_items: [],
+          subtotal: 0,
+          tax_rate: 0,
+          tax_amount: 0,
+          total_amount: 0,
+          estimate_low: lowValue,
+          estimate_high: highValue,
+          expected_price: highValue || lowValue,
+          cap_amount: capValue,
+          valid_until: validUntil.toISOString().split('T')[0],
           notes: notes || null,
-          status: 'sent',
+          status: 'draft',
           created_by: user?.id,
+          pricing_snapshot: {
+            service_type: lead.service_type,
+            location: lead.location_address,
+            preferred_date: lead.preferred_date,
+            description: lead.description,
+          },
         })
         .select()
         .single();
 
       if (quoteError) throw quoteError;
 
-      const { error: requestUpdateError } = await supabase
-        .from('service_requests')
-        .update({ status: 'quoted' })
-        .eq('id', request.id);
-
-      if (requestUpdateError) throw requestUpdateError;
-
-      const { error: jobError } = await supabase
-        .from('jobs')
-        .insert({
-          quote_id: quote.id,
-          service_request_id: request.id,
-          customer_id: request.customer_id,
-          status: 'scheduled',
-        });
-
-      if (jobError) throw jobError;
-
-      setSuccess(true);
+      setQuoteId(quote.id);
+      alert('Quote saved as draft');
     } catch (err: any) {
-      setError(err.message || 'Failed to create quote');
+      setError(err.message || 'Failed to save quote');
     } finally {
       setLoading(false);
     }
   };
 
-  if (success) {
+  const handleSendQuote = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      if (!estimateLow && !estimateHigh) {
+        setError('Please provide at least an estimate range');
+        setLoading(false);
+        return;
+      }
+
+      const lowValue = estimateLow ? parseFloat(estimateLow) : null;
+      const highValue = estimateHigh ? parseFloat(estimateHigh) : null;
+      const capValue = capAmount ? parseFloat(capAmount) : null;
+
+      let currentQuoteId = quoteId;
+
+      if (!currentQuoteId) {
+        const { data: quoteNumberData, error: quoteNumberError } = await supabase
+          .rpc('generate_quote_number');
+
+        if (quoteNumberError) throw quoteNumberError;
+
+        const validUntil = new Date();
+        validUntil.setDate(validUntil.getDate() + 14);
+
+        const { data: quote, error: quoteError } = await supabase
+          .from('quotes')
+          .insert({
+            public_quote_request_id: lead.id,
+            service_request_id: lead.id,
+            quote_number: quoteNumberData,
+            line_items: [],
+            subtotal: 0,
+            tax_rate: 0,
+            tax_amount: 0,
+            total_amount: 0,
+            estimate_low: lowValue,
+            estimate_high: highValue,
+            expected_price: highValue || lowValue,
+            cap_amount: capValue,
+            valid_until: validUntil.toISOString().split('T')[0],
+            notes: notes || null,
+            status: 'sent',
+            created_by: user?.id,
+            pricing_snapshot: {
+              service_type: lead.service_type,
+              location: lead.location_address,
+              preferred_date: lead.preferred_date,
+              description: lead.description,
+            },
+          })
+          .select()
+          .single();
+
+        if (quoteError) throw quoteError;
+        currentQuoteId = quote.id;
+        setQuoteId(currentQuoteId);
+      } else {
+        const { error: updateError } = await supabase
+          .from('quotes')
+          .update({
+            estimate_low: lowValue,
+            estimate_high: highValue,
+            expected_price: highValue || lowValue,
+            cap_amount: capValue,
+            notes: notes || null,
+            status: 'sent',
+          })
+          .eq('id', currentQuoteId);
+
+        if (updateError) throw updateError;
+      }
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 14);
+
+      const { data: linkData, error: linkError } = await supabase
+        .rpc('create_quote_magic_link', {
+          p_quote_id: currentQuoteId,
+          p_expires_at: expiresAt.toISOString(),
+        });
+
+      if (linkError) throw linkError;
+
+      const fullLink = `${window.location.origin}/q/${linkData.token}`;
+      setMagicLink(fullLink);
+
+      const { error: leadUpdateError } = await supabase
+        .from('public_quote_requests')
+        .update({ status: 'quoted' })
+        .eq('id', lead.id);
+
+      if (leadUpdateError) throw leadUpdateError;
+
+    } catch (err: any) {
+      setError(err.message || 'Failed to send quote');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (magicLink) {
+    const smsTemplate = `BudgetWorks quote: ${magicLink} Reply here if you have questions.`;
+    const emailSubject = `Your Quote from BudgetWorks`;
+    const emailBody = `Hi ${lead.contact_name},\n\nThank you for requesting a quote from BudgetWorks. Please review your quote at the link below:\n\n${magicLink}\n\nThis quote is valid for 14 days. If you have any questions, please don't hesitate to reach out.\n\nBest regards,\nBudgetWorks Team`;
+
     return (
-      <PortalLayout portalName="Admin Portal">
+      <PortalLayout
+        portalName="Admin Portal"
+        sidebarSections={sidebarSections}
+        activeItemId="service-requests"
+        breadcrumbs={[
+          { label: 'Leads', onClick: onSuccess },
+          { label: 'Create Quote' }
+        ]}
+      >
         <div className="min-h-[60vh] flex items-center justify-center">
-          <Card className="w-full max-w-md p-8 text-center">
+          <Card className="w-full max-w-2xl p-8">
             <div className="flex items-center justify-center mb-6">
               <div className="bg-green-100 p-4 rounded-full">
                 <CheckCircle className="w-12 h-12 text-green-600" />
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Quote Sent!</h2>
-            <p className="text-gray-600 mb-6">
-              The quote has been created and the customer will be notified
+            <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Quote Link Created!</h2>
+            <p className="text-gray-600 mb-6 text-center">
+              Share this link with {lead.contact_name} via their preferred method: {lead.preferred_contact_method}
             </p>
-            <Button variant="primary" className="w-full" onClick={onBack}>
-              Back to Requests
-            </Button>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Quote Link</label>
+                <div className="flex gap-2">
+                  <Input
+                    value={magicLink}
+                    readOnly
+                    className="flex-1 font-mono text-sm"
+                  />
+                  <Button
+                    variant="secondary"
+                    onClick={() => handleCopy(magicLink, 'link')}
+                    className="flex items-center gap-2"
+                  >
+                    {copied === 'link' ? (
+                      <>
+                        <CheckCircle className="w-4 h-4" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        Copy
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">SMS Template</label>
+                <div className="flex gap-2">
+                  <textarea
+                    value={smsTemplate}
+                    readOnly
+                    rows={2}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50"
+                  />
+                  <Button
+                    variant="secondary"
+                    onClick={() => handleCopy(smsTemplate, 'sms')}
+                    className="flex items-center gap-2"
+                  >
+                    {copied === 'sms' ? (
+                      <>
+                        <CheckCircle className="w-4 h-4" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        Copy SMS
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email Template</label>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={emailSubject}
+                      readOnly
+                      className="flex-1 text-sm bg-gray-50"
+                      placeholder="Subject"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <textarea
+                      value={emailBody}
+                      readOnly
+                      rows={6}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50"
+                    />
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleCopy(`Subject: ${emailSubject}\n\n${emailBody}`, 'email')}
+                      className="flex items-center gap-2"
+                    >
+                      {copied === 'email' ? (
+                        <>
+                          <CheckCircle className="w-4 h-4" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          Copy Email
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6 pt-6 border-t">
+              <Button variant="secondary" className="flex-1" onClick={onBack}>
+                Back to Lead
+              </Button>
+              <Button variant="primary" className="flex-1" onClick={onSuccess}>
+                Done
+              </Button>
+            </div>
           </Card>
         </div>
       </PortalLayout>
@@ -156,7 +357,15 @@ export function CreateQuote({ request, onBack }: CreateQuoteProps) {
   }
 
   return (
-    <PortalLayout portalName="Admin Portal">
+    <PortalLayout
+      portalName="Admin Portal"
+      sidebarSections={sidebarSections}
+      activeItemId="service-requests"
+      breadcrumbs={[
+        { label: 'Leads', onClick: onBack },
+        { label: 'Create Quote' }
+      ]}
+    >
       <div className="space-y-6">
         <Button
           variant="ghost"
@@ -164,173 +373,164 @@ export function CreateQuote({ request, onBack }: CreateQuoteProps) {
           className="flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back
+          Back to Lead
         </Button>
 
-        <Card className="p-8">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Quote</h2>
-            <p className="text-gray-600">
-              {request.location_address}
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Line Items</h3>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={addLineItem}
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Item
-                </Button>
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
+            <Card className="p-6 sticky top-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Lead Summary</h3>
 
               <div className="space-y-4">
-                {lineItems.map((item, index) => (
-                  <div key={index} className="flex gap-3 items-start">
-                    <div className="flex-1">
-                      <Input
-                        placeholder="Description"
-                        value={item.description}
-                        onChange={(e) => updateLineItem(index, 'description', e.target.value)}
-                        required
-                      />
+                <div>
+                  <span className="px-3 py-1.5 text-sm font-semibold bg-orange-100 text-orange-700 rounded-full">
+                    {getServiceLabel(lead.service_type)}
+                  </span>
+                </div>
+
+                <div>
+                  <h4 className="text-xs font-medium text-gray-500 mb-1">Contact</h4>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 text-sm text-gray-900">
+                      <User className="w-4 h-4 text-gray-400" />
+                      <span className="font-medium">{lead.contact_name}</span>
                     </div>
-                    <div className="w-24">
-                      <Input
-                        type="number"
-                        placeholder="Qty"
-                        value={item.quantity}
-                        onChange={(e) => updateLineItem(index, 'quantity', parseFloat(e.target.value) || 0)}
-                        min="0"
-                        step="1"
-                        required
-                      />
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <Mail className="w-4 h-4 text-gray-400" />
+                      <span className="text-xs">{lead.contact_email}</span>
                     </div>
-                    <div className="w-32">
-                      <Input
-                        type="number"
-                        placeholder="Price"
-                        value={item.unit_price}
-                        onChange={(e) => updateLineItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                        min="0"
-                        step="0.01"
-                        required
-                      />
-                    </div>
-                    <div className="w-32">
-                      <Input
-                        value={`$${item.total.toFixed(2)}`}
-                        disabled
-                      />
-                    </div>
-                    {lineItems.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeLineItem(index)}
-                        className="text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                    {lead.contact_phone && (
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <Phone className="w-4 h-4 text-gray-400" />
+                        <span>{lead.contact_phone}</span>
+                      </div>
                     )}
                   </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="border-t pt-6">
-              <div className="max-w-md ml-auto space-y-3">
-                <div className="flex justify-between items-center text-gray-700">
-                  <span>Subtotal:</span>
-                  <span className="font-semibold">${calculateSubtotal().toFixed(2)}</span>
                 </div>
 
-                <div className="flex justify-between items-center">
-                  <label className="text-gray-700">Tax Rate:</label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      value={taxRate * 100}
-                      onChange={(e) => setTaxRate(parseFloat(e.target.value) / 100 || 0)}
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      className="w-24 text-right"
-                    />
-                    <span className="text-gray-700">%</span>
+                <div>
+                  <h4 className="text-xs font-medium text-gray-500 mb-1">Preferred Contact</h4>
+                  <p className="text-sm text-gray-900 capitalize">{lead.preferred_contact_method}</p>
+                </div>
+
+                <div>
+                  <h4 className="text-xs font-medium text-gray-500 mb-1">Location</h4>
+                  <div className="flex items-start gap-2 text-sm text-gray-900">
+                    <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
+                    <span>{lead.location_address}</span>
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center text-gray-700">
-                  <span>Tax:</span>
-                  <span className="font-semibold">${calculateTax().toFixed(2)}</span>
+                {lead.preferred_date && (
+                  <div>
+                    <h4 className="text-xs font-medium text-gray-500 mb-1">Preferred Date</h4>
+                    <div className="flex items-center gap-2 text-sm text-gray-900">
+                      <Calendar className="w-4 h-4 text-gray-400" />
+                      <span>{formatDate(lead.preferred_date)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {lead.description && (
+                  <div>
+                    <h4 className="text-xs font-medium text-gray-500 mb-1">Description</h4>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{lead.description}</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+
+          <div className="lg:col-span-2">
+            <Card className="p-8">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Quote</h2>
+                <p className="text-gray-600">
+                  Provide an estimate range for this {getServiceLabel(lead.service_type).toLowerCase()} job
+                </p>
+              </div>
+
+              <form onSubmit={handleSendQuote} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="Estimate Low ($)"
+                    type="number"
+                    value={estimateLow}
+                    onChange={(e) => setEstimateLow(e.target.value)}
+                    min="0"
+                    step="0.01"
+                    placeholder="Minimum estimate"
+                  />
+                  <Input
+                    label="Estimate High ($)"
+                    type="number"
+                    value={estimateHigh}
+                    onChange={(e) => setEstimateHigh(e.target.value)}
+                    min="0"
+                    step="0.01"
+                    placeholder="Maximum estimate"
+                  />
                 </div>
 
-                <div className="flex justify-between items-center text-lg font-bold text-gray-900 pt-3 border-t">
-                  <span>Total:</span>
-                  <span className="text-orange-600">${calculateTotal().toFixed(2)}</span>
+                <Input
+                  label="Cap Amount (Not-to-Exceed) - Optional"
+                  type="number"
+                  value={capAmount}
+                  onChange={(e) => setCapAmount(e.target.value)}
+                  min="0"
+                  step="0.01"
+                  placeholder="Maximum amount (optional)"
+                />
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Internal Notes (Optional)
+                  </label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Internal notes about pricing, considerations, etc..."
+                    rows={4}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-colors duration-200"
+                  />
                 </div>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Valid Until"
-                type="date"
-                value={validUntil}
-                onChange={(e) => setValidUntil(e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
-                required
-              />
-            </div>
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Notes (Optional)
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Additional notes for the customer..."
-                rows={4}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none transition-colors duration-200"
-              />
-            </div>
-
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{error}</p>
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                variant="ghost"
-                className="flex-1"
-                onClick={onBack}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                className="flex-1"
-                disabled={loading}
-              >
-                {loading ? 'Sending Quote...' : 'Send Quote'}
-              </Button>
-            </div>
-          </form>
-        </Card>
+                <div className="flex gap-3 pt-6 border-t">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={onBack}
+                    disabled={loading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleSaveDraft}
+                    disabled={loading}
+                  >
+                    {loading ? 'Saving...' : 'Save Draft'}
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="flex-1"
+                    disabled={loading}
+                  >
+                    {loading ? 'Sending...' : 'Send Quote Link'}
+                  </Button>
+                </div>
+              </form>
+            </Card>
+          </div>
+        </div>
       </div>
     </PortalLayout>
   );
