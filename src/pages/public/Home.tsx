@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { PublicLayout } from '../../components/layout/PublicLayout';
-import { Truck, Trash2, Hammer, ArrowRight, CheckCircle, Clock, DollarSign, Users } from 'lucide-react';
+import { Truck, Trash2, Hammer, ArrowRight, CheckCircle, Clock, DollarSign, Users, Star } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote';
 
@@ -9,6 +11,38 @@ interface HomeProps {
 }
 
 export function Home({ onNavigate, onLogin }: HomeProps) {
+  const [testimonialSettings, setTestimonialSettings] = useState<any>(null);
+  const [testimonials, setTestimonials] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadTestimonials = async () => {
+      try {
+        const [settingsRes, testimonialsRes] = await Promise.all([
+          supabase.from('testimonial_settings').select('*').maybeSingle(),
+          supabase
+            .from('testimonials')
+            .select('*')
+            .eq('published', true)
+            .order('featured', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(6)
+        ]);
+
+        if (settingsRes.data) {
+          setTestimonialSettings(settingsRes.data);
+        }
+
+        if (testimonialsRes.data) {
+          setTestimonials(testimonialsRes.data);
+        }
+      } catch (error) {
+        console.error('Error loading testimonials:', error);
+      }
+    };
+
+    loadTestimonials();
+  }, []);
+
   const services = [
     {
       icon: Truck,
@@ -213,6 +247,73 @@ export function Home({ onNavigate, onLogin }: HomeProps) {
           </div>
         </div>
       </section>
+
+      {testimonialSettings?.is_enabled && testimonials.length > 0 && (
+        <section className="py-16 md:py-24 bg-gradient-to-br from-gray-50 to-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-black mb-4">
+                What Our Customers Say
+              </h2>
+              {testimonialSettings.rating_value && testimonialSettings.review_count && (
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-6 h-6 ${
+                          i < Math.floor(testimonialSettings.rating_value)
+                            ? 'fill-yellow-400 text-yellow-400'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-2xl font-bold text-gray-900">
+                    {testimonialSettings.rating_value.toFixed(1)}
+                  </span>
+                  <span className="text-gray-600">
+                    ({testimonialSettings.review_count} reviews)
+                  </span>
+                </div>
+              )}
+              {testimonialSettings.source_label && (
+                <p className="text-gray-600">{testimonialSettings.source_label}</p>
+              )}
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {testimonials.map((testimonial) => (
+                <div
+                  key={testimonial.id}
+                  className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow"
+                >
+                  <div className="flex items-center gap-1 mb-4">
+                    {Array.from({ length: testimonial.rating }).map((_, i) => (
+                      <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                  <p className="text-gray-700 mb-4 leading-relaxed">{testimonial.content}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-gray-900">{testimonial.customer_name}</p>
+                    {testimonial.service_type && (
+                      <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">
+                        {testimonial.service_type === 'moving'
+                          ? 'Moving'
+                          : testimonial.service_type === 'junk_removal'
+                          ? 'Junk Removal'
+                          : testimonial.service_type === 'demolition'
+                          ? 'Light Demo'
+                          : testimonial.service_type}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="py-16 md:py-24 bg-gradient-to-br from-orange-500 to-orange-600 text-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">

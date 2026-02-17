@@ -18,7 +18,8 @@ import {
   ArrowRight,
   AlertCircle,
   Plus,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  MessageSquare
 } from 'lucide-react';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { supabase, ServiceRequest } from '../../lib/supabase';
@@ -27,6 +28,7 @@ import { ManageJobs } from '../admin/ManageJobs';
 import { CrewManagement } from '../admin/CrewManagement';
 import { InvoiceManagement } from '../admin/InvoiceManagement';
 import { Settings } from '../admin/Settings';
+import { TestimonialsManager } from '../admin/TestimonialsManager';
 import { getDashboardStats, getRevenueByMonth, getRecentActivity } from '../../lib/analytics';
 import { LineChart, DonutChart, StatCard } from '../../components/ui/Chart';
 
@@ -37,7 +39,8 @@ type Page =
   | 'crew'
   | 'invoices'
   | 'create-quote'
-  | 'settings';
+  | 'settings'
+  | 'testimonials';
 
 interface Metrics {
   pendingRequests: number;
@@ -174,6 +177,12 @@ export function AdminPortal() {
           badge: metrics.unpaidInvoices
         },
         {
+          id: 'testimonials',
+          label: 'Testimonials',
+          icon: MessageSquare,
+          onClick: () => setCurrentPage('testimonials')
+        },
+        {
           id: 'settings',
           label: 'Settings',
           icon: SettingsIcon,
@@ -238,6 +247,15 @@ export function AdminPortal() {
   if (currentPage === 'settings') {
     return (
       <Settings onBack={() => setCurrentPage('dashboard')} />
+    );
+  }
+
+  if (currentPage === 'testimonials') {
+    return (
+      <TestimonialsManager
+        sidebarSections={sidebarSections}
+        onBack={() => setCurrentPage('dashboard')}
+      />
     );
   }
 
