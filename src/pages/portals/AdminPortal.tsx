@@ -18,8 +18,7 @@ import {
   ArrowRight,
   AlertCircle,
   Plus,
-  Settings as SettingsIcon,
-  MessageSquare
+  Settings as SettingsIcon
 } from 'lucide-react';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { supabase, ServiceRequest } from '../../lib/supabase';
@@ -38,8 +37,7 @@ type Page =
   | 'crew'
   | 'invoices'
   | 'create-quote'
-  | 'settings'
-  | 'testimonials';
+  | 'settings';
 
 interface Metrics {
   pendingRequests: number;
@@ -176,12 +174,6 @@ export function AdminPortal() {
           badge: metrics.unpaidInvoices
         },
         {
-          id: 'testimonials',
-          label: 'Testimonials',
-          icon: MessageSquare,
-          onClick: () => setCurrentPage('testimonials')
-        },
-        {
           id: 'settings',
           label: 'Settings',
           icon: SettingsIcon,
@@ -246,22 +238,6 @@ export function AdminPortal() {
   if (currentPage === 'settings') {
     return (
       <Settings onBack={() => setCurrentPage('dashboard')} />
-    );
-  }
-
-  if (currentPage === 'testimonials') {
-    return (
-      <PortalLayout
-        portalName="Admin Portal"
-        sidebarSections={sidebarSections}
-        activeItemId="testimonials"
-      >
-        <div className="text-center py-12">
-          <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Testimonials</h3>
-          <p className="text-gray-600">Customer testimonials management coming soon</p>
-        </div>
-      </PortalLayout>
     );
   }
 

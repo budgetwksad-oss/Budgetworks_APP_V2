@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { PublicLayout } from '../../components/layout/PublicLayout';
-import { Truck, Trash2, Hammer, Upload, ArrowRight, CheckCircle } from 'lucide-react';
+import { Truck, Trash2, Hammer, CheckCircle } from 'lucide-react';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { supabase } from '../../lib/supabase';
@@ -13,7 +13,7 @@ interface PublicQuoteFormProps {
   onSignup: () => void;
 }
 
-export function PublicQuoteForm({ onNavigate, onLogin, onSignup }: PublicQuoteFormProps) {
+export function PublicQuoteForm({ onNavigate, onLogin }: PublicQuoteFormProps) {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
