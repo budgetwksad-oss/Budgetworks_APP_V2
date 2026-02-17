@@ -18,57 +18,28 @@ import {
   ArrowRight,
   AlertCircle,
   Plus,
-  Award,
   Settings as SettingsIcon,
-  Bell,
-  MessageSquare,
-  Layers,
-  RefreshCw,
-  Activity,
-  Truck
+  MessageSquare
 } from 'lucide-react';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { supabase, ServiceRequest } from '../../lib/supabase';
 import { ServiceRequests } from '../admin/ServiceRequests';
 import { ManageJobs } from '../admin/ManageJobs';
-import { CreateQuote } from '../admin/CreateQuote';
-import { CustomerManagement } from '../admin/CustomerManagement';
 import { CrewManagement } from '../admin/CrewManagement';
 import { InvoiceManagement } from '../admin/InvoiceManagement';
-import { CrewPerformance } from '../admin/CrewPerformance';
 import { Settings } from '../admin/Settings';
-import { PaymentReminders } from '../admin/PaymentReminders';
-import { JobCalendarView } from '../admin/JobCalendarView';
-import { Reports } from '../admin/Reports';
-import { CustomerFeedback } from '../admin/CustomerFeedback';
-import { QuoteTemplates } from '../admin/QuoteTemplates';
-import { ActivityLogs } from '../admin/ActivityLogs';
-import { RecurringJobs } from '../admin/RecurringJobs';
-import { EquipmentManagement } from '../admin/EquipmentManagement';
-import { InventoryManagement } from '../admin/InventoryManagement';
 import { getDashboardStats, getRevenueByMonth, getRecentActivity } from '../../lib/analytics';
 import { LineChart, DonutChart, StatCard } from '../../components/ui/Chart';
 
 type Page =
   | 'dashboard'
   | 'service-requests'
-  | 'quotes'
   | 'jobs'
-  | 'customers'
   | 'crew'
   | 'invoices'
   | 'create-quote'
-  | 'crew-performance'
   | 'settings'
-  | 'payment-reminders'
-  | 'calendar'
-  | 'reports'
-  | 'feedback'
-  | 'quote-templates'
-  | 'activity-logs'
-  | 'recurring-jobs'
-  | 'equipment'
-  | 'inventory';
+  | 'testimonials';
 
 interface Metrics {
   pendingRequests: number;
@@ -170,37 +141,20 @@ export function AdminPortal() {
           label: 'Dashboard',
           icon: LayoutDashboard,
           onClick: () => setCurrentPage('dashboard')
-        }
-      ]
-    },
-    {
-      title: 'Leads & Quotes',
-      items: [
+        },
         {
           id: 'service-requests',
-          label: 'Service Requests',
+          label: 'Leads',
           icon: ClipboardList,
           onClick: () => setCurrentPage('service-requests'),
           badge: metrics.pendingRequests
         },
         {
-          id: 'quotes',
-          label: 'Quotes',
+          id: 'create-quote',
+          label: 'Quote Studio',
           icon: FileText,
-          onClick: () => setCurrentPage('quotes'),
-          badge: metrics.activeQuotes
+          onClick: () => setCurrentPage('create-quote')
         },
-        {
-          id: 'quote-templates',
-          label: 'Quote Templates',
-          icon: Layers,
-          onClick: () => setCurrentPage('quote-templates')
-        }
-      ]
-    },
-    {
-      title: 'Operations',
-      items: [
         {
           id: 'jobs',
           label: 'Jobs',
@@ -209,39 +163,11 @@ export function AdminPortal() {
           badge: metrics.todayJobs
         },
         {
-          id: 'recurring-jobs',
-          label: 'Recurring Jobs',
-          icon: RefreshCw,
-          onClick: () => setCurrentPage('recurring-jobs')
+          id: 'crew',
+          label: 'Crew',
+          icon: UserPlus,
+          onClick: () => setCurrentPage('crew')
         },
-        {
-          id: 'calendar',
-          label: 'Calendar',
-          icon: Calendar,
-          onClick: () => setCurrentPage('calendar')
-        }
-      ]
-    },
-    {
-      title: 'Equipment & Inventory',
-      items: [
-        {
-          id: 'equipment',
-          label: 'Equipment',
-          icon: Truck,
-          onClick: () => setCurrentPage('equipment')
-        },
-        {
-          id: 'inventory',
-          label: 'Inventory',
-          icon: Package,
-          onClick: () => setCurrentPage('inventory')
-        }
-      ]
-    },
-    {
-      title: 'Financial',
-      items: [
         {
           id: 'invoices',
           label: 'Invoices',
@@ -250,56 +176,10 @@ export function AdminPortal() {
           badge: metrics.unpaidInvoices
         },
         {
-          id: 'payment-reminders',
-          label: 'Payment Reminders',
-          icon: Bell,
-          onClick: () => setCurrentPage('payment-reminders')
-        }
-      ]
-    },
-    {
-      title: 'People',
-      items: [
-        {
-          id: 'customers',
-          label: 'Customers',
-          icon: Users,
-          onClick: () => setCurrentPage('customers')
-        },
-        {
-          id: 'crew',
-          label: 'Crew',
-          icon: UserPlus,
-          onClick: () => setCurrentPage('crew')
-        },
-        {
-          id: 'crew-performance',
-          label: 'Crew Performance',
-          icon: Award,
-          onClick: () => setCurrentPage('crew-performance')
-        },
-        {
-          id: 'feedback',
-          label: 'Customer Feedback',
+          id: 'testimonials',
+          label: 'Testimonials',
           icon: MessageSquare,
-          onClick: () => setCurrentPage('feedback')
-        }
-      ]
-    },
-    {
-      title: 'System',
-      items: [
-        {
-          id: 'reports',
-          label: 'Reports',
-          icon: FileText,
-          onClick: () => setCurrentPage('reports')
-        },
-        {
-          id: 'activity-logs',
-          label: 'Activity Logs',
-          icon: Activity,
-          onClick: () => setCurrentPage('activity-logs')
+          onClick: () => setCurrentPage('testimonials')
         },
         {
           id: 'settings',
@@ -330,28 +210,24 @@ export function AdminPortal() {
   }
 
   if (currentPage === 'create-quote') {
-    return <CreateQuote />;
-  }
-
-  if (currentPage === 'quotes') {
     return (
       <PortalLayout
         portalName="Admin Portal"
         sidebarSections={sidebarSections}
-        activeItemId="quotes"
+        activeItemId="create-quote"
       >
         <div className="text-center py-12">
-          <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Quotes Page</h3>
-          <p className="text-gray-600">Quote management page coming soon</p>
+          <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Quote Studio</h3>
+          <p className="text-gray-600 mb-4">Create quotes from service requests</p>
+          <Button
+            variant="primary"
+            onClick={() => setCurrentPage('service-requests')}
+          >
+            Go to Service Requests
+          </Button>
         </div>
       </PortalLayout>
-    );
-  }
-
-  if (currentPage === 'customers') {
-    return (
-      <CustomerManagement onBack={() => setCurrentPage('dashboard')} />
     );
   }
 
@@ -367,69 +243,25 @@ export function AdminPortal() {
     );
   }
 
-  if (currentPage === 'crew-performance') {
-    return (
-      <CrewPerformance onBack={() => setCurrentPage('dashboard')} />
-    );
-  }
-
   if (currentPage === 'settings') {
     return (
       <Settings onBack={() => setCurrentPage('dashboard')} />
     );
   }
 
-  if (currentPage === 'payment-reminders') {
+  if (currentPage === 'testimonials') {
     return (
-      <PaymentReminders onBack={() => setCurrentPage('dashboard')} />
-    );
-  }
-
-  if (currentPage === 'calendar') {
-    return (
-      <JobCalendarView onBack={() => setCurrentPage('dashboard')} />
-    );
-  }
-
-  if (currentPage === 'reports') {
-    return (
-      <Reports onBack={() => setCurrentPage('dashboard')} />
-    );
-  }
-
-  if (currentPage === 'feedback') {
-    return (
-      <CustomerFeedback onBack={() => setCurrentPage('dashboard')} />
-    );
-  }
-
-  if (currentPage === 'quote-templates') {
-    return (
-      <QuoteTemplates onBack={() => setCurrentPage('dashboard')} />
-    );
-  }
-
-  if (currentPage === 'activity-logs') {
-    return (
-      <ActivityLogs onBack={() => setCurrentPage('dashboard')} />
-    );
-  }
-
-  if (currentPage === 'recurring-jobs') {
-    return (
-      <RecurringJobs onBack={() => setCurrentPage('dashboard')} />
-    );
-  }
-
-  if (currentPage === 'equipment') {
-    return (
-      <EquipmentManagement onBack={() => setCurrentPage('dashboard')} />
-    );
-  }
-
-  if (currentPage === 'inventory') {
-    return (
-      <InventoryManagement onBack={() => setCurrentPage('dashboard')} />
+      <PortalLayout
+        portalName="Admin Portal"
+        sidebarSections={sidebarSections}
+        activeItemId="testimonials"
+      >
+        <div className="text-center py-12">
+          <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Testimonials</h3>
+          <p className="text-gray-600">Customer testimonials management coming soon</p>
+        </div>
+      </PortalLayout>
     );
   }
 
@@ -525,7 +357,7 @@ export function AdminPortal() {
 
           <Card
             className="p-6 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => setCurrentPage('quotes')}
+            onClick={() => setCurrentPage('create-quote')}
           >
             <div className="flex items-center gap-4">
               <div className="bg-blue-100 p-3 rounded-lg">
@@ -582,10 +414,7 @@ export function AdminPortal() {
             </div>
           </Card>
 
-          <Card
-            className="p-6 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => setCurrentPage('customers')}
-          >
+          <Card className="p-6">
             <div className="flex items-center gap-4">
               <div className="bg-blue-100 p-3 rounded-lg">
                 <Users className="w-6 h-6 text-blue-600" />

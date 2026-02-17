@@ -9,22 +9,18 @@ import {
   CheckCircle,
   Clock,
   Package,
-  Timer,
   User,
-  Play,
   ArrowRight
 } from 'lucide-react';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { CrewJobs } from '../crew/CrewJobs';
 import { AvailableJobs } from '../crew/AvailableJobs';
-import { TimeClock } from '../crew/TimeClock';
-import { MyHours } from '../crew/MyHours';
 import { JobDetail } from '../crew/JobDetail';
 import { Profile } from '../customer/Profile';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 
-type Page = 'dashboard' | 'my-jobs' | 'available-jobs' | 'time-clock' | 'hours' | 'profile' | 'job-detail';
+type Page = 'dashboard' | 'my-jobs' | 'available-jobs' | 'profile' | 'job-detail';
 
 interface Metrics {
   todayJobs: number;
@@ -163,29 +159,7 @@ export function CrewPortal() {
           icon: Calendar,
           onClick: () => setCurrentPage('my-jobs'),
           badge: metrics.todayJobs
-        }
-      ]
-    },
-    {
-      title: 'Time Tracking',
-      items: [
-        {
-          id: 'time-clock',
-          label: 'Time Clock',
-          icon: Clock,
-          onClick: () => setCurrentPage('time-clock'),
-          badge: metrics.isCurrentlyClockedIn ? 1 : undefined
         },
-        {
-          id: 'hours',
-          label: 'My Hours',
-          icon: Timer,
-          onClick: () => setCurrentPage('hours')
-        }
-      ]
-    },
-    {
-      items: [
         {
           id: 'profile',
           label: 'Profile',
@@ -218,14 +192,6 @@ export function CrewPortal() {
     );
   }
 
-  if (currentPage === 'time-clock') {
-    return <TimeClock onBack={() => setCurrentPage('dashboard')} />;
-  }
-
-  if (currentPage === 'hours') {
-    return <MyHours onBack={() => setCurrentPage('dashboard')} />;
-  }
-
   if (currentPage === 'profile') {
     return <Profile onBack={() => setCurrentPage('dashboard')} />;
   }
@@ -246,45 +212,12 @@ export function CrewPortal() {
       activeItemId={currentPage}
     >
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Today's Schedule</h2>
-            <p className="text-gray-600">Your assigned jobs and tasks</p>
-          </div>
-          <Button
-            variant="primary"
-            onClick={() => setCurrentPage('time-clock')}
-            className="flex items-center gap-2"
-          >
-            <Play className="w-4 h-4" />
-            {metrics.isCurrentlyClockedIn ? 'View Time Clock' : 'Clock In'}
-          </Button>
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Today's Schedule</h2>
+          <p className="text-gray-600">Your assigned jobs and tasks</p>
         </div>
 
-        {metrics.isCurrentlyClockedIn && (
-          <Card className="p-6 bg-green-50 border-green-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="bg-green-100 p-3 rounded-lg">
-                  <Clock className="w-6 h-6 text-green-600 animate-pulse" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-1">Currently Clocked In</h3>
-                  <p className="text-sm text-gray-600">You are actively on the clock</p>
-                </div>
-              </div>
-              <Button
-                variant="primary"
-                onClick={() => setCurrentPage('time-clock')}
-                size="sm"
-              >
-                View Details
-              </Button>
-            </div>
-          </Card>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card
             className="p-6 hover:shadow-md transition-shadow cursor-pointer"
             onClick={() => setCurrentPage('my-jobs')}
@@ -326,23 +259,6 @@ export function CrewPortal() {
               <div>
                 <p className="text-2xl font-bold text-gray-900">{metrics.completedJobs}</p>
                 <p className="text-sm text-gray-600">Completed</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card
-            className="p-6 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => setCurrentPage('hours')}
-          >
-            <div className="flex items-center gap-4">
-              <div className="bg-red-100 p-3 rounded-lg">
-                <Timer className="w-6 h-6 text-red-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {Math.floor(metrics.hoursThisWeek)}h
-                </p>
-                <p className="text-sm text-gray-600">This Week</p>
               </div>
             </div>
           </Card>

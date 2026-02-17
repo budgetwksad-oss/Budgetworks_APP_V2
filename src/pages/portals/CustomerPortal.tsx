@@ -6,8 +6,6 @@ import {
   LayoutDashboard,
   ClipboardList,
   FileText,
-  Clock,
-  Package,
   DollarSign,
   User,
   Plus,
@@ -17,7 +15,6 @@ import {
 import { MenuSection } from '../../components/layout/Sidebar';
 import { RequestQuote } from '../customer/RequestQuote';
 import { QuotesList } from '../customer/QuotesList';
-import { JobsList } from '../customer/JobsList';
 import { InvoicesList } from '../customer/InvoicesList';
 import { InvoiceDetail } from '../customer/InvoiceDetail';
 import { Profile } from '../customer/Profile';
@@ -27,7 +24,6 @@ import { supabase } from '../../lib/supabase';
 type Page =
   | 'dashboard'
   | 'quotes'
-  | 'jobs'
   | 'invoices'
   | 'invoice-detail'
   | 'profile'
@@ -162,17 +158,10 @@ export function CustomerPortal() {
         },
         {
           id: 'quotes',
-          label: 'My Quotes',
+          label: 'Quotes',
           icon: ClipboardList,
           onClick: () => setCurrentPage('quotes'),
           badge: metrics.activeQuotes
-        },
-        {
-          id: 'jobs',
-          label: 'My Jobs',
-          icon: Package,
-          onClick: () => setCurrentPage('jobs'),
-          badge: metrics.scheduledJobs
         },
         {
           id: 'invoices',
@@ -183,7 +172,7 @@ export function CustomerPortal() {
         },
         {
           id: 'profile',
-          label: 'Profile & Settings',
+          label: 'Profile & Preferences',
           icon: User,
           onClick: () => setCurrentPage('profile')
         }
@@ -206,15 +195,6 @@ export function CustomerPortal() {
   if (currentPage === 'quotes') {
     return (
       <QuotesList
-        sidebarSections={sidebarSections}
-        onBack={() => setCurrentPage('dashboard')}
-      />
-    );
-  }
-
-  if (currentPage === 'jobs') {
-    return (
-      <JobsList
         sidebarSections={sidebarSections}
         onBack={() => setCurrentPage('dashboard')}
       />
@@ -292,7 +272,7 @@ export function CustomerPortal() {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
           <Card
             className="p-6 hover:shadow-md transition-shadow cursor-pointer"
             onClick={() => setCurrentPage('quotes')}
@@ -304,36 +284,6 @@ export function CustomerPortal() {
               <div>
                 <p className="text-2xl font-bold text-gray-900">{metrics.activeQuotes}</p>
                 <p className="text-sm text-gray-600">Active Quotes</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card
-            className="p-6 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => setCurrentPage('jobs')}
-          >
-            <div className="flex items-center gap-4">
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <Clock className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{metrics.scheduledJobs}</p>
-                <p className="text-sm text-gray-600">Scheduled Jobs</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card
-            className="p-6 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => setCurrentPage('jobs')}
-          >
-            <div className="flex items-center gap-4">
-              <div className="bg-green-100 p-3 rounded-lg">
-                <Package className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{metrics.completedJobs}</p>
-                <p className="text-sm text-gray-600">Completed Jobs</p>
               </div>
             </div>
           </Card>
@@ -369,11 +319,11 @@ export function CustomerPortal() {
                     {item.type === 'quote' ? (
                       <ClipboardList className="w-5 h-5 text-orange-600" />
                     ) : (
-                      <Package className="w-5 h-5 text-blue-600" />
+                      <FileText className="w-5 h-5 text-blue-600" />
                     )}
                     <div>
                       <p className="font-medium text-gray-900">
-                        {item.type === 'quote' ? 'Quote Received' : 'Job Scheduled'}
+                        {item.type === 'quote' ? 'Quote Received' : 'Service Update'}
                       </p>
                       <p className="text-sm text-gray-600">
                         {new Date(item.created_at).toLocaleDateString()}
@@ -381,7 +331,7 @@ export function CustomerPortal() {
                     </div>
                   </div>
                   <button
-                    onClick={() => setCurrentPage(item.type === 'quote' ? 'quotes' : 'jobs')}
+                    onClick={() => setCurrentPage('quotes')}
                     className="text-orange-600 hover:text-orange-700"
                   >
                     <ArrowRight className="w-5 h-5" />
