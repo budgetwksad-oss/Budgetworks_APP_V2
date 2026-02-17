@@ -276,3 +276,73 @@ export type PublicQuoteRequest = {
   created_at: string;
   updated_at: string;
 };
+
+export type NotificationAudience = 'customer' | 'crew' | 'admin';
+
+export type NotificationPreference = {
+  id: string;
+  user_id: string;
+  audience: NotificationAudience;
+  sms_enabled: boolean;
+  email_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function upsertNotificationPreference(
+  userId: string,
+  audience: NotificationAudience,
+  preferences: { sms_enabled?: boolean; email_enabled?: boolean }
+): Promise<{ data: NotificationPreference | null; error: any }> {
+  try {
+    const { data: existing } = await supabase
+      .from('notification_preferences')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('audience', audience)
+      .maybeSingle();
+
+    if (existing) {
+      const { data, error } = await supabase
+        .from('notification_preferences')
+        .update(preferences)
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      return { data, error };
+    } else {
+      const { data, error } = await supabase
+        .from('notification_preferences')
+        .insert([{
+          user_id: userId,
+          audience,
+          ...preferences
+        }])
+        .select()
+        .single();
+
+      return { data, error };
+    }
+  } catch (error) {
+    return { data: null, error };
+  }
+}
+
+export async function getNotificationPreference(
+  userId: string,
+  audience: NotificationAudience
+): Promise<{ data: NotificationPreference | null; error: any }> {
+  try {
+    const { data, error } = await supabase
+      .from('notification_preferences')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('audience', audience)
+      .maybeSingle();
+
+    return { data, error };
+  } catch (error) {
+    return { data: null, error };
+  }
+}

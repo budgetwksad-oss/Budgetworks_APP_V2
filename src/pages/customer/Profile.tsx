@@ -3,9 +3,9 @@ import { PortalLayout } from '../../components/layout/PortalLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { User, Mail, Phone, MapPin, Lock, Save, CheckCircle } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Lock, Save, CheckCircle, Bell } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { supabase, getNotificationPreference, upsertNotificationPreference, NotificationPreference } from '../../lib/supabase';
 
 export function Profile({ onBack }: { onBack: () => void }) {
   const { user, profile } = useAuth();
@@ -26,6 +26,9 @@ export function Profile({ onBack }: { onBack: () => void }) {
     confirmPassword: ''
   });
 
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreference | null>(null);
+  const [notifLoading, setNotifLoading] = useState(true);
+
   useEffect(() => {
     if (profile) {
       setFormData({
@@ -36,6 +39,49 @@ export function Profile({ onBack }: { onBack: () => void }) {
       });
     }
   }, [profile, user]);
+
+  useEffect(() => {
+    loadNotificationPreferences();
+  }, [user, profile]);
+
+  const loadNotificationPreferences = async () => {
+    if (!user || !profile) return;
+
+    setNotifLoading(true);
+    try {
+      const { data } = await getNotificationPreference(user.id, profile.role);
+      setNotificationPrefs(data);
+    } catch (err) {
+      console.error('Error loading notification preferences:', err);
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  const handleNotificationToggle = async (field: 'sms_enabled' | 'email_enabled', value: boolean) => {
+    if (!user || !profile) return;
+
+    const optimisticUpdate = {
+      ...notificationPrefs,
+      [field]: value
+    } as NotificationPreference;
+    setNotificationPrefs(optimisticUpdate);
+
+    try {
+      const { data, error: updateError } = await upsertNotificationPreference(
+        user.id,
+        profile.role,
+        { [field]: value }
+      );
+
+      if (updateError) throw updateError;
+      if (data) setNotificationPrefs(data);
+    } catch (err: any) {
+      setNotificationPrefs(notificationPrefs);
+      setError(err.message || 'Failed to update notification preferences');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -273,6 +319,63 @@ export function Profile({ onBack }: { onBack: () => void }) {
               </Button>
             </div>
           </form>
+        </Card>
+
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
+            <Bell className="w-5 h-5" />
+            Notifications (Operational)
+          </h3>
+          <p className="text-sm text-gray-600 mb-6">
+            Important operational updates only. No marketing.
+          </p>
+          {notifLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900">SMS Notifications</p>
+                  <p className="text-sm text-gray-600">Receive text message updates</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleNotificationToggle('sms_enabled', !notificationPrefs?.sms_enabled)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    notificationPrefs?.sms_enabled ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      notificationPrefs?.sms_enabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900">Email Notifications</p>
+                  <p className="text-sm text-gray-600">Receive email updates</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleNotificationToggle('email_enabled', !notificationPrefs?.email_enabled)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    notificationPrefs?.email_enabled ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      notificationPrefs?.email_enabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          )}
         </Card>
 
         <Card className="p-6 bg-gray-50">

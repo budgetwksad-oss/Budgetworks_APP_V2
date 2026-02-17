@@ -3,8 +3,9 @@ import { PortalLayout } from '../../components/layout/PortalLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Settings as SettingsIcon, Save, Building2, Mail, Phone, MapPin } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { Settings as SettingsIcon, Save, Building2, Mail, Phone, MapPin, Bell } from 'lucide-react';
+import { supabase, getNotificationPreference, upsertNotificationPreference, NotificationPreference } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface CompanySettings {
   company_name: string;
@@ -21,6 +22,7 @@ interface SettingsProps {
 }
 
 export function Settings({ onBack }: SettingsProps) {
+  const { user } = useAuth();
   const [settings, setSettings] = useState<CompanySettings>({
     company_name: 'Service Company',
     company_email: 'info@servicecompany.com',
@@ -32,10 +34,14 @@ export function Settings({ onBack }: SettingsProps) {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreference | null>(null);
+  const [notifLoading, setNotifLoading] = useState(true);
+  const [notifError, setNotifError] = useState('');
 
   useEffect(() => {
     loadSettings();
-  }, []);
+    loadNotificationPreferences();
+  }, [user]);
 
   const loadSettings = async () => {
     try {
@@ -61,6 +67,45 @@ export function Settings({ onBack }: SettingsProps) {
       console.error('Error loading settings:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadNotificationPreferences = async () => {
+    if (!user) return;
+
+    setNotifLoading(true);
+    try {
+      const { data } = await getNotificationPreference(user.id, 'admin');
+      setNotificationPrefs(data);
+    } catch (err) {
+      console.error('Error loading notification preferences:', err);
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  const handleNotificationToggle = async (field: 'sms_enabled' | 'email_enabled', value: boolean) => {
+    if (!user) return;
+
+    const optimisticUpdate = {
+      ...notificationPrefs,
+      [field]: value
+    } as NotificationPreference;
+    setNotificationPrefs(optimisticUpdate);
+
+    try {
+      const { data, error: updateError } = await upsertNotificationPreference(
+        user.id,
+        'admin',
+        { [field]: value }
+      );
+
+      if (updateError) throw updateError;
+      if (data) setNotificationPrefs(data);
+    } catch (err: any) {
+      setNotificationPrefs(notificationPrefs);
+      setNotifError(err.message || 'Failed to update notification preferences');
+      setTimeout(() => setNotifError(''), 3000);
     }
   };
 
@@ -248,6 +293,68 @@ export function Settings({ onBack }: SettingsProps) {
               />
             </div>
           </div>
+        </Card>
+
+        <Card className="p-6">
+          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Bell className="w-5 h-5 text-blue-600" />
+            Notifications (Operational)
+          </h3>
+          <p className="text-sm text-gray-600 mb-6">
+            Important operational updates only. No marketing.
+          </p>
+          {notifError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{notifError}</p>
+            </div>
+          )}
+          {notifLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900">SMS Notifications</p>
+                  <p className="text-sm text-gray-600">Receive text message updates</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleNotificationToggle('sms_enabled', !notificationPrefs?.sms_enabled)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    notificationPrefs?.sms_enabled ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      notificationPrefs?.sms_enabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900">Email Notifications</p>
+                  <p className="text-sm text-gray-600">Receive email updates</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleNotificationToggle('email_enabled', !notificationPrefs?.email_enabled)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    notificationPrefs?.email_enabled ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      notificationPrefs?.email_enabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          )}
         </Card>
 
         <div className="flex justify-end">
