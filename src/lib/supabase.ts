@@ -424,3 +424,114 @@ export async function upsertNotificationTemplateV2(
     return { data: null, error };
   }
 }
+
+export type NotificationChannel = 'sms' | 'email';
+export type NotificationQueueStatus = 'pending' | 'sent' | 'failed' | 'cancelled';
+
+export type NotificationQueueItem = {
+  id: string;
+  event_key: NotificationEventKey;
+  audience: NotificationAudience;
+  channel: NotificationChannel;
+  destination: string;
+  rendered_subject: string | null;
+  rendered_body: string;
+  status: NotificationQueueStatus;
+  entity_type: string | null;
+  entity_id: string | null;
+  created_at: string;
+  sent_at: string | null;
+  failed_at: string | null;
+  error_message: string | null;
+};
+
+export type NotificationLog = {
+  id: string;
+  queue_id: string;
+  event_key: NotificationEventKey;
+  audience: NotificationAudience;
+  channel: NotificationChannel;
+  destination: string;
+  rendered_subject: string | null;
+  rendered_body: string;
+  status: NotificationQueueStatus;
+  sent_at: string | null;
+  error_message: string | null;
+  created_at: string;
+};
+
+export async function getNotificationQueue(): Promise<{
+  data: NotificationQueueItem[] | null;
+  error: any;
+}> {
+  try {
+    const { data, error } = await supabase
+      .from('notification_queue')
+      .select('*')
+      .in('status', ['pending', 'failed'])
+      .order('created_at', { ascending: false });
+
+    return { data, error };
+  } catch (error) {
+    return { data: null, error };
+  }
+}
+
+export async function updateNotificationQueueStatus(
+  queueId: string,
+  status: NotificationQueueStatus,
+  errorMessage?: string
+): Promise<{ data: NotificationQueueItem | null; error: any }> {
+  try {
+    const updateData: any = { status };
+
+    if (status === 'sent') {
+      updateData.sent_at = new Date().toISOString();
+    } else if (status === 'failed') {
+      updateData.failed_at = new Date().toISOString();
+      if (errorMessage) {
+        updateData.error_message = errorMessage;
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('notification_queue')
+      .update(updateData)
+      .eq('id', queueId)
+      .select()
+      .single();
+
+    return { data, error };
+  } catch (error) {
+    return { data: null, error };
+  }
+}
+
+export async function logNotification(
+  queueItem: NotificationQueueItem,
+  status: NotificationQueueStatus,
+  errorMessage?: string
+): Promise<{ data: NotificationLog | null; error: any }> {
+  try {
+    const { data, error } = await supabase
+      .from('notification_log')
+      .insert([{
+        queue_id: queueItem.id,
+        event_key: queueItem.event_key,
+        audience: queueItem.audience,
+        channel: queueItem.channel,
+        destination: queueItem.destination,
+        rendered_subject: queueItem.rendered_subject,
+        rendered_body: queueItem.rendered_body,
+        status: status,
+        sent_at: status === 'sent' ? new Date().toISOString() : null,
+        error_message: errorMessage || null
+      }])
+      .select()
+      .single();
+
+    return { data, error };
+  } catch (error) {
+    return { data: null, error };
+  }
+}

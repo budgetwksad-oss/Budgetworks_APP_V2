@@ -7,6 +7,7 @@ import { Settings as SettingsIcon, Save, Building2, Mail, Phone, MapPin, Bell } 
 import { supabase, getNotificationPreference, upsertNotificationPreference, NotificationPreference } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { NotificationsTemplates } from './NotificationsTemplates';
+import { NotificationsOutbox } from './NotificationsOutbox';
 
 interface CompanySettings {
   company_name: string;
@@ -22,7 +23,7 @@ interface SettingsProps {
   onBack: () => void;
 }
 
-type SettingsTab = 'company' | 'notifications';
+type SettingsTab = 'company' | 'notifications' | 'outbox';
 
 export function Settings({ onBack }: SettingsProps) {
   const { user } = useAuth();
@@ -212,11 +213,23 @@ export function Settings({ onBack }: SettingsProps) {
             >
               Notification Templates
             </button>
+            <button
+              onClick={() => setActiveTab('outbox')}
+              className={`pb-3 px-2 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'outbox'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Outbox
+            </button>
           </nav>
         </div>
 
         {activeTab === 'notifications' ? (
           <NotificationsTemplates />
+        ) : activeTab === 'outbox' ? (
+          <NotificationsOutbox />
         ) : (
           <>
         <Card className="p-6">
