@@ -35,7 +35,7 @@ export function AvailableJobs({ sidebarSections, onBack }: AvailableJobsProps = 
         .from('jobs')
         .select('*')
         .eq('is_open_for_claims', true)
-        .in('status', ['scheduled', 'in_progress'])
+        .eq('status', 'scheduled')
         .order('scheduled_date', { ascending: true });
 
       if (jobsError) throw jobsError;
@@ -96,83 +96,22 @@ export function AvailableJobs({ sidebarSections, onBack }: AvailableJobsProps = 
     setErrorMessage(null);
 
     try {
-      const { data: freshJob, error: fetchError } = await supabase
-        .from('jobs')
-        .select('*')
-        .eq('id', selectedJob.id)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc('claim_job_position', {
+        p_job_id: selectedJob.id,
+        p_role: role,
+      });
 
-      if (fetchError || !freshJob) {
-        throw new Error('Failed to fetch current job state');
+      if (error) {
+        throw error;
       }
-
-      const currentAssignments = freshJob.crew_assignments || [];
-
-      const alreadyClaimed = currentAssignments.some(a => a.user_id === user.id);
-      if (alreadyClaimed) {
-        setErrorMessage('You have already claimed a position on this job');
-        setClaiming(false);
-        return;
-      }
-
-      const needs = freshJob.staffing_needs || { drivers: 0, helpers: 0 };
-      const assignedDrivers = currentAssignments.filter(a => a.role === 'driver').length;
-      const assignedHelpers = currentAssignments.filter(a => a.role === 'helper').length;
-
-      if (role === 'driver' && assignedDrivers >= needs.drivers) {
-        setErrorMessage('All driver positions have been filled. Someone else claimed the last spot!');
-        await loadAvailableJobs();
-        setClaiming(false);
-        return;
-      }
-
-      if (role === 'helper' && assignedHelpers >= needs.helpers) {
-        setErrorMessage('All helper positions have been filled. Someone else claimed the last spot!');
-        await loadAvailableJobs();
-        setClaiming(false);
-        return;
-      }
-
-      const newAssignment: CrewAssignment = {
-        user_id: user.id,
-        role,
-        claimed_at: new Date().toISOString(),
-        assigned_by: null,
-      };
-
-      const updatedAssignments = [...currentAssignments, newAssignment];
-      const updatedCrewIds = [...new Set([
-        ...(freshJob.assigned_crew_ids || []),
-        user.id,
-      ])];
-
-      const newAssignedDrivers = updatedAssignments.filter(a => a.role === 'driver').length;
-      const newAssignedHelpers = updatedAssignments.filter(a => a.role === 'helper').length;
-
-      let newStaffingStatus: 'unstaffed' | 'partially_staffed' | 'fully_staffed' = 'unstaffed';
-      if (newAssignedDrivers >= needs.drivers && newAssignedHelpers >= needs.helpers && (needs.drivers > 0 || needs.helpers > 0)) {
-        newStaffingStatus = 'fully_staffed';
-      } else if (newAssignedDrivers > 0 || newAssignedHelpers > 0) {
-        newStaffingStatus = 'partially_staffed';
-      }
-
-      const { error: updateError } = await supabase
-        .from('jobs')
-        .update({
-          crew_assignments: updatedAssignments,
-          assigned_crew_ids: updatedCrewIds,
-          staffing_status: newStaffingStatus,
-        })
-        .eq('id', selectedJob.id);
-
-      if (updateError) throw updateError;
 
       await loadAvailableJobs();
       setSelectedJob(null);
       setErrorMessage(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error claiming position:', error);
-      setErrorMessage('Failed to claim position. Please try again.');
+      const message = error?.message || 'Failed to claim position. Please try again.';
+      setErrorMessage(message);
     } finally {
       setClaiming(false);
     }
@@ -182,7 +121,7 @@ export function AvailableJobs({ sidebarSections, onBack }: AvailableJobsProps = 
     switch (type) {
       case 'moving': return 'Moving';
       case 'junk_removal': return 'Junk Removal';
-      case 'demolition': return 'Demolition';
+      case 'demolition': return 'Light Demo';
       default: return type;
     }
   };
@@ -283,6 +222,15 @@ export function AvailableJobs({ sidebarSections, onBack }: AvailableJobsProps = 
                       {formatTime(selectedJob.arrival_window_start)} - {formatTime(selectedJob.arrival_window_end)}
                     </p>
                   </div>
+                </div>
+              )}
+
+              {selectedJob.crew_pay_min && selectedJob.crew_pay_max && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-sm font-semibold text-gray-500 mb-2">Estimated Pay</h3>
+                  <p className="text-lg font-bold text-green-700">
+                    ${selectedJob.crew_pay_min.toFixed(0)}–${selectedJob.crew_pay_max.toFixed(0)}
+                  </p>
                 </div>
               )}
 
@@ -442,6 +390,13 @@ export function AvailableJobs({ sidebarSections, onBack }: AvailableJobsProps = 
                         <Clock className="w-4 h-4" />
                         <span className="font-medium">
                           {formatTime(job.arrival_window_start)} - {formatTime(job.arrival_window_end)}
+                        </span>
+                      </div>
+                    )}
+                    {job.crew_pay_min && job.crew_pay_max && (
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-green-700">
+                          ${job.crew_pay_min.toFixed(0)}–${job.crew_pay_max.toFixed(0)}
                         </span>
                       </div>
                     )}

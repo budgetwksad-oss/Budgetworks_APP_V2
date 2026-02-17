@@ -65,7 +65,7 @@ export type Quote = {
   updated_at: string;
 };
 
-export type JobStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+export type JobStatus = 'scheduled_draft' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
 
 export type CrewAssignment = {
   user_id: string;
@@ -101,6 +101,9 @@ export type Job = {
   photos_urls: string[];
   crew_photos: CrewPhotos;
   assigned_crew_ids: string[];
+  crew_pay_min: number | null;
+  crew_pay_max: number | null;
+  marketplace_posted_at: string | null;
   internal_notes: string | null;
   completion_notes: string | null;
   completed_at: string | null;
