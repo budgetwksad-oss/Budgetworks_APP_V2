@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://budgetworks.ca/sitemap.xml

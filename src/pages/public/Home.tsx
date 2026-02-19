@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { Truck, Trash2, Hammer, ArrowRight, CheckCircle, Clock, DollarSign, Users, Star } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { setSEO } from '../../lib/seo';
 
 type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote';
 
@@ -15,6 +16,48 @@ export function Home({ onNavigate, onLogin }: HomeProps) {
   const [testimonials, setTestimonials] = useState<any[]>([]);
 
   useEffect(() => {
+    setSEO({
+      title: 'BudgetWorks | Moving, Junk Removal & Light Demo in Halifax',
+      description: 'BudgetWorks offers affordable moving, junk removal, and light demolition services across Halifax and the HRM. Fast quotes, honest rates, dependable crews.',
+      canonicalPath: '/',
+    });
+
+    const injectJsonLd = async () => {
+      const existingScript = document.getElementById('json-ld-localbusiness');
+      if (existingScript) existingScript.remove();
+
+      let telephone: string | undefined;
+      try {
+        const { data } = await supabase
+          .from('company_settings')
+          .select('phone')
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (data?.phone) telephone = data.phone;
+      } catch {
+      }
+
+      const schema: Record<string, unknown> = {
+        '@context': 'https://schema.org',
+        '@type': 'LocalBusiness',
+        name: 'BudgetWorks',
+        url: 'https://budgetworks.ca',
+        areaServed: {
+          '@type': 'AdministrativeArea',
+          name: 'Halifax Regional Municipality',
+        },
+      };
+
+      if (telephone) schema.telephone = telephone;
+
+      const script = document.createElement('script');
+      script.id = 'json-ld-localbusiness';
+      script.type = 'application/ld+json';
+      script.textContent = JSON.stringify(schema);
+      document.head.appendChild(script);
+    };
+
     const loadTestimonials = async () => {
       try {
         const [settingsRes, testimonialsRes] = await Promise.all([
@@ -40,7 +83,13 @@ export function Home({ onNavigate, onLogin }: HomeProps) {
       }
     };
 
+    injectJsonLd();
     loadTestimonials();
+
+    return () => {
+      const script = document.getElementById('json-ld-localbusiness');
+      if (script) script.remove();
+    };
   }, []);
 
   const services = [
