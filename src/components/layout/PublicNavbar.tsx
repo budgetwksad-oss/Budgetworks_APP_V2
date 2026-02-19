@@ -53,19 +53,14 @@ export function PublicNavbar({ currentPage, onNavigate, onLogin }: PublicNavbarP
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           <div
-            className="flex items-center gap-3 cursor-pointer group"
+            className="cursor-pointer"
             onClick={() => onNavigate('home')}
           >
             <img
               src="/Main_logo.webp"
               alt="BudgetWorks"
-              width={56}
-              height={56}
-              className="h-14 w-auto object-contain"
+              className="h-16 w-auto object-contain"
             />
-            <p className="text-xs text-gray-500 font-medium leading-tight max-w-[160px]">
-              Moving · Junk Removal<br />Demo · Halifax
-            </p>
           </div>
 
           <div className="hidden md:flex items-center space-x-8">
