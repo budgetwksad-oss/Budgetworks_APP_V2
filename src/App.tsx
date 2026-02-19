@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import { Login } from './pages/auth/Login';
 import { Signup } from './pages/auth/Signup';
@@ -14,28 +14,93 @@ import { PublicQuoteForm } from './pages/public/PublicQuoteForm';
 import { QuoteSuccess } from './pages/public/QuoteSuccess';
 import { QuoteMagicLink } from './pages/public/QuoteMagicLink';
 import { InvoiceMagicLink } from './pages/public/InvoiceMagicLink';
+import { Moving } from './pages/public/Moving';
+import { JunkRemoval } from './pages/public/JunkRemoval';
+import { LightDemo } from './pages/public/LightDemo';
 import { KeyboardShortcuts } from './components/ui/KeyboardShortcuts';
 
 type AuthView = 'login' | 'signup' | 'forgot-password';
-type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success';
+type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo';
+
+function pathnameToPage(pathname: string): PublicPage | null {
+  switch (pathname) {
+    case '/moving': return 'moving';
+    case '/junk-removal': return 'junk-removal';
+    case '/light-demo': return 'light-demo';
+    case '/quote': return 'quote';
+    case '/': return 'home';
+    default: return null;
+  }
+}
 
 function App() {
   const { user, profile, loading } = useAuth();
   const [authView, setAuthView] = useState<AuthView>('login');
-  const [publicPage, setPublicPage] = useState<PublicPage>('home');
+  const [publicPage, setPublicPage] = useState<PublicPage>(() => {
+    const page = pathnameToPage(window.location.pathname);
+    return page ?? 'home';
+  });
   const [showAuth, setShowAuth] = useState(false);
-  const [magicLinkToken, setMagicLinkToken] = useState<string | null>(null);
-  const [invoiceToken, setInvoiceToken] = useState<string | null>(null);
+  const [magicLinkToken, setMagicLinkToken] = useState<string | null>(() => {
+    const pathname = window.location.pathname;
+    if (pathname.startsWith('/q/')) return pathname.split('/q/')[1] || null;
+    return null;
+  });
+  const [invoiceToken, setInvoiceToken] = useState<string | null>(() => {
+    const pathname = window.location.pathname;
+    if (pathname.startsWith('/i/')) return pathname.split('/i/')[1] || null;
+    return null;
+  });
+
+  const navigate = useCallback((path: string) => {
+    window.history.pushState({}, '', path);
+    const page = pathnameToPage(path);
+    if (page) {
+      setPublicPage(page);
+      setShowAuth(false);
+      setMagicLinkToken(null);
+    }
+  }, []);
+
+  const navigateTo = useCallback((page: PublicPage) => {
+    const pathMap: Record<PublicPage, string> = {
+      home: '/',
+      services: '/services',
+      about: '/about',
+      contact: '/contact',
+      quote: '/quote',
+      'quote-success': '/',
+      moving: '/moving',
+      'junk-removal': '/junk-removal',
+      'light-demo': '/light-demo',
+    };
+    const path = pathMap[page] ?? '/';
+    window.history.pushState({}, '', path);
+    setPublicPage(page);
+    setMagicLinkToken(null);
+  }, []);
 
   useEffect(() => {
-    const pathname = window.location.pathname;
-    if (pathname.startsWith('/q/')) {
-      const token = pathname.split('/q/')[1];
-      if (token) setMagicLinkToken(token);
-    } else if (pathname.startsWith('/i/')) {
-      const token = pathname.split('/i/')[1];
-      if (token) setInvoiceToken(token);
-    }
+    const onPopState = () => {
+      const pathname = window.location.pathname;
+      if (pathname.startsWith('/q/')) {
+        const token = pathname.split('/q/')[1];
+        if (token) { setMagicLinkToken(token); return; }
+      }
+      if (pathname.startsWith('/i/')) {
+        const token = pathname.split('/i/')[1];
+        if (token) { setInvoiceToken(token); return; }
+      }
+      const page = pathnameToPage(pathname);
+      if (page) {
+        setPublicPage(page);
+        setShowAuth(false);
+        setMagicLinkToken(null);
+        setInvoiceToken(null);
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
   if (loading) {
@@ -53,6 +118,7 @@ function App() {
     const goHome = () => {
       setInvoiceToken(null);
       setShowAuth(false);
+      navigate('/');
     };
     const goLogin = () => {
       setInvoiceToken(null);
@@ -78,14 +144,11 @@ function App() {
       setAuthView('signup');
       setShowAuth(true);
     };
-    const navigateTo = (page: PublicPage) => {
-      setPublicPage(page);
-      setMagicLinkToken(null);
-    };
     const goToHome = () => {
       setPublicPage('home');
       setMagicLinkToken(null);
       setShowAuth(false);
+      navigate('/');
     };
 
     if (magicLinkToken) {
@@ -116,6 +179,12 @@ function App() {
     }
 
     switch (publicPage) {
+      case 'moving':
+        return <Moving onNavigate={navigateTo} onLogin={goToLogin} />;
+      case 'junk-removal':
+        return <JunkRemoval onNavigate={navigateTo} onLogin={goToLogin} />;
+      case 'light-demo':
+        return <LightDemo onNavigate={navigateTo} onLogin={goToLogin} />;
       case 'services':
         return <Services onNavigate={navigateTo} onLogin={goToLogin} />;
       case 'about':
