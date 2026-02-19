@@ -28,6 +28,40 @@ function upsertLink(rel: string, href: string): void {
   el.setAttribute('href', href);
 }
 
+export interface FAQEntry {
+  question: string;
+  answer: string;
+}
+
+export function setFAQSchema(id: string, faqs: FAQEntry[]): () => void {
+  const existing = document.getElementById(id);
+  if (existing) existing.remove();
+
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: f.answer,
+      },
+    })),
+  };
+
+  const script = document.createElement('script');
+  script.id = id;
+  script.type = 'application/ld+json';
+  script.textContent = JSON.stringify(schema);
+  document.head.appendChild(script);
+
+  return () => {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  };
+}
+
 export function setSEO({ title, description, canonicalPath, ogImagePath }: SEOOptions): void {
   const origin = window.location.origin;
   const canonicalUrl = origin + canonicalPath;
