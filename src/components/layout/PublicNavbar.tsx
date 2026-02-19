@@ -59,7 +59,7 @@ export function PublicNavbar({ currentPage, onNavigate, onLogin }: PublicNavbarP
             <img
               src="/Main_logo.webp"
               alt="BudgetWorks"
-              className="h-16 w-auto object-contain"
+              className="h-20 w-auto object-contain ml-6"
             />
           </div>
 
