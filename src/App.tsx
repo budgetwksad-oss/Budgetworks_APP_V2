@@ -18,6 +18,7 @@ import { Moving } from './pages/public/Moving';
 import { JunkRemoval } from './pages/public/JunkRemoval';
 import { LightDemo } from './pages/public/LightDemo';
 import { KeyboardShortcuts } from './components/ui/KeyboardShortcuts';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 type AuthView = 'login' | 'signup' | 'forgot-password';
 type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo';
@@ -222,10 +223,10 @@ function App() {
   };
 
   return (
-    <>
+    <ErrorBoundary>
       {renderPortal()}
       <KeyboardShortcuts />
-    </>
+    </ErrorBoundary>
   );
 }
 

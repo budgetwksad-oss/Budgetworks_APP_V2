@@ -1,6 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
-import { Button } from './Button';
+import { AlertTriangle, RefreshCw, Clipboard, Check } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -11,6 +10,7 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
+  copied: boolean;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -19,104 +19,86 @@ export class ErrorBoundary extends Component<Props, State> {
     this.state = {
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
+      copied: false,
     };
   }
 
-  static getDerivedStateFromError(error: Error): State {
-    return {
-      hasError: true,
-      error,
-      errorInfo: null
-    };
+  static getDerivedStateFromError(error: Error): Partial<State> {
+    return { hasError: true, error, errorInfo: null };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
-    this.setState({
-      error,
-      errorInfo
-    });
+    this.setState({ error, errorInfo });
   }
 
-  handleReset = () => {
-    this.setState({
-      hasError: false,
-      error: null,
-      errorInfo: null
-    });
+  handleReload = () => {
+    window.location.reload();
   };
 
-  handleGoHome = () => {
-    window.location.href = '/';
+  handleCopyDebug = () => {
+    const info = [
+      `Route: ${window.location.pathname}`,
+      `Time: ${new Date().toISOString()}`,
+      `Error: ${this.state.error?.toString() ?? 'unknown'}`,
+      this.state.errorInfo?.componentStack ?? '',
+    ].join('\n');
+
+    navigator.clipboard.writeText(info).then(() => {
+      this.setState({ copied: true });
+      setTimeout(() => this.setState({ copied: false }), 2000);
+    });
   };
 
   render() {
     if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
+      if (this.props.fallback) return this.props.fallback;
 
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <div className="max-w-2xl w-full bg-white rounded-lg shadow-xl p-8">
+          <div className="max-w-lg w-full bg-white rounded-xl shadow-lg p-8">
             <div className="flex items-center gap-4 mb-6">
-              <div className="bg-red-100 p-3 rounded-lg">
-                <AlertTriangle className="w-8 h-8 text-red-600" />
+              <div className="bg-red-100 p-3 rounded-lg flex-shrink-0">
+                <AlertTriangle className="w-7 h-7 text-red-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Something went wrong</h1>
-                <p className="text-gray-600 mt-1">
-                  We're sorry for the inconvenience. An error occurred while rendering this page.
-                </p>
+                <h1 className="text-xl font-bold text-gray-900">Something went wrong.</h1>
+                <p className="text-sm text-gray-500 mt-0.5">Please reload to continue.</p>
               </div>
             </div>
 
             {this.state.error && (
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="font-semibold text-gray-900 mb-2">Error Details:</p>
-                <p className="text-sm text-red-600 font-mono break-all">
+              <div className="mb-6 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <p className="text-xs font-mono text-red-600 break-all">
                   {this.state.error.toString()}
                 </p>
-                {this.state.errorInfo && (
-                  <details className="mt-3">
-                    <summary className="text-sm text-gray-600 cursor-pointer hover:text-gray-900">
-                      Stack Trace
-                    </summary>
-                    <pre className="mt-2 text-xs text-gray-600 overflow-x-auto p-3 bg-white rounded border border-gray-200">
-                      {this.state.errorInfo.componentStack}
-                    </pre>
-                  </details>
-                )}
               </div>
             )}
 
             <div className="flex gap-3">
-              <Button
-                variant="primary"
-                onClick={this.handleReset}
-                className="flex items-center gap-2"
+              <button
+                onClick={this.handleReload}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg transition-colors"
               >
                 <RefreshCw className="w-4 h-4" />
-                Try Again
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={this.handleGoHome}
-                className="flex items-center gap-2"
+                Reload page
+              </button>
+              <button
+                onClick={this.handleCopyDebug}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
               >
-                <Home className="w-4 h-4" />
-                Go to Home
-              </Button>
-            </div>
-
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-900">
-                <strong>Need help?</strong> If this problem persists, please contact support with the error details above.
-              </p>
-              <p className="text-sm text-blue-700 mt-2">
-                Email: support@budgetworks.com
-              </p>
+                {this.state.copied ? (
+                  <>
+                    <Check className="w-4 h-4 text-green-600" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Clipboard className="w-4 h-4" />
+                    Copy debug info
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
@@ -140,10 +122,13 @@ export function ErrorFallback({ error, resetError }: { error: Error; resetError:
         <p className="text-gray-600 mb-4">
           {error.message || 'An unexpected error occurred'}
         </p>
-        <Button variant="primary" onClick={resetError} size="sm">
-          <RefreshCw className="w-4 h-4 mr-2" />
+        <button
+          onClick={resetError}
+          className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          <RefreshCw className="w-4 h-4" />
           Try Again
-        </Button>
+        </button>
       </div>
     </div>
   );

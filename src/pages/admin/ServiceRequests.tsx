@@ -6,7 +6,7 @@ import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { ActivityTimeline } from '../../components/ui/ActivityTimeline';
-import { MapPin, Phone, Calendar, ArrowLeft, Mail, User, FileText, Save, PhoneCall } from 'lucide-react';
+import { MapPin, Phone, Calendar, ArrowLeft, Mail, User, FileText, Save, PhoneCall, AlertTriangle, RefreshCw, Inbox } from 'lucide-react';
 import { CreateQuote } from './CreateQuote';
 
 interface ServiceRequestsProps {
@@ -37,6 +37,7 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
   const [showCreateQuote, setShowCreateQuote] = useState(false);
   const [showPhoneQuote, setShowPhoneQuote] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string>('');
   const [internalNotes, setInternalNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
 
@@ -97,8 +98,10 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
       );
 
       setRequests(allRequests);
-    } catch (error) {
+      setLoadError('');
+    } catch (error: any) {
       console.error('Error loading requests:', error);
+      setLoadError(error?.message || 'Failed to load leads');
     } finally {
       setLoading(false);
     }
@@ -494,15 +497,34 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
           </div>
         </div>
 
+        {loadError && (
+          <div className="flex items-center justify-between gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg mb-2">
+            <div className="flex items-center gap-2 text-red-700 text-sm">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+              {loadError}
+            </div>
+            <button
+              onClick={() => { setLoadError(''); setLoading(true); loadRequests(); }}
+              className="flex items-center gap-1 flex-shrink-0 text-xs font-medium text-red-700 underline hover:no-underline"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Retry
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <Card className="p-8 text-center">
+            <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
             <p className="text-gray-500">Loading leads...</p>
           </Card>
-        ) : requests.length === 0 ? (
-          <Card className="p-8 text-center">
-            <p className="text-gray-500">No quote requests yet</p>
+        ) : requests.length === 0 && !loadError ? (
+          <Card className="p-10 text-center">
+            <Inbox className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-base font-semibold text-gray-700 mb-1">No quote requests yet</p>
+            <p className="text-sm text-gray-500">New leads from the public form and customer portal will appear here.</p>
           </Card>
-        ) : (
+        ) : requests.length > 0 ? (
           <div className="space-y-4">
             {requests.map((request) => (
               <Card
@@ -561,7 +583,7 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
               </Card>
             ))}
           </div>
-        )}
+        ) : null}
       </div>
     </PortalLayout>
   );

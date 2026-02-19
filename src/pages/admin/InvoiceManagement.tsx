@@ -3,7 +3,7 @@ import { PortalLayout } from '../../components/layout/PortalLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { DollarSign, Search, X, Plus, Eye, Calendar, User, FileText, CreditCard, Download, Send, AlertCircle, CheckSquare, Square, Mail, Link, Copy, Check } from 'lucide-react';
+import { DollarSign, Search, X, Plus, Eye, Calendar, User, FileText, CreditCard, Download, Send, AlertCircle, CheckSquare, Square, Mail, Link, Copy, Check, AlertTriangle, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { downloadInvoicePDF } from '../../lib/invoicePDF';
 import { updateOverdueInvoices, isInvoiceOverdue, getDaysOverdue } from '../../lib/invoiceUtils';
@@ -45,6 +45,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDetail | null>(null);
@@ -108,8 +109,10 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
       if (error) throw error;
       setInvoices(data || []);
       setFilteredInvoices(data || []);
+      setLoadError('');
     } catch (err: any) {
       console.error('Error loading invoices:', err);
+      setLoadError(err?.message || 'Failed to load invoices');
     } finally {
       setLoading(false);
     }
@@ -578,7 +581,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
       <PortalLayout portalName="Admin Portal">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
             <p className="text-gray-600">Loading invoices...</p>
           </div>
         </div>
@@ -1049,17 +1052,33 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
             )}
           </div>
 
-          {filteredInvoices.length === 0 ? (
+          {loadError && (
+            <div className="flex items-center justify-between gap-3 px-4 py-3 mb-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center gap-2 text-red-700 text-sm">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                {loadError}
+              </div>
+              <button
+                onClick={() => { setLoadError(''); setLoading(true); loadInvoices(); }}
+                className="flex items-center gap-1 flex-shrink-0 text-xs font-medium text-red-700 underline hover:no-underline"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Retry
+              </button>
+            </div>
+          )}
+
+          {filteredInvoices.length === 0 && !loadError ? (
             <div className="text-center py-12">
               <DollarSign className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No invoices found</h3>
               <p className="text-gray-600">
                 {searchTerm || statusFilter !== 'all'
                   ? 'Try adjusting your filters'
-                  : 'Invoices will appear here once created'}
+                  : 'Invoices will appear here once jobs are completed'}
               </p>
             </div>
-          ) : (
+          ) : filteredInvoices.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -1142,7 +1161,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
                 </tbody>
               </table>
             </div>
-          )}
+          ) : null}
         </Card>
       </div>
     </PortalLayout>

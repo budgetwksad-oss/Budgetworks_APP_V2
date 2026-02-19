@@ -51,6 +51,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
   const [selectedRole, setSelectedRole] = useState<'driver' | 'helper'>('helper');
   const [updating, setUpdating] = useState(false);
   const [marketplaceError, setMarketplaceError] = useState<string>('');
+  const [loadError, setLoadError] = useState<string>('');
 
   const defaultDueDate = () => {
     const d = new Date();
@@ -137,8 +138,10 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
       }
 
       setJobs(jobsWithDetails);
-    } catch (error) {
+      setLoadError('');
+    } catch (error: any) {
       console.error('Error loading jobs:', error);
+      setLoadError(error?.message || 'Failed to load jobs');
     } finally {
       setLoading(false);
     }
@@ -1356,14 +1359,31 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
           </button>
         </div>
 
+        {loadError && (
+          <div className="flex items-center justify-between gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg mb-2">
+            <div className="flex items-center gap-2 text-red-700 text-sm">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+              {loadError}
+            </div>
+            <button
+              onClick={() => { setLoadError(''); setLoading(true); loadJobs(); }}
+              className="flex-shrink-0 text-xs font-medium text-red-700 underline hover:no-underline"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <Card className="p-8 text-center">
+            <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
             <p className="text-gray-500">Loading jobs...</p>
           </Card>
-        ) : jobs.length === 0 ? (
-          <Card className="p-8 text-center">
-            <Briefcase className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No jobs yet</p>
+        ) : jobs.length === 0 && !loadError ? (
+          <Card className="p-10 text-center">
+            <Briefcase className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-lg font-semibold text-gray-700 mb-1">No jobs yet</p>
+            <p className="text-sm text-gray-500">Jobs will appear here once quotes are accepted.</p>
           </Card>
         ) : (() => {
           const filteredJobs = jobs.filter(job =>
@@ -1374,10 +1394,15 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
 
           if (filteredJobs.length === 0) {
             return (
-              <Card className="p-8 text-center">
-                <Briefcase className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">
-                  {filterView === 'drafts' ? 'No draft jobs' : 'No scheduled/active jobs'}
+              <Card className="p-10 text-center">
+                <Briefcase className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-base font-semibold text-gray-700 mb-1">
+                  {filterView === 'drafts' ? 'No draft jobs' : 'No scheduled or active jobs'}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {filterView === 'drafts'
+                    ? 'Draft jobs appear here before they are finalized.'
+                    : 'Finalize a draft to schedule a job.'}
                 </p>
               </Card>
             );
