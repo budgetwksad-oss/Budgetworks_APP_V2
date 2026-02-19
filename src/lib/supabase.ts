@@ -248,6 +248,18 @@ export type AuditLog = {
   created_at: string;
 };
 
+export type AuditLogRow = {
+  id: string;
+  created_at: string;
+  actor_user_id: string | null;
+  actor_role: string | null;
+  action_key: string;
+  entity_type: string;
+  entity_id: string | null;
+  message: string | null;
+  metadata: Record<string, unknown> | null;
+};
+
 export type ContactMessageStatus = 'new' | 'read' | 'responded' | 'archived';
 
 export type ContactMessage = {
