@@ -69,6 +69,8 @@ export type Quote = {
   expected_price: number | null;
   cap_amount: number | null;
   pricing_snapshot: any | null;
+  quote_inputs: any | null;
+  staffing_defaults: any | null;
   accepted_at: string | null;
   declined_at: string | null;
   accepted_method: 'magic_link' | 'phone' | null;
