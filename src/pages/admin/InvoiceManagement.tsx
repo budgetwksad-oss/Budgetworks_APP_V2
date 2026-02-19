@@ -53,8 +53,8 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
   const [paymentData, setPaymentData] = useState({
     amount: '',
     payment_method: 'cash',
-    reference_number: '',
-    payment_date: new Date().toISOString().split('T')[0]
+    reference: '',
+    notes: '',
   });
   const [recordingPayment, setRecordingPayment] = useState(false);
   const [sendingInvoice, setSendingInvoice] = useState(false);
@@ -356,8 +356,8 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
       setPaymentData({
         amount: remainingBalance > 0 ? remainingBalance.toFixed(2) : '',
         payment_method: 'cash',
-        reference_number: '',
-        payment_date: new Date().toISOString().split('T')[0]
+        reference: '',
+        notes: '',
       });
     } catch (err: any) {
       console.error('Error loading invoice details:', err);
@@ -369,47 +369,83 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
   const handleRecordPayment = async () => {
     if (!selectedInvoice || !paymentData.amount) return;
 
+    const amount = parseFloat(paymentData.amount);
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid payment amount');
+      return;
+    }
+    if (amount > selectedInvoice.remaining_balance + 0.005) {
+      alert('Payment amount cannot exceed remaining balance');
+      return;
+    }
+
     setRecordingPayment(true);
     try {
-      const amount = parseFloat(paymentData.amount);
-      if (isNaN(amount) || amount <= 0) {
-        alert('Please enter a valid payment amount');
-        return;
-      }
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('record_invoice_payment', {
+        p_invoice_id: selectedInvoice.id,
+        p_amount:     amount,
+        p_method:     paymentData.payment_method,
+        p_reference:  paymentData.reference || null,
+        p_notes:      paymentData.notes || null,
+      });
 
-      if (amount > selectedInvoice.remaining_balance) {
-        alert('Payment amount cannot exceed remaining balance');
-        return;
-      }
+      if (rpcError) throw rpcError;
 
-      const { error: paymentError } = await supabase
-        .from('payments')
-        .insert({
-          invoice_id: selectedInvoice.id,
-          amount: amount,
-          payment_method: paymentData.payment_method,
-          payment_date: paymentData.payment_date,
-          reference_number: paymentData.reference_number || null
+      const newStatus: string = rpcResult?.status ?? '';
+
+      const companyRes = await supabase
+        .from('company_settings')
+        .select('phone, email, business_name')
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      const company = companyRes.data;
+
+      const payload = {
+        customer_name:   selectedInvoice.customer_name,
+        invoice_number:  selectedInvoice.invoice_number,
+        invoice_total:   `$${selectedInvoice.total_amount.toFixed(2)}`,
+        amount_paid:     `$${amount.toFixed(2)}`,
+        balance_due:     `$${Math.max(selectedInvoice.remaining_balance - amount, 0).toFixed(2)}`,
+        company_phone:   company?.phone ?? '',
+        company_name:    company?.business_name ?? '',
+      };
+
+      const enqueueCustomer = async () => {
+        if (selectedInvoice.customer_email && selectedInvoice.customer_email !== 'N/A') {
+          await supabase.rpc('enqueue_notification', {
+            p_event_key:    'payment_received',
+            p_audience:     'customer',
+            p_channel:      'email',
+            p_service_type: '',
+            p_to_email:     selectedInvoice.customer_email,
+            p_to_phone:     '',
+            p_payload:      payload,
+          });
+        }
+      };
+
+      const enqueueAdmin = async () => {
+        await supabase.rpc('enqueue_admin_ops', {
+          p_event_key:    'payment_received',
+          p_channel:      'sms',
+          p_service_type: '',
+          p_payload:      payload,
         });
+      };
 
-      if (paymentError) throw paymentError;
-
-      const newRemainingBalance = selectedInvoice.remaining_balance - amount;
-      const newStatus = newRemainingBalance <= 0.01 ? 'paid' : 'partial';
-
-      const { error: invoiceError } = await supabase
-        .from('invoices')
-        .update({ status: newStatus })
-        .eq('id', selectedInvoice.id);
-
-      if (invoiceError) throw invoiceError;
+      await Promise.allSettled([enqueueCustomer(), enqueueAdmin()]);
 
       setShowPaymentModal(false);
       await loadInvoiceDetails(selectedInvoice.id);
       await loadInvoices();
+
+      const statusLabel = newStatus === 'paid' ? 'Invoice marked as paid.' : 'Partial payment recorded.';
+      alert(`Payment recorded. ${statusLabel}`);
     } catch (err: any) {
       console.error('Error recording payment:', err);
-      alert('Failed to record payment');
+      alert('Failed to record payment: ' + (err.message ?? err));
     } finally {
       setRecordingPayment(false);
     }
@@ -782,11 +818,12 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Payment Amount
+                      Amount
                     </label>
                     <Input
                       type="number"
                       step="0.01"
+                      min="0.01"
                       value={paymentData.amount}
                       onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
                       placeholder="0.00"
@@ -798,7 +835,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Payment Method
+                      Method
                     </label>
                     <select
                       value={paymentData.payment_method}
@@ -806,33 +843,35 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="cash">Cash</option>
-                      <option value="check">Check</option>
+                      <option value="etransfer">E-Transfer</option>
                       <option value="credit_card">Credit Card</option>
-                      <option value="bank_transfer">Bank Transfer</option>
+                      <option value="debit">Debit</option>
+                      <option value="cheque">Cheque</option>
                       <option value="other">Other</option>
                     </select>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Payment Date
+                      Reference (optional)
                     </label>
                     <Input
-                      type="date"
-                      value={paymentData.payment_date}
-                      onChange={(e) => setPaymentData({ ...paymentData, payment_date: e.target.value })}
+                      type="text"
+                      value={paymentData.reference}
+                      onChange={(e) => setPaymentData({ ...paymentData, reference: e.target.value })}
+                      placeholder="Cheque #, transaction ID, etc."
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Reference Number (Optional)
+                      Notes (optional)
                     </label>
                     <Input
                       type="text"
-                      value={paymentData.reference_number}
-                      onChange={(e) => setPaymentData({ ...paymentData, reference_number: e.target.value })}
-                      placeholder="Check #, Transaction ID, etc."
+                      value={paymentData.notes}
+                      onChange={(e) => setPaymentData({ ...paymentData, notes: e.target.value })}
+                      placeholder="Any additional notes"
                     />
                   </div>
 
