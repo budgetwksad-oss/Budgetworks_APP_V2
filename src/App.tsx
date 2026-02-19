@@ -163,17 +163,18 @@ function App() {
 
     if (showAuth) {
       if (authView === 'signup') {
-        return <Signup onSwitchToLogin={() => setAuthView('login')} />;
+        return <Signup onSwitchToLogin={() => setAuthView('login')} onGoHome={goToHome} />;
       }
 
       if (authView === 'forgot-password') {
-        return <ForgotPassword onSwitchToLogin={() => setAuthView('login')} />;
+        return <ForgotPassword onSwitchToLogin={() => setAuthView('login')} onGoHome={goToHome} />;
       }
 
       return (
         <Login
           onSwitchToSignup={() => setAuthView('signup')}
           onSwitchToForgotPassword={() => setAuthView('forgot-password')}
+          onGoHome={goToHome}
         />
       );
     }

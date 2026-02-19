@@ -3,14 +3,15 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
-import { Truck } from 'lucide-react';
+import { ArrowLeft, Truck } from 'lucide-react';
 
 interface LoginProps {
   onSwitchToSignup: () => void;
   onSwitchToForgotPassword: () => void;
+  onGoHome: () => void;
 }
 
-export function Login({ onSwitchToSignup, onSwitchToForgotPassword }: LoginProps) {
+export function Login({ onSwitchToSignup, onSwitchToForgotPassword, onGoHome }: LoginProps) {
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,6 +35,13 @@ export function Login({ onSwitchToSignup, onSwitchToForgotPassword }: LoginProps
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md p-8">
+        <button
+          onClick={onGoHome}
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-orange-600 transition-colors mb-6"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Home
+        </button>
         <div className="flex items-center justify-center mb-8">
           <div className="bg-black p-3 rounded-xl">
             <Truck className="w-8 h-8 text-orange-500" />
