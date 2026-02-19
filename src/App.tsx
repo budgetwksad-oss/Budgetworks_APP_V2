@@ -13,6 +13,7 @@ import { Contact } from './pages/public/Contact';
 import { PublicQuoteForm } from './pages/public/PublicQuoteForm';
 import { QuoteSuccess } from './pages/public/QuoteSuccess';
 import { QuoteMagicLink } from './pages/public/QuoteMagicLink';
+import { InvoiceMagicLink } from './pages/public/InvoiceMagicLink';
 import { KeyboardShortcuts } from './components/ui/KeyboardShortcuts';
 
 type AuthView = 'login' | 'signup' | 'forgot-password';
@@ -24,14 +25,16 @@ function App() {
   const [publicPage, setPublicPage] = useState<PublicPage>('home');
   const [showAuth, setShowAuth] = useState(false);
   const [magicLinkToken, setMagicLinkToken] = useState<string | null>(null);
+  const [invoiceToken, setInvoiceToken] = useState<string | null>(null);
 
   useEffect(() => {
     const pathname = window.location.pathname;
     if (pathname.startsWith('/q/')) {
       const token = pathname.split('/q/')[1];
-      if (token) {
-        setMagicLinkToken(token);
-      }
+      if (token) setMagicLinkToken(token);
+    } else if (pathname.startsWith('/i/')) {
+      const token = pathname.split('/i/')[1];
+      if (token) setInvoiceToken(token);
     }
   }, []);
 
@@ -43,6 +46,25 @@ function App() {
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
+    );
+  }
+
+  if (invoiceToken) {
+    const goHome = () => {
+      setInvoiceToken(null);
+      setShowAuth(false);
+    };
+    const goLogin = () => {
+      setInvoiceToken(null);
+      setAuthView('login');
+      setShowAuth(true);
+    };
+    return (
+      <InvoiceMagicLink
+        token={invoiceToken}
+        onLogin={goLogin}
+        onNavigateHome={goHome}
+      />
     );
   }
 
