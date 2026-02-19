@@ -127,7 +127,7 @@ function App() {
       case 'quote-success':
         return <QuoteSuccess onNavigate={navigateTo} onLogin={goToLogin} />;
       default:
-        return <Home onNavigate={navigateTo} onLogin={goToLogin} />;
+        return <Home onNavigate={navigateTo} onLogin={goToLogin} onSignup={goToSignup} />;
     }
   }
 
