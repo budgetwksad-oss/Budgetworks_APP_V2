@@ -6,7 +6,18 @@ import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { ArrowLeft, Briefcase, Calendar, Users, Clock, MapPin, X } from 'lucide-react';
+import { ArrowLeft, Briefcase, Calendar, Users, Clock, MapPin, X, FileText, Copy, Check, AlertTriangle } from 'lucide-react';
+
+interface InvoiceModalState {
+  open: boolean;
+  total: string;
+  dueDate: string;
+  notes: string;
+  submitting: boolean;
+  generatedLink: string | null;
+  notificationWarning: string | null;
+  copied: boolean;
+}
 
 type JobWithDetails = Job & {
   quote: Quote;
@@ -40,6 +51,23 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
   const [selectedRole, setSelectedRole] = useState<'driver' | 'helper'>('helper');
   const [updating, setUpdating] = useState(false);
   const [marketplaceError, setMarketplaceError] = useState<string>('');
+
+  const defaultDueDate = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 14);
+    return d.toISOString().split('T')[0];
+  };
+
+  const [invoiceModal, setInvoiceModal] = useState<InvoiceModalState>({
+    open: false,
+    total: '',
+    dueDate: defaultDueDate(),
+    notes: '',
+    submitting: false,
+    generatedLink: null,
+    notificationWarning: null,
+    copied: false,
+  });
 
   useEffect(() => {
     loadJobs();
@@ -449,6 +477,143 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
     }
   };
 
+  const openInvoiceModal = () => {
+    const defaultTotal = selectedJob?.quote?.expected_price
+      ? String(selectedJob.quote.expected_price)
+      : selectedJob?.quote?.total_amount
+        ? String(selectedJob.quote.total_amount)
+        : '';
+    setInvoiceModal({
+      open: true,
+      total: defaultTotal,
+      dueDate: defaultDueDate(),
+      notes: '',
+      submitting: false,
+      generatedLink: null,
+      notificationWarning: null,
+      copied: false,
+    });
+  };
+
+  const handleCreateInvoice = async () => {
+    if (!selectedJob) return;
+    const totalNum = parseFloat(invoiceModal.total);
+    if (isNaN(totalNum) || totalNum <= 0) {
+      alert('Please enter a valid invoice total.');
+      return;
+    }
+
+    setInvoiceModal(s => ({ ...s, submitting: true }));
+
+    try {
+      const { data: settingsData } = await supabase
+        .from('company_settings')
+        .select('tax_rate, phone, business_name')
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      const taxRate: number = settingsData?.tax_rate ?? 0;
+      const companyPhone: string = settingsData?.phone ?? '';
+
+      const subtotal = parseFloat((totalNum / (1 + taxRate)).toFixed(2));
+      const taxAmount = parseFloat((totalNum - subtotal).toFixed(2));
+
+      const invNumber = `INV-${Date.now().toString().slice(-8)}`;
+
+      const { data: invData, error: invError } = await supabase
+        .from('invoices')
+        .insert({
+          job_id: selectedJob.id,
+          customer_id: selectedJob.customer_id || null,
+          invoice_number: invNumber,
+          line_items: [{
+            description: `${getServiceLabel(selectedJob.service_type || 'moving')} Service`,
+            quantity: 1,
+            unit_price: subtotal,
+            total: subtotal,
+          }],
+          subtotal,
+          tax_rate: taxRate,
+          tax_amount: taxAmount,
+          total_amount: totalNum,
+          amount_paid: 0,
+          balance_due: totalNum,
+          status: 'sent',
+          due_date: invoiceModal.dueDate || null,
+          notes: invoiceModal.notes || null,
+          created_by: user?.id ?? null,
+          issue_date: new Date().toISOString().split('T')[0],
+        })
+        .select('id')
+        .single();
+
+      if (invError) throw invError;
+
+      const invoiceId = invData.id;
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      const { data: linkData, error: linkError } = await supabase.rpc('create_invoice_magic_link', {
+        p_invoice_id: invoiceId,
+        p_expires_at: expiresAt.toISOString(),
+      });
+
+      if (linkError) throw linkError;
+
+      const token: string = linkData?.token ?? '';
+      const invoiceLink = `${window.location.origin}/i/${token}`;
+
+      let notificationWarning: string | null = null;
+      try {
+        const toEmail = selectedJob.customer_email ?? '';
+        const toPhone = selectedJob.customer_phone ?? '';
+        const channel = toEmail ? 'email' : toPhone ? 'sms' : null;
+
+        if (channel) {
+          await supabase.rpc('enqueue_notification', {
+            p_event_key: 'invoice_sent',
+            p_audience: 'customer',
+            p_channel: channel,
+            p_service_type: selectedJob.service_type || 'moving',
+            p_to_email: channel === 'email' ? toEmail : '',
+            p_to_phone: channel === 'sms' ? toPhone : '',
+            p_payload: {
+              customer_name: selectedJob.customer_name || '',
+              invoice_total: totalNum,
+              invoice_link: invoiceLink,
+              company_phone: companyPhone,
+            },
+          });
+        } else {
+          notificationWarning = 'Invoice created but no email or phone on file — notification not sent.';
+        }
+      } catch (_e) {
+        notificationWarning = 'Invoice created but notification could not be queued.';
+      }
+
+      setInvoiceModal(s => ({
+        ...s,
+        submitting: false,
+        generatedLink: invoiceLink,
+        notificationWarning,
+      }));
+    } catch (err: any) {
+      console.error('Error creating invoice:', err);
+      alert('Failed to create invoice: ' + (err.message ?? String(err)));
+      setInvoiceModal(s => ({ ...s, submitting: false }));
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (!invoiceModal.generatedLink) return;
+    navigator.clipboard.writeText(invoiceModal.generatedLink).then(() => {
+      setInvoiceModal(s => ({ ...s, copied: true }));
+      setTimeout(() => setInvoiceModal(s => ({ ...s, copied: false })), 2000);
+    });
+  };
+
   const getServiceLabel = (type: string) => {
     switch (type) {
       case 'moving': return 'Moving';
@@ -856,7 +1021,26 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
           </div>
 
           <Card className="p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Job Information</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Job Information</h3>
+              {(selectedJob.customer_email || selectedJob.customer_phone) && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={openInvoiceModal}
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  Create Invoice
+                </Button>
+              )}
+            </div>
+            {selectedJob.status !== 'completed' && (
+              <div className="flex items-center gap-2 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <p className="text-xs text-amber-700">Job is not yet completed. You can still invoice early.</p>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-gray-500 mb-1">Customer</p>
@@ -903,6 +1087,123 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
             </div>
           </Card>
         </div>
+
+        {invoiceModal.open && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="max-w-md w-full p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-orange-600" />
+                  {invoiceModal.generatedLink ? 'Invoice Created' : 'Create Invoice'}
+                </h3>
+                <button
+                  onClick={() => setInvoiceModal(s => ({ ...s, open: false }))}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {invoiceModal.generatedLink ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm font-medium text-green-800 mb-1">Invoice created successfully.</p>
+                    <p className="text-xs text-green-700">Share the link below with the customer to view and pay.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Invoice Link</label>
+                    <div className="flex gap-2">
+                      <input
+                        readOnly
+                        value={invoiceModal.generatedLink}
+                        className="flex-1 px-3 py-2 text-xs border border-gray-300 rounded-lg bg-gray-50 text-gray-700 truncate"
+                      />
+                      <button
+                        onClick={handleCopyLink}
+                        className="flex-shrink-0 px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-1.5 text-sm font-medium"
+                      >
+                        {invoiceModal.copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        {invoiceModal.copied ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {invoiceModal.notificationWarning && (
+                    <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-amber-700">{invoiceModal.notificationWarning}</p>
+                    </div>
+                  )}
+
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => setInvoiceModal(s => ({ ...s, open: false }))}
+                  >
+                    Close
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Invoice Total ($) <span className="text-red-500">*</span>
+                    </label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={invoiceModal.total}
+                      onChange={(e) => setInvoiceModal(s => ({ ...s, total: e.target.value }))}
+                      placeholder="0.00"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Tax will be calculated from company settings.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Due Date</label>
+                    <Input
+                      type="date"
+                      value={invoiceModal.dueDate}
+                      onChange={(e) => setInvoiceModal(s => ({ ...s, dueDate: e.target.value }))}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes (optional)</label>
+                    <textarea
+                      value={invoiceModal.notes}
+                      onChange={(e) => setInvoiceModal(s => ({ ...s, notes: e.target.value }))}
+                      rows={3}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none text-sm"
+                      placeholder="Payment instructions, thank-you note..."
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      variant="secondary"
+                      className="flex-1"
+                      onClick={() => setInvoiceModal(s => ({ ...s, open: false }))}
+                      disabled={invoiceModal.submitting}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="primary"
+                      className="flex-1"
+                      onClick={handleCreateInvoice}
+                      disabled={invoiceModal.submitting || !invoiceModal.total}
+                    >
+                      {invoiceModal.submitting ? 'Creating...' : 'Create & Send'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
+        )}
       </PortalLayout>
     );
   }

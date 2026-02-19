@@ -3,7 +3,7 @@ import { PortalLayout } from '../../components/layout/PortalLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { DollarSign, Search, X, Plus, Eye, Calendar, User, FileText, CreditCard, Download, Send, AlertCircle, CheckSquare, Square, Mail } from 'lucide-react';
+import { DollarSign, Search, X, Plus, Eye, Calendar, User, FileText, CreditCard, Download, Send, AlertCircle, CheckSquare, Square, Mail, Link, Copy, Check } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { downloadInvoicePDF } from '../../lib/invoicePDF';
 import { updateOverdueInvoices, isInvoiceOverdue, getDaysOverdue } from '../../lib/invoiceUtils';
@@ -60,6 +60,9 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
   const [sendingInvoice, setSendingInvoice] = useState(false);
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
   const [bulkSending, setBulkSending] = useState(false);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [invoiceLink, setInvoiceLink] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     loadInvoices();
@@ -483,6 +486,38 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
     }
   };
 
+  const handleGenerateLink = async (invoiceId: string) => {
+    setGeneratingLink(true);
+    setInvoiceLink(null);
+    try {
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      const { data, error } = await supabase.rpc('create_invoice_magic_link', {
+        p_invoice_id: invoiceId,
+        p_expires_at: expiresAt.toISOString(),
+      });
+
+      if (error) throw error;
+
+      const token: string = data?.token ?? '';
+      setInvoiceLink(`${window.location.origin}/i/${token}`);
+    } catch (err: any) {
+      console.error('Error generating link:', err);
+      alert('Failed to generate invoice link: ' + err.message);
+    } finally {
+      setGeneratingLink(false);
+    }
+  };
+
+  const handleCopyInvoiceLink = () => {
+    if (!invoiceLink) return;
+    navigator.clipboard.writeText(invoiceLink).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    });
+  };
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       draft: 'bg-gray-100 text-gray-700',
@@ -531,7 +566,18 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
               <h2 className="text-2xl font-bold text-gray-900">{selectedInvoice.invoice_number}</h2>
               <p className="text-gray-600 mt-1">Invoice details and payment history</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setInvoiceLink(null);
+                  handleGenerateLink(selectedInvoice.id);
+                }}
+                disabled={generatingLink}
+              >
+                <Link className="w-4 h-4 mr-2" />
+                {generatingLink ? 'Generating...' : 'Generate Link'}
+              </Button>
               <Button variant="secondary" onClick={() => handleDownloadPDF(selectedInvoice)}>
                 <Download className="w-4 h-4 mr-2" />
                 Download PDF
@@ -544,11 +590,28 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
                 <Send className="w-4 h-4 mr-2" />
                 {sendingInvoice ? 'Sending...' : 'Send Invoice'}
               </Button>
-              <Button variant="secondary" onClick={() => setSelectedInvoice(null)}>
+              <Button variant="secondary" onClick={() => { setSelectedInvoice(null); setInvoiceLink(null); }}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
           </div>
+
+          {invoiceLink && (
+            <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
+              <Link className="w-5 h-5 text-green-700 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-green-800 mb-1">Invoice link generated (valid 30 days)</p>
+                <p className="text-xs text-green-700 truncate">{invoiceLink}</p>
+              </div>
+              <button
+                onClick={handleCopyInvoiceLink}
+                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-green-700 text-white text-sm font-medium rounded-lg hover:bg-green-800 transition-colors"
+              >
+                {linkCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {linkCopied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          )}
 
           <div className="grid md:grid-cols-3 gap-4">
             <Card className="p-6">
