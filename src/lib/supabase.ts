@@ -507,6 +507,48 @@ export async function updateNotificationQueueStatus(
   }
 }
 
+export type PricingServiceType = 'moving' | 'junk_removal' | 'demolition';
+
+export type PricingSettingsRow = {
+  id: string;
+  service_type: PricingServiceType;
+  settings: Record<string, any>;
+  is_configured: boolean;
+  updated_at: string;
+};
+
+export async function fetchPricingSettings(
+  service_type: PricingServiceType
+): Promise<{ data: PricingSettingsRow | null; error: any }> {
+  try {
+    const { data, error } = await supabase
+      .from('pricing_settings')
+      .select('*')
+      .eq('service_type', service_type)
+      .maybeSingle();
+    return { data, error };
+  } catch (error) {
+    return { data: null, error };
+  }
+}
+
+export async function upsertPricingSettings(
+  service_type: PricingServiceType,
+  settings: Record<string, any>,
+  is_configured: boolean
+): Promise<{ data: PricingSettingsRow | null; error: any }> {
+  try {
+    const { data, error } = await supabase
+      .from('pricing_settings')
+      .upsert({ service_type, settings, is_configured, updated_at: new Date().toISOString() }, { onConflict: 'service_type' })
+      .select()
+      .single();
+    return { data, error };
+  } catch (error) {
+    return { data: null, error };
+  }
+}
+
 export async function logNotification(
   queueItem: NotificationQueueItem,
   status: NotificationQueueStatus,
