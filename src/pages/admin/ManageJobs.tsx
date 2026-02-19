@@ -457,53 +457,60 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
     }
   };
 
+  const refreshSelectedJob = async (jobId: string) => {
+    await loadJobs();
+    const { data } = await supabase.from('jobs').select('*').eq('id', jobId).single();
+    if (data) {
+      setJobs(prev => {
+        const updated = prev.map(j => j.id === jobId ? { ...j, ...data } : j);
+        const found = updated.find(j => j.id === jobId);
+        if (found) setSelectedJob(found);
+        return updated;
+      });
+    }
+  };
+
   const handleRemoveCrewAssignment = async (userId: string) => {
     if (!selectedJob) return;
+    if (!window.confirm(`Remove ${getCrewName(userId)} from this job?`)) return;
     setUpdating(true);
 
     try {
-      const updatedAssignments = (selectedJob.crew_assignments || []).filter(
-        a => a.user_id !== userId
-      );
-
-      const otherUserIds = updatedAssignments.map(a => a.user_id);
-      const updatedCrewIds = [...new Set(otherUserIds)];
-
-      const newStaffingStatus = calculateStaffingStatus({
-        ...selectedJob,
-        crew_assignments: updatedAssignments,
+      const { data: result, error } = await supabase.rpc('admin_remove_job_assignment', {
+        p_job_id: selectedJob.id,
+        p_user_id: userId,
       });
 
-      const { error } = await supabase
-        .from('jobs')
-        .update({
-          crew_assignments: updatedAssignments,
-          assigned_crew_ids: updatedCrewIds,
-          staffing_status: newStaffingStatus,
-        })
-        .eq('id', selectedJob.id);
-
       if (error) throw error;
+      if (result && result.success === false) throw new Error(result.error || 'RPC failed');
 
-      await loadJobs();
-
-      const { data } = await supabase
-        .from('jobs')
-        .select('*')
-        .eq('id', selectedJob.id)
-        .single();
-
-      if (data) {
-        const updatedJob = jobs.find(j => j.id === selectedJob.id);
-        if (updatedJob) {
-          setSelectedJob({
-            ...updatedJob,
-            ...data,
-          });
-        }
-      }
+      await refreshSelectedJob(selectedJob.id);
     } catch (error) {
       console.error('Error removing crew assignment:', error);
+      alert('Failed to remove assignment. Please try again.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleResetClaims = async () => {
+    if (!selectedJob) return;
+    if (!window.confirm('Reset all crew claims for this job? This will clear all assignments and remove it from the marketplace.')) return;
+    setUpdating(true);
+
+    try {
+      const { data: result, error } = await supabase.rpc('admin_reset_job_claims', {
+        p_job_id: selectedJob.id,
+      });
+
+      if (error) throw error;
+      if (result && result.success === false) throw new Error(result.error || 'RPC failed');
+
+      setIsOpenForClaims(false);
+      await refreshSelectedJob(selectedJob.id);
+    } catch (error) {
+      console.error('Error resetting job claims:', error);
+      alert('Failed to reset claims. Please try again.');
     } finally {
       setUpdating(false);
     }
@@ -1118,6 +1125,69 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
               )}
             </div>
           </Card>
+
+          {(selectedJob.crew_assignments?.length > 0 || selectedJob.is_open_for_claims) && (
+            <Card className="p-6 border border-red-100">
+              <h3 className="text-base font-bold text-gray-900 mb-1 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-500" />
+                Recovery Tools
+              </h3>
+              <p className="text-xs text-gray-500 mb-4">
+                Use these to correct mistakes. Actions are irreversible.
+              </p>
+
+              <div className="space-y-3">
+                {selectedJob.crew_assignments?.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">Remove Individual Assignment</p>
+                    <div className="space-y-2">
+                      {selectedJob.crew_assignments.map((assignment) => (
+                        <div
+                          key={assignment.user_id}
+                          className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                        >
+                          <div>
+                            <span className="text-sm font-medium text-gray-900">
+                              {getCrewName(assignment.user_id)}
+                            </span>
+                            <span className="ml-2 text-xs text-gray-500 capitalize">{assignment.role}</span>
+                            <span className="ml-2 text-xs text-gray-400">
+                              {new Date(assignment.claimed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => handleRemoveCrewAssignment(assignment.user_id)}
+                            disabled={updating}
+                            className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100 transition-colors disabled:opacity-50"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="border-t pt-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Reset All Claims</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Clears all crew assignments, resets staffing to unstaffed, and removes from marketplace.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleResetClaims}
+                      disabled={updating}
+                      className="flex-shrink-0 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                    >
+                      Reset Claims
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
         </div>
 
         {invoiceModal.open && (
