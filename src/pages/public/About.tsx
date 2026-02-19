@@ -1,7 +1,7 @@
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { Target, Heart, Shield, Users, Award, Clock, ThumbsUp, ArrowRight } from 'lucide-react';
 
-type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote';
+type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo';
 
 interface AboutProps {
   onNavigate: (page: PublicPage) => void;

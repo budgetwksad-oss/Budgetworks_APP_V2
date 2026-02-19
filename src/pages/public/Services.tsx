@@ -1,7 +1,7 @@
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { Truck, Trash2, Hammer, CheckCircle, ArrowRight } from 'lucide-react';
 
-type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote';
+type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo';
 
 interface ServicesProps {
   onNavigate: (page: PublicPage) => void;

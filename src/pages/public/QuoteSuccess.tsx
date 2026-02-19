@@ -1,7 +1,7 @@
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { CheckCircle, Mail, Phone, Home, ArrowRight } from 'lucide-react';
 
-type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote';
+type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo';
 
 interface QuoteSuccessProps {
   onNavigate: (page: PublicPage) => void;
