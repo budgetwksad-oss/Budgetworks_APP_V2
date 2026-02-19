@@ -29,6 +29,7 @@ import { CrewManagement } from '../admin/CrewManagement';
 import { InvoiceManagement } from '../admin/InvoiceManagement';
 import { Settings } from '../admin/Settings';
 import { TestimonialsManager } from '../admin/TestimonialsManager';
+import { CreateQuote } from '../admin/CreateQuote';
 import { getDashboardStats, getRevenueByMonth, getRecentActivity } from '../../lib/analytics';
 import { LineChart, DonutChart, StatCard } from '../../components/ui/Chart';
 
@@ -220,23 +221,12 @@ export function AdminPortal() {
 
   if (currentPage === 'create-quote') {
     return (
-      <PortalLayout
-        portalName="Admin Portal"
+      <CreateQuote
+        lead={undefined}
+        onBack={() => setCurrentPage('dashboard')}
+        onSuccess={() => setCurrentPage('service-requests')}
         sidebarSections={sidebarSections}
-        activeItemId="create-quote"
-      >
-        <div className="text-center py-12">
-          <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Quote Studio</h3>
-          <p className="text-gray-600 mb-4">Create quotes from service requests</p>
-          <Button
-            variant="primary"
-            onClick={() => setCurrentPage('service-requests')}
-          >
-            Go to Service Requests
-          </Button>
-        </div>
-      </PortalLayout>
+      />
     );
   }
 
