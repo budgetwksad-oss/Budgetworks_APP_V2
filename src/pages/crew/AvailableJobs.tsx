@@ -31,17 +31,20 @@ export function AvailableJobs({ sidebarSections, onBack }: AvailableJobsProps = 
     loadUserProfile();
   }, []);
 
+  const [crewName, setCrewName] = useState<string>('');
+
   const loadUserProfile = async () => {
     if (!user) return;
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('can_drive')
+        .select('can_drive, full_name')
         .eq('id', user.id)
         .maybeSingle();
 
       if (error) throw error;
       setCanDrive(data?.can_drive || false);
+      setCrewName(data?.full_name || '');
     } catch (error) {
       console.error('Error loading user profile:', error);
     }
@@ -121,6 +124,33 @@ export function AvailableJobs({ sidebarSections, onBack }: AvailableJobsProps = 
 
       if (error) {
         throw error;
+      }
+
+      // Enqueue job_claimed admin notification (fire-and-forget)
+      try {
+        const serviceLabel = (() => {
+          switch (selectedJob.service_request.service_type) {
+            case 'moving': return 'Moving';
+            case 'junk_removal': return 'Junk Removal';
+            case 'demolition': return 'Light Demo';
+            default: return selectedJob.service_request.service_type || '';
+          }
+        })();
+
+        await supabase.rpc('enqueue_admin_ops', {
+          p_event_key: 'job_claimed',
+          p_channel: 'sms',
+          p_service_type: selectedJob.service_request.service_type || 'moving',
+          p_payload: {
+            service_label: serviceLabel,
+            job_date: selectedJob.scheduled_date || '',
+            role: role,
+            crew_name: crewName,
+            company_phone: '',
+          },
+        });
+      } catch (_enqueueErr) {
+        // Non-fatal
       }
 
       await loadAvailableJobs();

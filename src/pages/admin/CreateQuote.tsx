@@ -268,6 +268,63 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
         }
       });
 
+      // Enqueue quote_sent notification for customer (fire-and-forget)
+      try {
+        const { data: settingsData } = await supabase
+          .from('company_settings')
+          .select('phone')
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        const companyPhone = settingsData?.phone || '';
+
+        const rangeStr = lowValue && highValue
+          ? `$${lowValue}–$${highValue}`
+          : highValue
+            ? `$${highValue}`
+            : lowValue
+              ? `$${lowValue}`
+              : '';
+
+        const serviceLabel = getServiceLabel(lead.service_type);
+
+        let channel = 'email';
+        let toEmail = '';
+        let toPhone = '';
+
+        if (lead.preferred_contact_method === 'sms' && lead.contact_phone) {
+          channel = 'sms';
+          toPhone = lead.contact_phone;
+        } else if (lead.contact_email) {
+          channel = 'email';
+          toEmail = lead.contact_email;
+        } else if (lead.contact_phone) {
+          channel = 'sms';
+          toPhone = lead.contact_phone;
+        }
+
+        if (toEmail || toPhone) {
+          await supabase.rpc('enqueue_notification', {
+            p_event_key: 'quote_sent',
+            p_audience: 'customer',
+            p_channel: channel,
+            p_service_type: lead.service_type,
+            p_to_email: toEmail,
+            p_to_phone: toPhone,
+            p_payload: {
+              customer_name: lead.contact_name,
+              service_label: serviceLabel,
+              range: rangeStr,
+              quote_link: fullLink,
+              company_phone: companyPhone,
+            },
+          });
+        }
+      } catch (_enqueueErr) {
+        // Non-fatal: notification enqueue failure should not block the flow
+      }
+
     } catch (err: any) {
       setError(err.message || 'Failed to send quote');
     } finally {

@@ -81,7 +81,7 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
     try {
       setResponding(true);
 
-      const { error: rpcError } = await supabase.rpc('respond_to_quote_by_token', {
+      const { error: rpcError } = await supabase.rpc('respond_to_quote_by_token_notify', {
         p_token: token,
         p_action: action,
       });

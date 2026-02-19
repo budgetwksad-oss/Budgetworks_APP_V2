@@ -335,6 +335,58 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
 
       if (error) throw error;
 
+      // Enqueue job_scheduled notification for customer (fire-and-forget)
+      try {
+        const { data: settingsData } = await supabase
+          .from('company_settings')
+          .select('phone')
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        const companyPhone = settingsData?.phone || '';
+
+        const serviceLabel = (() => {
+          switch (selectedJob.service_type) {
+            case 'moving': return 'Moving';
+            case 'junk_removal': return 'Junk Removal';
+            case 'demolition': return 'Light Demo';
+            default: return selectedJob.service_type || '';
+          }
+        })();
+
+        const arrivalWindow = scheduledTime || '';
+        const toEmail = selectedJob.customer_email || '';
+        const toPhone = selectedJob.customer_phone || '';
+
+        let channel = '';
+        if (toEmail) {
+          channel = 'email';
+        } else if (toPhone) {
+          channel = 'sms';
+        }
+
+        if (channel) {
+          await supabase.rpc('enqueue_notification', {
+            p_event_key: 'job_scheduled',
+            p_audience: 'customer',
+            p_channel: channel,
+            p_service_type: selectedJob.service_type || 'moving',
+            p_to_email: channel === 'email' ? toEmail : '',
+            p_to_phone: channel === 'sms' ? toPhone : '',
+            p_payload: {
+              customer_name: selectedJob.customer_name || '',
+              service_label: serviceLabel,
+              job_date: scheduledDate,
+              arrival_window: arrivalWindow,
+              company_phone: companyPhone,
+            },
+          });
+        }
+      } catch (_enqueueErr) {
+        // Non-fatal
+      }
+
       await loadJobs();
       setSelectedJob(null);
     } catch (error) {
