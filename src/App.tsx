@@ -10,7 +10,7 @@ import { Home } from './pages/public/Home';
 import { Services } from './pages/public/Services';
 import { About } from './pages/public/About';
 import { Contact } from './pages/public/Contact';
-import { PublicQuoteForm } from './pages/public/PublicQuoteForm';
+import { QuoteWizard } from './pages/public/QuoteWizard';
 import { QuoteSuccess } from './pages/public/QuoteSuccess';
 import { QuoteMagicLink } from './pages/public/QuoteMagicLink';
 import { InvoiceMagicLink } from './pages/public/InvoiceMagicLink';
@@ -194,7 +194,7 @@ function App() {
       case 'contact':
         return <Contact onNavigate={navigateTo} onLogin={goToLogin} />;
       case 'quote':
-        return <PublicQuoteForm onNavigate={navigateTo} onLogin={goToLogin} onSignup={goToSignup} />;
+        return <QuoteWizard onNavigate={navigateTo} onLogin={goToLogin} onSignup={goToSignup} />;
       case 'quote-success':
         return <QuoteSuccess onNavigate={navigateTo} onLogin={goToLogin} />;
       default:
