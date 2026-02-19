@@ -100,7 +100,7 @@ export function LightDemo({ onNavigate, onLogin }: LightDemoProps) {
   }, []);
 
   return (
-    <PublicLayout currentPage="services" onNavigate={onNavigate} onLogin={onLogin}>
+    <PublicLayout currentPage="light-demo" onNavigate={onNavigate} onLogin={onLogin}>
 
       {/* Hero */}
       <section className="relative bg-gray-950 text-white overflow-hidden">
@@ -199,6 +199,43 @@ export function LightDemo({ onNavigate, onLogin }: LightDemoProps) {
             >
               Get a Price Range
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Related services */}
+      <section className="py-16 bg-white border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-orange-500 font-semibold uppercase tracking-widest text-sm mb-6">Also from BudgetWorks</p>
+          <div className="grid sm:grid-cols-2 gap-5">
+            <button
+              onClick={() => onNavigate('moving')}
+              className="text-left bg-gray-50 border border-gray-200 rounded-2xl p-6 hover:border-orange-300 hover:bg-orange-50/40 transition-all group"
+            >
+              <p className="font-bold text-gray-900 text-lg group-hover:text-orange-600 transition-colors mb-1">
+                Moving Services
+              </p>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                Relocating after the demo? Our crew handles the full move — truck, loading, and delivery included.
+              </p>
+              <span className="inline-flex items-center gap-1 text-orange-500 font-semibold text-sm mt-4">
+                Learn more <ArrowRight className="w-4 h-4" />
+              </span>
+            </button>
+            <button
+              onClick={() => onNavigate('junk-removal')}
+              className="text-left bg-gray-50 border border-gray-200 rounded-2xl p-6 hover:border-orange-300 hover:bg-orange-50/40 transition-all group"
+            >
+              <p className="font-bold text-gray-900 text-lg group-hover:text-orange-600 transition-colors mb-1">
+                Junk Removal
+              </p>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                Have stuff to haul that isn't demo debris? We take furniture, appliances, and general junk too.
+              </p>
+              <span className="inline-flex items-center gap-1 text-orange-500 font-semibold text-sm mt-4">
+                Learn more <ArrowRight className="w-4 h-4" />
+              </span>
             </button>
           </div>
         </div>

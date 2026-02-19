@@ -31,6 +31,9 @@ function ServiceImage({ src, alt }: { src: string; alt: string }) {
     <img
       src={src}
       alt={alt}
+      loading="lazy"
+      width={600}
+      height={192}
       onError={() => setError(true)}
       className="w-full h-48 object-cover"
     />
@@ -343,13 +346,21 @@ export function Home({ onNavigate, onLogin, onSignup }: HomeProps) {
                     ))}
                   </ul>
 
-                  <button
-                    onClick={() => onNavigate('quote')}
-                    className="mt-auto inline-flex items-center gap-2 text-orange-500 hover:text-orange-600 font-semibold text-sm group/btn"
-                  >
-                    Get a quote for {service.title.toLowerCase()}
-                    <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                  </button>
+                  <div className="mt-auto flex items-center justify-between">
+                    <button
+                      onClick={() => onNavigate(service.slug as PublicPage)}
+                      className="inline-flex items-center gap-2 text-gray-700 hover:text-orange-600 font-semibold text-sm group/btn"
+                    >
+                      Learn more
+                      <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                    </button>
+                    <button
+                      onClick={() => onNavigate('quote')}
+                      className="inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-orange-600 transition-colors"
+                    >
+                      Get a quote
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
