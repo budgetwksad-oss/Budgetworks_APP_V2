@@ -6,7 +6,7 @@ import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { ActivityTimeline } from '../../components/ui/ActivityTimeline';
-import { MapPin, Phone, Calendar, ArrowLeft, Mail, User, FileText, Save } from 'lucide-react';
+import { MapPin, Phone, Calendar, ArrowLeft, Mail, User, FileText, Save, PhoneCall } from 'lucide-react';
 import { CreateQuote } from './CreateQuote';
 
 interface ServiceRequestsProps {
@@ -35,6 +35,7 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
   const [requests, setRequests] = useState<UnifiedRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<UnifiedRequest | null>(null);
   const [showCreateQuote, setShowCreateQuote] = useState(false);
+  const [showPhoneQuote, setShowPhoneQuote] = useState(false);
   const [loading, setLoading] = useState(true);
   const [internalNotes, setInternalNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
@@ -204,6 +205,20 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
       year: 'numeric',
     });
   };
+
+  if (showPhoneQuote) {
+    return (
+      <CreateQuote
+        lead={null}
+        onBack={() => setShowPhoneQuote(false)}
+        onSuccess={() => {
+          setShowPhoneQuote(false);
+          loadRequests();
+        }}
+        sidebarSections={sidebarSections}
+      />
+    );
+  }
 
   if (showCreateQuote && selectedRequest) {
     return (
@@ -453,11 +468,21 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
             <h2 className="text-3xl font-bold text-gray-900 mb-2">All Leads</h2>
             <p className="text-gray-600">Quote requests from customers and guests</p>
           </div>
-          {onBack && (
-            <Button variant="secondary" onClick={onBack}>
-              Back to Dashboard
+          <div className="flex items-center gap-3">
+            <Button
+              variant="primary"
+              onClick={() => setShowPhoneQuote(true)}
+              className="flex items-center gap-2"
+            >
+              <PhoneCall className="w-4 h-4" />
+              New Phone Quote
             </Button>
-          )}
+            {onBack && (
+              <Button variant="secondary" onClick={onBack}>
+                Back to Dashboard
+              </Button>
+            )}
+          </div>
         </div>
 
         {loading ? (
