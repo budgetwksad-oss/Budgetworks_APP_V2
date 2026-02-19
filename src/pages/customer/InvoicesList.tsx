@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { FileText, Download, Eye, DollarSign, Calendar, AlertCircle } from 'lucide-react';
+import { FileText, Download, Eye, DollarSign, Calendar, AlertCircle, PlusCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -14,10 +14,10 @@ interface Invoice {
   total_amount: number;
   tax_amount: number;
   status: 'draft' | 'sent' | 'unpaid' | 'partial' | 'paid' | 'closed';
-  job_id: string;
+  job_id: string | null;
   jobs: {
     service_type: string;
-  };
+  } | null;
 }
 
 export function InvoicesList({ onBack, onViewDetail }: { onBack: () => void; onViewDetail: (invoiceId: string) => void }) {
@@ -38,12 +38,11 @@ export function InvoicesList({ onBack, onViewDetail }: { onBack: () => void; onV
         .from('invoices')
         .select(`
           *,
-          jobs!inner(
-            service_type,
-            customer_id
+          jobs(
+            service_type
           )
         `)
-        .eq('jobs.customer_id', user.id)
+        .eq('customer_user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -149,11 +148,21 @@ export function InvoicesList({ onBack, onViewDetail }: { onBack: () => void; onV
           <Card className="p-12 text-center">
             <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No Invoices Found</h3>
-            <p className="text-gray-600">
+            <p className="text-gray-600 mb-6">
               {filter === 'all'
                 ? 'You have no invoices yet'
                 : `You have no ${filter} invoices`}
             </p>
+            {filter === 'all' && (
+              <Button
+                variant="primary"
+                onClick={() => window.location.href = '/quote'}
+                className="inline-flex items-center gap-2"
+              >
+                <PlusCircle className="w-4 h-4" />
+                Get a Quote
+              </Button>
+            )}
           </Card>
         ) : (
           <div className="grid gap-4">
@@ -166,9 +175,11 @@ export function InvoicesList({ onBack, onViewDetail }: { onBack: () => void; onV
                         <h3 className="font-semibold text-gray-900 mb-1">
                           Invoice #{invoice.invoice_number}
                         </h3>
-                        <p className="text-sm text-gray-600 capitalize">
-                          {invoice.jobs.service_type.replace('_', ' ')}
-                        </p>
+                        {invoice.jobs && (
+                          <p className="text-sm text-gray-600 capitalize">
+                            {invoice.jobs.service_type.replace('_', ' ')}
+                          </p>
+                        )}
                       </div>
                       {getStatusBadge(invoice.status)}
                     </div>

@@ -1,12 +1,12 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase, Quote, ServiceRequest } from '../../lib/supabase';
+import { supabase, Quote } from '../../lib/supabase';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { ArrowLeft, FileText, Calendar, DollarSign, X } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, DollarSign, X, PlusCircle } from 'lucide-react';
 
 interface QuotesListProps {
   sidebarSections?: MenuSection[];
@@ -15,47 +15,27 @@ interface QuotesListProps {
 
 export function QuotesList({ sidebarSections, onBack }: QuotesListProps = {}) {
   const { user } = useAuth();
-  const [quotes, setQuotes] = useState<(Quote & { service_request: ServiceRequest })[]>([]);
-  const [selectedQuote, setSelectedQuote] = useState<(Quote & { service_request: ServiceRequest }) | null>(null);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [rejecting, setRejecting] = useState(false);
 
   useEffect(() => {
-    loadQuotes();
-  }, []);
+    if (user) loadQuotes();
+  }, [user]);
 
   const loadQuotes = async () => {
     try {
-      const { data: requests, error: requestsError } = await supabase
-        .from('service_requests')
-        .select('*')
-        .eq('customer_id', user?.id);
-
-      if (requestsError) throw requestsError;
-
-      const requestIds = requests?.map(r => r.id) || [];
-
-      if (requestIds.length === 0) {
-        setLoading(false);
-        return;
-      }
-
-      const { data: quotesData, error: quotesError } = await supabase
+      const { data, error } = await supabase
         .from('quotes')
         .select('*')
-        .in('service_request_id', requestIds)
+        .eq('customer_user_id', user?.id)
         .order('created_at', { ascending: false });
 
-      if (quotesError) throw quotesError;
-
-      const quotesWithRequests = quotesData?.map(quote => ({
-        ...quote,
-        service_request: requests?.find(r => r.id === quote.service_request_id)!,
-      })) || [];
-
-      setQuotes(quotesWithRequests);
+      if (error) throw error;
+      setQuotes(data || []);
     } catch (error) {
       console.error('Error loading quotes:', error);
     } finally {
@@ -63,23 +43,15 @@ export function QuotesList({ sidebarSections, onBack }: QuotesListProps = {}) {
     }
   };
 
-  const getServiceLabel = (type: string) => {
-    switch (type) {
-      case 'moving': return 'Moving';
-      case 'junk_removal': return 'Junk Removal';
-      case 'demolition': return 'Demolition';
-      default: return type;
-    }
-  };
-
   const getStatusBadge = (status: string) => {
-    const styles = {
+    const styles: Record<string, string> = {
       sent: 'bg-blue-100 text-blue-700',
       accepted: 'bg-green-100 text-green-700',
       declined: 'bg-red-100 text-red-700',
       expired: 'bg-gray-100 text-gray-700',
+      draft: 'bg-yellow-100 text-yellow-700',
     };
-    return styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-700';
+    return styles[status] || 'bg-gray-100 text-gray-700';
   };
 
   const formatDate = (dateString: string) => {
@@ -94,18 +66,10 @@ export function QuotesList({ sidebarSections, onBack }: QuotesListProps = {}) {
     try {
       const { error } = await supabase
         .from('quotes')
-        .update({ status: 'accepted' })
+        .update({ status: 'accepted', accepted_at: new Date().toISOString(), accepted_method: 'magic_link' })
         .eq('id', quoteId);
 
       if (error) throw error;
-
-      const { error: requestError } = await supabase
-        .from('service_requests')
-        .update({ status: 'accepted' })
-        .eq('id', selectedQuote?.service_request_id);
-
-      if (requestError) throw requestError;
-
       loadQuotes();
       setSelectedQuote(null);
     } catch (error) {
@@ -118,7 +82,7 @@ export function QuotesList({ sidebarSections, onBack }: QuotesListProps = {}) {
     setRejecting(true);
 
     try {
-      const updateData: any = { status: 'declined' };
+      const updateData: any = { status: 'declined', declined_at: new Date().toISOString() };
       if (rejectReason.trim()) {
         updateData.notes = selectedQuote?.notes
           ? `${selectedQuote.notes}\n\nCustomer declined: ${rejectReason}`
@@ -131,13 +95,6 @@ export function QuotesList({ sidebarSections, onBack }: QuotesListProps = {}) {
         .eq('id', selectedQuote?.id);
 
       if (error) throw error;
-
-      const { error: requestError } = await supabase
-        .from('service_requests')
-        .update({ status: 'cancelled' })
-        .eq('id', selectedQuote?.service_request_id);
-
-      if (requestError) throw requestError;
 
       setShowRejectModal(false);
       setRejectReason('');
@@ -177,7 +134,7 @@ export function QuotesList({ sidebarSections, onBack }: QuotesListProps = {}) {
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-1">Quote #{selectedQuote.quote_number}</h2>
                 <p className="text-gray-600">
-                  {getServiceLabel(selectedQuote.service_request.service_type)} - {selectedQuote.service_request.location_address}
+                  {formatDate(selectedQuote.created_at)}
                 </p>
               </div>
               <span className={`px-3 py-1.5 text-sm font-semibold rounded-full ${getStatusBadge(selectedQuote.status)}`}>
@@ -352,13 +309,22 @@ export function QuotesList({ sidebarSections, onBack }: QuotesListProps = {}) {
 
         {loading ? (
           <Card className="p-8 text-center">
+            <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p className="text-gray-500">Loading quotes...</p>
           </Card>
         ) : quotes.length === 0 ? (
-          <Card className="p-8 text-center">
-            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No quotes yet</p>
-            <p className="text-sm text-gray-400 mt-2">Request a service to receive a quote</p>
+          <Card className="p-12 text-center">
+            <FileText className="w-14 h-14 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Quotes Yet</h3>
+            <p className="text-gray-500 mb-6">Request a service and we'll send you a personalized quote.</p>
+            <Button
+              variant="primary"
+              onClick={() => window.location.href = '/quote'}
+              className="inline-flex items-center gap-2"
+            >
+              <PlusCircle className="w-4 h-4" />
+              Get a Quote
+            </Button>
           </Card>
         ) : (
           <div className="grid grid-cols-1 gap-4">
@@ -371,15 +337,12 @@ export function QuotesList({ sidebarSections, onBack }: QuotesListProps = {}) {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <div className="flex items-center gap-3 mb-2">
-                      <span className="px-3 py-1 text-sm font-semibold bg-orange-100 text-orange-700 rounded-full">
-                        {getServiceLabel(quote.service_request.service_type)}
-                      </span>
                       <span className={`px-3 py-1 text-sm font-semibold rounded-full ${getStatusBadge(quote.status)}`}>
                         {quote.status.charAt(0).toUpperCase() + quote.status.slice(1)}
                       </span>
                     </div>
                     <p className="font-semibold text-gray-900">Quote #{quote.quote_number}</p>
-                    <p className="text-sm text-gray-600">{quote.service_request.location_address}</p>
+                    <p className="text-sm text-gray-500">{formatDate(quote.created_at)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-orange-600">
