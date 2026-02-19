@@ -1,6 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase, fetchPricingSettings, PricingServiceType } from '../../lib/supabase';
+import { supabase, fetchPricingSettings, PricingServiceType, logAudit } from '../../lib/supabase';
 import { logActivity } from '../../lib/activityLogger';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
@@ -827,6 +827,22 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
       await supabase.from(tableName).update({ status: 'quoted' }).eq('id', leadId);
 
       const currentContact = resolvedLead();
+
+      logAudit({
+        action_key: 'quote_sent',
+        entity_type: 'quote',
+        entity_id: currentQuoteId ?? undefined,
+        message: `Quote sent to ${currentContact.contact_name}`,
+        metadata: {
+          lead_id: leadId,
+          lead_type: leadType,
+          recipient_email: currentContact.contact_email,
+          recipient_phone: currentContact.contact_phone,
+          estimate_low: estimateResult?.estimate_low ?? null,
+          estimate_high: estimateResult?.estimate_high ?? null,
+        },
+        actor_role: 'admin',
+      });
 
       await logActivity({
         action: 'sent',

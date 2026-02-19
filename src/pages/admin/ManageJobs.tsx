@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase, Job, Quote, ServiceRequest, Profile, CrewAssignment } from '../../lib/supabase';
+import { supabase, Job, Quote, ServiceRequest, Profile, CrewAssignment, logAudit } from '../../lib/supabase';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
@@ -237,6 +237,22 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
 
       if (error) throw error;
 
+      if (isOpenForClaims !== wasOpenForClaims) {
+        logAudit({
+          action_key: 'job_marketplace_toggle',
+          entity_type: 'job',
+          entity_id: selectedJob.id,
+          message: isOpenForClaims ? 'Job posted to marketplace' : 'Job removed from marketplace',
+          metadata: {
+            is_open_for_claims: isOpenForClaims,
+            scheduled_date: scheduledDate || null,
+            service_type: selectedJob.service_type,
+            customer_name: selectedJob.customer_name,
+          },
+          actor_role: 'admin',
+        });
+      }
+
       await loadJobs();
       const updatedJob = jobs.find(j => j.id === selectedJob.id);
       if (updatedJob) {
@@ -414,6 +430,22 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
       } catch (_enqueueErr) {
         // Non-fatal
       }
+
+      logAudit({
+        action_key: 'job_finalized',
+        entity_type: 'job',
+        entity_id: selectedJob.id,
+        message: `Job finalized and scheduled for ${scheduledDate}`,
+        metadata: {
+          scheduled_date: scheduledDate,
+          scheduled_time: scheduledTime || null,
+          drivers_needed: driversNeeded,
+          helpers_needed: helpersNeeded,
+          customer_name: selectedJob.customer_name,
+          service_type: selectedJob.service_type,
+        },
+        actor_role: 'admin',
+      });
 
       await loadJobs();
       setSelectedJob(null);

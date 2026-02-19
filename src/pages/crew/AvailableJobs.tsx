@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase, Job, Quote, ServiceRequest, CrewAssignment } from '../../lib/supabase';
+import { supabase, Job, Quote, ServiceRequest, CrewAssignment, logAudit } from '../../lib/supabase';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
@@ -125,6 +125,20 @@ export function AvailableJobs({ sidebarSections, onBack }: AvailableJobsProps = 
       if (error) {
         throw error;
       }
+
+      logAudit({
+        action_key: 'job_claimed',
+        entity_type: 'job',
+        entity_id: selectedJob.id,
+        message: `Crew claimed ${role} position on job`,
+        metadata: {
+          role,
+          scheduled_date: selectedJob.scheduled_date || null,
+          service_type: selectedJob.service_request.service_type,
+          crew_name: crewName,
+        },
+        actor_role: 'crew',
+      });
 
       // Enqueue job_claimed admin notification (fire-and-forget)
       try {

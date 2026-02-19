@@ -563,6 +563,43 @@ export async function upsertPricingSettings(
   }
 }
 
+export interface LogAuditParams {
+  action_key: string;
+  entity_type: string;
+  entity_id?: string | null;
+  message?: string | null;
+  metadata?: Record<string, unknown> | null;
+  actor_role?: string | null;
+}
+
+export async function logAudit(params: LogAuditParams): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    let role: string | null = params.actor_role ?? null;
+    if (!role) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+      role = profile?.role ?? null;
+    }
+
+    await supabase.from('audit_log').insert({
+      actor_user_id: user.id,
+      actor_role: role,
+      action_key: params.action_key,
+      entity_type: params.entity_type,
+      entity_id: params.entity_id ?? null,
+      message: params.message ?? null,
+      metadata: params.metadata ?? null,
+    });
+  } catch (_) {
+  }
+}
+
 export async function logNotification(
   queueItem: NotificationQueueItem,
   status: NotificationQueueStatus,

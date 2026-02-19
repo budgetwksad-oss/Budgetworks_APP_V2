@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase, PublicQuoteRequest, ServiceRequest } from '../../lib/supabase';
+import { supabase, PublicQuoteRequest, ServiceRequest, logAudit } from '../../lib/supabase';
 import { logActivity } from '../../lib/activityLogger';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
@@ -120,6 +120,15 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
         resourceId: id,
         description: `Lead status changed to ${getStatusLabel(newStatus)}`,
         metadata: { old_status: selectedRequest?.status, new_status: newStatus }
+      });
+
+      logAudit({
+        action_key: 'lead_status_changed',
+        entity_type: type === 'public_quote_request' ? 'lead' : 'service_request',
+        entity_id: id,
+        message: `Lead status changed to ${getStatusLabel(newStatus)}`,
+        metadata: { old_status: selectedRequest?.status, new_status: newStatus },
+        actor_role: 'admin',
       });
 
       await loadRequests();
