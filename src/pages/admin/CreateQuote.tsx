@@ -30,7 +30,9 @@ import {
   ChevronDown,
   ChevronUp,
   Pencil,
+  Download,
 } from 'lucide-react';
+import { downloadQuotePDF } from '../../lib/quotePDF';
 
 export type UnifiedRequest = {
   id: string;
@@ -585,6 +587,51 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
     setEstimateHigh(String(result.estimate_high));
   };
 
+  const handleDownloadPDF = async () => {
+    let companyName = 'BudgetWorks';
+    let companyPhone: string | null = null;
+    let companyEmail: string | null = null;
+    let companyAddress: string | null = null;
+    try {
+      const { data } = await supabase
+        .from('company_settings')
+        .select('business_name,phone,email,address,tax_rate')
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (data) {
+        companyName = data.business_name || companyName;
+        companyPhone = data.phone;
+        companyEmail = data.email;
+        companyAddress = data.address;
+      }
+    } catch (_) {}
+
+    const contact = resolvedLead();
+    const low = manualOverride && estimateLow ? parseFloat(estimateLow) : estimateResult?.estimate_low ?? parseFloat(estimateLow) ?? 0;
+    const high = manualOverride && estimateHigh ? parseFloat(estimateHigh) : estimateResult?.estimate_high ?? parseFloat(estimateHigh) ?? 0;
+
+    downloadQuotePDF({
+      date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      customerName: contact.contact_name || 'Customer',
+      customerEmail: contact.contact_email || null,
+      customerPhone: contact.contact_phone || null,
+      serviceLabel: getServiceLabel(serviceType),
+      location: contact.location_address,
+      preferredDate: contact.preferred_date,
+      estimateLow: low,
+      estimateHigh: high,
+      expectedPrice: estimateResult?.expected_price ?? null,
+      capAmount: capAmount ? parseFloat(capAmount) : null,
+      taxRate: taxRate,
+      notes: notes || null,
+      companyName,
+      companyPhone,
+      companyEmail,
+      companyAddress,
+    });
+  };
+
   const handleCopy = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
     setCopied(type);
@@ -1124,6 +1171,16 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
                 <div className="flex gap-3 pt-4 border-t">
                   <Button type="button" variant="ghost" onClick={onBack} disabled={loading}>
                     Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleDownloadPDF}
+                    disabled={!estimateResult && !estimateLow && !estimateHigh}
+                    className="flex items-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download PDF
                   </Button>
                   <Button type="button" variant="secondary" onClick={handleSaveDraft} disabled={loading}>
                     {loading ? 'Saving...' : 'Save Draft'}
