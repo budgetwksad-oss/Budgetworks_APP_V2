@@ -600,6 +600,8 @@ export interface LogAuditParams {
   action_key: string;
   entity_type: string;
   entity_id?: string | null;
+  job_id?: string | null;
+  quote_id?: string | null;
   message?: string | null;
   metadata?: Record<string, unknown> | null;
   actor_role?: string | null;
@@ -626,6 +628,8 @@ export async function logAudit(params: LogAuditParams): Promise<void> {
       action_key: params.action_key,
       entity_type: params.entity_type,
       entity_id: params.entity_id ?? null,
+      job_id: params.job_id ?? null,
+      quote_id: params.quote_id ?? null,
       message: params.message ?? null,
       metadata: params.metadata ?? null,
     });

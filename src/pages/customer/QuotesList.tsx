@@ -1,6 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase, Quote } from '../../lib/supabase';
+import { supabase, Quote, logAudit } from '../../lib/supabase';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
@@ -69,6 +69,16 @@ export function QuotesList({ sidebarSections, onBack }: QuotesListProps = {}) {
         .eq('id', quoteId);
 
       if (error) throw error;
+
+      logAudit({
+        action_key: 'quote_accepted',
+        entity_type: 'quote',
+        entity_id: quoteId,
+        quote_id: quoteId,
+        message: 'Quote accepted by customer',
+        actor_role: 'customer',
+      });
+
       loadQuotes();
       setSelectedQuote(null);
     } catch (error) {
@@ -94,6 +104,16 @@ export function QuotesList({ sidebarSections, onBack }: QuotesListProps = {}) {
         .eq('id', selectedQuote?.id);
 
       if (error) throw error;
+
+      logAudit({
+        action_key: 'quote_declined',
+        entity_type: 'quote',
+        entity_id: selectedQuote?.id ?? undefined,
+        quote_id: selectedQuote?.id ?? null,
+        message: 'Quote declined by customer',
+        metadata: rejectReason.trim() ? { reason: rejectReason.trim() } : undefined,
+        actor_role: 'customer',
+      });
 
       setShowRejectModal(false);
       setRejectReason('');

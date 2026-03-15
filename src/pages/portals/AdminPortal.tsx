@@ -27,7 +27,8 @@ import {
   Mail,
   TrendingUp,
   TrendingDown,
-  Wrench
+  Wrench,
+  ShieldCheck
 } from 'lucide-react';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { supabase, ServiceRequest, PublicQuoteRequest } from '../../lib/supabase';
@@ -42,6 +43,7 @@ import { NotificationsOutbox } from '../admin/NotificationsOutbox';
 import { NotificationsTemplates } from '../admin/NotificationsTemplates';
 import { Reports } from '../admin/Reports';
 import { ContactMessages } from '../admin/ContactMessages';
+import { AuditLogs } from '../admin/AuditLogs';
 
 type Page =
   | 'dashboard'
@@ -54,6 +56,7 @@ type Page =
   | 'notifications'
   | 'reports'
   | 'contact-messages'
+  | 'audit-logs'
   | 'settings';
 
 type LeadRow = (ServiceRequest | PublicQuoteRequest) & { _kind?: 'public' };
@@ -330,6 +333,12 @@ export function AdminPortal() {
           onClick: () => setCurrentPage('reports')
         },
         {
+          id: 'audit-logs',
+          label: 'Audit Logs',
+          icon: ShieldCheck,
+          onClick: () => setCurrentPage('audit-logs')
+        },
+        {
           id: 'contact-messages',
           label: 'Contact Messages',
           icon: Mail,
@@ -427,6 +436,15 @@ export function AdminPortal() {
   if (currentPage === 'reports') {
     return (
       <Reports
+        onBack={() => setCurrentPage('dashboard')}
+      />
+    );
+  }
+
+  if (currentPage === 'audit-logs') {
+    return (
+      <AuditLogs
+        sidebarSections={sidebarSections}
         onBack={() => setCurrentPage('dashboard')}
       />
     );

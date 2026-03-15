@@ -331,6 +331,16 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
         return;
       }
 
+      logAudit({
+        action_key: 'crew_assigned',
+        entity_type: 'job',
+        entity_id: selectedJob.id,
+        job_id: selectedJob.id,
+        message: `Crew member assigned as ${selectedRole}`,
+        metadata: { role: selectedRole, service_type: selectedJob.service_type },
+        actor_role: 'admin',
+      });
+
       setSelectedCrewForAssignment('');
       await refreshSelectedJob(selectedJob.id);
     } catch (error) {
@@ -451,9 +461,10 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
       }
 
       logAudit({
-        action_key: 'job_finalized',
+        action_key: 'job_created',
         entity_type: 'job',
         entity_id: selectedJob.id,
+        job_id: selectedJob.id,
         message: `Job finalized and scheduled for ${scheduledDate}`,
         metadata: {
           scheduled_date: scheduledDate,
@@ -530,6 +541,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
         action_key: 'job_started',
         entity_type: 'job',
         entity_id: selectedJob.id,
+        job_id: selectedJob.id,
         message: 'Job marked as in progress',
         metadata: { customer_name: selectedJob.customer_name, service_type: selectedJob.service_type },
         actor_role: 'admin',
@@ -593,6 +605,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
         action_key: 'job_cancelled',
         entity_type: 'job',
         entity_id: selectedJob.id,
+        job_id: selectedJob.id,
         message: `Job cancelled for ${selectedJob.customer_name}`,
         metadata: { customer_name: selectedJob.customer_name, service_type: selectedJob.service_type },
         actor_role: 'admin',
@@ -766,6 +779,16 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
             remaining_margin: completionMargin,
           })
           .eq('id', selectedJob.id);
+
+        logAudit({
+          action_key: 'job_completed',
+          entity_type: 'job',
+          entity_id: selectedJob.id,
+          job_id: selectedJob.id,
+          message: `Job completed for ${selectedJob.customer_name}`,
+          metadata: { service_type: selectedJob.service_type, crew_cost: completionCrewCost, remaining_margin: completionMargin },
+          actor_role: 'admin',
+        });
       }
 
       const { data: invData, error: invError } = await supabase
@@ -834,6 +857,16 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
       } catch {
         notificationWarning = 'Invoice created but notification could not be queued.';
       }
+
+      logAudit({
+        action_key: 'invoice_sent',
+        entity_type: 'invoice',
+        entity_id: invoiceId,
+        job_id: selectedJob.id,
+        message: `Invoice sent for job — ${selectedJob.customer_name}`,
+        metadata: { invoice_total: totalNum, customer_name: selectedJob.customer_name },
+        actor_role: 'admin',
+      });
 
       setInvoiceModal(s => ({
         ...s,

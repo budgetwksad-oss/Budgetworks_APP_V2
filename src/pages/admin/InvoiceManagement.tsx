@@ -4,7 +4,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { DollarSign, Search, X, Plus, Eye, Calendar, User, FileText, CreditCard, Download, Send, AlertCircle, CheckSquare, Square, Mail, Link, Copy, Check, AlertTriangle, RefreshCw, Lock } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabase, logAudit } from '../../lib/supabase';
 import { downloadInvoicePDF } from '../../lib/invoicePDF';
 import { updateOverdueInvoices, isInvoiceOverdue, getDaysOverdue } from '../../lib/invoiceUtils';
 
@@ -481,6 +481,16 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
 
       await Promise.allSettled([enqueueCustomer(), enqueueAdmin()]);
 
+      logAudit({
+        action_key: 'payment_received',
+        entity_type: 'invoice',
+        entity_id: selectedInvoice.id,
+        job_id: selectedInvoice.job_id || null,
+        message: `Payment of $${amount.toFixed(2)} received for invoice ${selectedInvoice.invoice_number}`,
+        metadata: { amount, payment_method: paymentData.payment_method, invoice_number: selectedInvoice.invoice_number, new_status: newStatus },
+        actor_role: 'admin',
+      });
+
       setShowPaymentModal(false);
       await loadInvoiceDetails(selectedInvoice.id);
       await loadInvoices();
@@ -556,6 +566,16 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
         await loadInvoiceDetails(invoice.id);
         await loadInvoices();
       }
+
+      logAudit({
+        action_key: 'invoice_sent',
+        entity_type: 'invoice',
+        entity_id: invoice.id,
+        job_id: invoice.job_id || null,
+        message: `Invoice ${invoice.invoice_number} sent to customer`,
+        metadata: { invoice_number: invoice.invoice_number, total_amount: invoice.total_amount },
+        actor_role: 'admin',
+      });
 
       showToast('success', 'Invoice sent successfully!');
     } catch (err: any) {

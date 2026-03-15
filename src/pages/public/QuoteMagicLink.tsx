@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase, logAudit } from '../../lib/supabase';
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { ServiceAgreementModal } from '../../components/ui/ServiceAgreementModal';
 import { CheckCircle, XCircle, Clock, DollarSign, MapPin, Briefcase, AlertCircle, type LucideIcon } from 'lucide-react';
@@ -109,6 +109,17 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
 
       setShowAgreement(false);
       setResponse('accept');
+
+      if (quote) {
+        logAudit({
+          action_key: 'quote_accepted',
+          entity_type: 'quote',
+          entity_id: quote.quote_id,
+          quote_id: quote.quote_id,
+          message: 'Quote accepted via magic link',
+          actor_role: 'customer',
+        });
+      }
     } catch (err) {
       console.error('Error:', err);
       setActionError('There was an error processing your response. Please try again.');
@@ -139,6 +150,17 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
       }
 
       setResponse('decline');
+
+      if (quote) {
+        logAudit({
+          action_key: 'quote_declined',
+          entity_type: 'quote',
+          entity_id: quote.quote_id,
+          quote_id: quote.quote_id,
+          message: 'Quote declined via magic link',
+          actor_role: 'customer',
+        });
+      }
     } catch (err) {
       console.error('Error:', err);
       setActionError('There was an error processing your response. Please try again.');

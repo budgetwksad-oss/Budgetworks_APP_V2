@@ -1135,6 +1135,16 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
         metadata: { quote_id: savedQuoteId, estimate_low: payload.estimate_low, estimate_high: payload.estimate_high },
       });
 
+      logAudit({
+        action_key: 'quote_created',
+        entity_type: 'quote',
+        entity_id: savedQuoteId ?? undefined,
+        quote_id: savedQuoteId ?? null,
+        message: `Quote ${payload.quote_number} created`,
+        metadata: { estimate_low: payload.estimate_low, estimate_high: payload.estimate_high, lead_type: leadType },
+        actor_role: 'admin',
+      });
+
       setDraftSaved(true);
       setTimeout(() => setDraftSaved(false), 4000);
     } catch (err) {
@@ -1190,6 +1200,7 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
         action_key: 'quote_sent',
         entity_type: 'quote',
         entity_id: currentQuoteId ?? undefined,
+        quote_id: currentQuoteId ?? null,
         message: `Quote sent to ${currentContact.contact_name}`,
         metadata: {
           lead_id: leadId,
