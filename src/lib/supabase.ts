@@ -668,6 +668,25 @@ export async function logNotification(
   }
 }
 
+export async function triggerNotificationDispatch(): Promise<void> {
+  try {
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
+    await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/dispatch-notifications`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+  } catch {
+    // non-fatal
+  }
+}
+
 export async function getNotificationDeliveryStats(): Promise<{
   data: { pending: number; sent: number; failed: number; cancelled: number } | null;
   error: unknown;

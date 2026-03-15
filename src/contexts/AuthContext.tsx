@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase, Profile } from '../lib/supabase';
+import { supabase, Profile, triggerNotificationDispatch } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -120,6 +120,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (role === 'customer') {
         void Promise.resolve(supabase.rpc('link_guest_records_to_user')).catch(() => {});
+
+        void (async () => {
+          try {
+            const { data: settings } = await supabase
+              .from('company_settings')
+              .select('phone')
+              .order('created_at', { ascending: true })
+              .limit(1)
+              .maybeSingle();
+
+            await supabase.rpc('enqueue_notification', {
+              p_event_key: 'welcome_customer',
+              p_audience: 'customer',
+              p_channel: 'email',
+              p_service_type: null,
+              p_to_email: email,
+              p_to_phone: '',
+              p_payload: {
+                customer_name: fullName,
+                company_phone: settings?.phone || '',
+              },
+            });
+            void triggerNotificationDispatch();
+          } catch {
+            // non-fatal
+          }
+        })();
       }
 
       return { error: null };

@@ -34,9 +34,9 @@ Deno.serve(async (req: Request) => {
       .from("notification_queue")
       .select("*")
       .eq("status", "pending")
-      .lte("scheduled_for", new Date().toISOString())
       .eq("channel", "email")
-      .order("scheduled_for", { ascending: true })
+      .lte("scheduled_for", new Date().toISOString())
+      .order("created_at", { ascending: true })
       .limit(50);
 
     if (fetchError) throw fetchError;

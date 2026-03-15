@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase, logAudit } from '../../lib/supabase';
+import { supabase, logAudit, triggerNotificationDispatch } from '../../lib/supabase';
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { ServiceAgreementModal } from '../../components/ui/ServiceAgreementModal';
 import { CheckCircle, XCircle, Clock, DollarSign, MapPin, Briefcase, AlertCircle, type LucideIcon } from 'lucide-react';
@@ -109,6 +109,7 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
 
       setShowAgreement(false);
       setResponse('accept');
+      void triggerNotificationDispatch();
 
       if (quote) {
         logAudit({
@@ -150,6 +151,7 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
       }
 
       setResponse('decline');
+      void triggerNotificationDispatch();
 
       if (quote) {
         logAudit({

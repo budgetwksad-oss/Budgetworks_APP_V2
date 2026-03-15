@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase, fetchPricingSettings, PricingServiceType, logAudit } from '../../lib/supabase';
+import { supabase, fetchPricingSettings, PricingServiceType, logAudit, triggerNotificationDispatch } from '../../lib/supabase';
 import { logActivity } from '../../lib/activityLogger';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
@@ -1278,6 +1278,7 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
             },
           });
         }
+        void triggerNotificationDispatch();
       } catch {
         // non-fatal: notification enqueue failure
       }
