@@ -140,10 +140,6 @@ export interface EstimateResult {
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
-function _applyTax(amount: number, taxRate: number): number {
-  return amount * (1 + taxRate);
-}
-
 function midpoint(low: number, high: number): number {
   return Math.round((low + high) / 2);
 }

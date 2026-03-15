@@ -13,7 +13,6 @@ import {
   Clock,
   Upload
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { FileAttachments } from '../../components/ui/FileAttachments';
 
@@ -31,7 +30,6 @@ interface JobDetail {
 }
 
 export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void }) {
-  const { user } = useAuth();
   const [job, setJob] = useState<JobDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);

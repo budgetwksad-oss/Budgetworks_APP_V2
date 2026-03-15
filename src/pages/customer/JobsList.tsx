@@ -5,7 +5,7 @@ import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { ArrowLeft, Briefcase, Calendar, Clock, MapPin, Image as ImageIcon, CheckCircle, Package, Star, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Briefcase, Calendar, MapPin, Image as ImageIcon, CheckCircle, Star, MessageSquare } from 'lucide-react';
 import { JobFeedbackModal } from '../../components/ui/JobFeedbackModal';
 
 type JobWithDetails = Job & {

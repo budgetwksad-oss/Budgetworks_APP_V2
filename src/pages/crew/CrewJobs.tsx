@@ -15,10 +15,9 @@ type JobWithDetails = Job & {
 interface CrewJobsProps {
   sidebarSections?: MenuSection[];
   onBack?: () => void;
-  onViewJob?: (jobId: string) => void;
 }
 
-export function CrewJobs({ sidebarSections, onBack, onViewJob }: CrewJobsProps = {}) {
+export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
   const { user } = useAuth();
   const [myJobs, setMyJobs] = useState<JobWithDetails[]>([]);
   const [selectedJob, setSelectedJob] = useState<JobWithDetails | null>(null);

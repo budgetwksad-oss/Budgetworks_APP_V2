@@ -5,7 +5,6 @@ import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
 import { ArrowLeft, FileText, Calendar, DollarSign, X, PlusCircle } from 'lucide-react';
 
 interface QuotesListProps {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase, Job, Quote, ServiceRequest, CrewAssignment, logAudit } from '../../lib/supabase';
+import { supabase, Job, Quote, ServiceRequest, logAudit } from '../../lib/supabase';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
@@ -117,7 +117,7 @@ export function AvailableJobs({ sidebarSections, onBack }: AvailableJobsProps = 
     setErrorMessage(null);
 
     try {
-      const { data, error } = await supabase.rpc('claim_job_position', {
+      const { error } = await supabase.rpc('claim_job_position', {
         p_job_id: selectedJob.id,
         p_role: role,
       });

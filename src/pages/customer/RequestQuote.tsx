@@ -50,7 +50,7 @@ export function RequestQuote({ onClose, onSuccess }: RequestQuoteProps) {
       const fileExt = photo.name.split('.').pop();
       const fileName = `${user?.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('service-photos')
         .upload(fileName, photo);
 

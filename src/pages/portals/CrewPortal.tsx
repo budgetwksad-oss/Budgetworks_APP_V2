@@ -42,7 +42,7 @@ export function CrewPortal() {
     isCurrentlyClockedIn: false
   });
   const [todayJobs, setTodayJobs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   useEffect(() => {
     loadMetrics();
@@ -175,10 +175,6 @@ export function CrewPortal() {
       <CrewJobs
         sidebarSections={sidebarSections}
         onBack={() => setCurrentPage('dashboard')}
-        onViewJob={(jobId) => {
-          setSelectedJobId(jobId);
-          setCurrentPage('job-detail');
-        }}
       />
     );
   }
