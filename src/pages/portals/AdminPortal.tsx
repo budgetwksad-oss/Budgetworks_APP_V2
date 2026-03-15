@@ -24,7 +24,10 @@ import {
   Clock,
   CheckCircle2,
   Circle,
-  Mail
+  Mail,
+  TrendingUp,
+  TrendingDown,
+  Wrench
 } from 'lucide-react';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { supabase, ServiceRequest, PublicQuoteRequest } from '../../lib/supabase';
@@ -67,6 +70,10 @@ interface OpsData {
   inProgressJobs: JobRow[];
   needsCrewJobs: JobRow[];
   overdueInvoices: InvoiceRow[];
+  completedJobsCount: number;
+  totalRevenue: number;
+  totalCrewCost: number;
+  totalRemainingMargin: number;
 }
 
 type JobRow = {
@@ -148,6 +155,10 @@ export function AdminPortal() {
     inProgressJobs: [],
     needsCrewJobs: [],
     overdueInvoices: [],
+    completedJobsCount: 0,
+    totalRevenue: 0,
+    totalCrewCost: 0,
+    totalRemainingMargin: 0,
   });
 
   useEffect(() => {
@@ -169,6 +180,7 @@ export function AdminPortal() {
         jobsRes,
         invoicesRes,
         contactMsgsRes,
+        completedJobsRes,
       ] = await Promise.all([
         supabase
           .from('service_requests')
@@ -202,6 +214,10 @@ export function AdminPortal() {
           .from('contact_messages')
           .select('id', { count: 'exact' })
           .eq('status', 'new'),
+        supabase
+          .from('jobs')
+          .select('id, crew_cost, remaining_margin, invoices(total_amount)')
+          .eq('status', 'completed'),
       ]);
 
       const allJobs = jobsRes.data || [];
@@ -220,6 +236,15 @@ export function AdminPortal() {
         ...(guestLeadsRes.data || []).map((r: PublicQuoteRequest) => ({ ...r, _kind: 'public' as const })),
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 6);
 
+      const completedJobs = completedJobsRes.data || [];
+      const totalRevenue = completedJobs.reduce((sum, j) => {
+        const invoiceArr = (j as { invoices?: { total_amount?: number | null }[] }).invoices || [];
+        const jobInvoiceTotal = invoiceArr.reduce((s, inv) => s + (inv.total_amount || 0), 0);
+        return sum + jobInvoiceTotal;
+      }, 0);
+      const totalCrewCost = completedJobs.reduce((sum, j) => sum + (Number((j as { crew_cost?: number | null }).crew_cost) || 0), 0);
+      const totalRemainingMargin = parseFloat((totalRevenue - totalCrewCost).toFixed(2));
+
       setOps({
         newLeads: (customerLeadsRes.data?.length || 0) + (guestLeadsRes.data?.length || 0),
         pendingQuotes: quotesRes.data?.length || 0,
@@ -232,6 +257,10 @@ export function AdminPortal() {
         inProgressJobs: inProgress.slice(0, 5),
         needsCrewJobs: needsCrew.slice(0, 5),
         overdueInvoices: invoicesRes.data || [],
+        completedJobsCount: completedJobs.length,
+        totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+        totalCrewCost: parseFloat(totalCrewCost.toFixed(2)),
+        totalRemainingMargin,
       });
     } catch (err) {
       console.error('Error loading ops data:', err);
@@ -576,6 +605,51 @@ export function AdminPortal() {
               </button>
             );
           })}
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            {
+              label: 'Completed Jobs',
+              value: ops.completedJobsCount,
+              display: String(loading ? '—' : ops.completedJobsCount),
+              icon: CheckCircle2,
+              iconClass: 'text-gray-600 bg-gray-100',
+              valueClass: 'text-gray-900',
+            },
+            {
+              label: 'Total Revenue',
+              value: ops.totalRevenue,
+              display: loading ? '—' : `$${ops.totalRevenue.toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+              icon: DollarSign,
+              iconClass: 'text-blue-600 bg-blue-100',
+              valueClass: 'text-blue-700',
+            },
+            {
+              label: 'Total Crew Cost',
+              value: ops.totalCrewCost,
+              display: loading ? '—' : `$${ops.totalCrewCost.toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+              icon: Wrench,
+              iconClass: 'text-amber-600 bg-amber-100',
+              valueClass: 'text-amber-700',
+            },
+            {
+              label: 'Remaining Margin',
+              value: ops.totalRemainingMargin,
+              display: loading ? '—' : `$${ops.totalRemainingMargin.toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+              icon: ops.totalRemainingMargin >= 0 ? TrendingUp : TrendingDown,
+              iconClass: ops.totalRemainingMargin >= 0 ? 'text-green-600 bg-green-100' : 'text-red-600 bg-red-100',
+              valueClass: ops.totalRemainingMargin >= 0 ? 'text-green-700' : 'text-red-700',
+            },
+          ].map(({ label, display, icon: Icon, iconClass, valueClass }) => (
+            <div key={label} className="bg-white border border-gray-200 rounded-xl p-4">
+              <div className={`inline-flex p-2 rounded-lg mb-3 ${iconClass}`}>
+                <Icon className="w-4 h-4" />
+              </div>
+              <p className={`text-2xl font-bold mb-1 ${valueClass}`}>{display}</p>
+              <p className="text-xs text-gray-500 leading-tight">{label}</p>
+            </div>
+          ))}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -751,6 +751,9 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
 
       if (invoiceModal.markCompleteOnCreate) {
         const completionCrewCost = calcCrewCost(crewHourlyRate, numberOfCrew, jobDurationHours);
+        const completionMargin = completionCrewCost != null
+          ? parseFloat((totalNum - completionCrewCost).toFixed(2))
+          : null;
         await supabase
           .from('jobs')
           .update({
@@ -760,6 +763,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
             number_of_crew: numberOfCrew !== '' ? Number(numberOfCrew) : null,
             job_duration_hours: jobDurationHours !== '' ? Number(jobDurationHours) : null,
             crew_cost: completionCrewCost,
+            remaining_margin: completionMargin,
           })
           .eq('id', selectedJob.id);
       }
@@ -1418,6 +1422,16 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
                   </div>
                 ) : (
                   <p className="text-sm text-gray-400 italic">Not set</p>
+                )}
+              </div>
+              <div>
+                <p className="text-gray-500 mb-1">Remaining Margin</p>
+                {selectedJob.remaining_margin != null ? (
+                  <p className={`font-medium ${selectedJob.remaining_margin >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                    ${Number(selectedJob.remaining_margin).toFixed(2)}
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">Not calculated</p>
                 )}
               </div>
               <div>

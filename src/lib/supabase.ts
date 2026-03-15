@@ -119,6 +119,7 @@ export type Job = {
   number_of_crew: number | null;
   job_duration_hours: number | null;
   crew_cost: number | null;
+  remaining_margin: number | null;
   marketplace_posted_at: string | null;
   internal_notes: string | null;
   completion_notes: string | null;
