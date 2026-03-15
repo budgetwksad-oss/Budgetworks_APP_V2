@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { PublicLayout } from '../../components/layout/PublicLayout';
+import { ServiceAgreementModal } from '../../components/ui/ServiceAgreementModal';
 import { CheckCircle, XCircle, Clock, DollarSign, MapPin, Briefcase, AlertCircle } from 'lucide-react';
 
 interface QuoteMagicLinkProps {
@@ -29,6 +30,7 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
   const [error, setError] = useState<string | null>(null);
   const [responding, setResponding] = useState(false);
   const [response, setResponse] = useState<'accept' | 'decline' | null>(null);
+  const [showAgreement, setShowAgreement] = useState(false);
 
   useEffect(() => {
     loadQuote();
@@ -77,13 +79,25 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
     }
   };
 
-  const handleResponse = async (action: 'accept' | 'decline') => {
+  const handleAcceptClick = () => {
+    setShowAgreement(true);
+  };
+
+  const handleAgreementAccept = async () => {
     try {
       setResponding(true);
 
+      await supabase
+        .from('quotes')
+        .update({
+          agreement_accepted: true,
+          agreement_accepted_at: new Date().toISOString(),
+        })
+        .eq('id', quote!.quote_id);
+
       const { error: rpcError } = await supabase.rpc('respond_to_quote_by_token_notify', {
         p_token: token,
-        p_action: action,
+        p_action: 'accept',
       });
 
       if (rpcError) {
@@ -92,7 +106,32 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
         return;
       }
 
-      setResponse(action);
+      setShowAgreement(false);
+      setResponse('accept');
+    } catch (err) {
+      console.error('Error:', err);
+      alert('There was an error processing your response. Please try again.');
+    } finally {
+      setResponding(false);
+    }
+  };
+
+  const handleDecline = async () => {
+    try {
+      setResponding(true);
+
+      const { error: rpcError } = await supabase.rpc('respond_to_quote_by_token_notify', {
+        p_token: token,
+        p_action: 'decline',
+      });
+
+      if (rpcError) {
+        console.error('Error responding to quote:', rpcError);
+        alert('There was an error processing your response. Please try again.');
+        return;
+      }
+
+      setResponse('decline');
     } catch (err) {
       console.error('Error:', err);
       alert('There was an error processing your response. Please try again.');
@@ -187,10 +226,11 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
                   <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-3">
-                  Quote Accepted
+                  Job Confirmed
                 </h1>
                 <p className="text-gray-600 mb-6 leading-relaxed">
-                  Thank you for accepting our quote. We'll confirm scheduling shortly and reach out to coordinate the details.
+                  Your quote has been accepted and your service agreement is on file. We'll confirm scheduling
+                  shortly and reach out to coordinate the details.
                 </p>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                   <p className="text-sm text-blue-900">
@@ -271,17 +311,17 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
                     <div className="text-sm text-gray-600 mb-2">Pricing</div>
                     {quote.estimate_low && quote.estimate_high ? (
                       <div className="text-2xl font-bold text-gray-900 mb-1">
-                        ${quote.estimate_low.toFixed(2)} - ${quote.estimate_high.toFixed(2)}
+                        ${quote.estimate_low.toFixed(2)} – ${quote.estimate_high.toFixed(2)} CAD
                       </div>
                     ) : quote.expected_price ? (
                       <div className="text-2xl font-bold text-gray-900 mb-1">
-                        ${quote.expected_price.toFixed(2)}
+                        ${quote.expected_price.toFixed(2)} CAD
                       </div>
                     ) : null}
 
                     {quote.cap_amount && (
                       <div className="text-sm text-gray-700 mt-2">
-                        Not-to-exceed: <span className="font-semibold">${quote.cap_amount.toFixed(2)}</span>
+                        Not-to-exceed: <span className="font-semibold">${quote.cap_amount.toFixed(2)} CAD</span>
                       </div>
                     )}
                   </div>
@@ -312,96 +352,110 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
   }
 
   return (
-    <PublicLayout currentPage="home" onNavigate={() => {}} onLogin={onLogin}>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-        <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8">
-          <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-3">Your Quote</h1>
-            <div className="flex justify-center">
-              {getStatusBadge(quote.status)}
-            </div>
-          </div>
-
-          <div className="space-y-6 mb-8">
-            <div className="bg-gray-50 rounded-lg p-6">
-              <div className="flex items-start gap-3 mb-4">
-                <Briefcase className="w-5 h-5 text-gray-600 mt-1" />
-                <div>
-                  <div className="text-sm text-gray-600 mb-1">Service Type</div>
-                  <div className="font-semibold text-gray-900">
-                    {getServiceTypeLabel(quote.service_type)}
-                  </div>
-                </div>
+    <>
+      <PublicLayout currentPage="home" onNavigate={() => {}} onLogin={onLogin}>
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+          <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8">
+            <div className="text-center mb-6">
+              <h1 className="text-3xl font-bold text-gray-900 mb-3">Your Quote</h1>
+              <div className="flex justify-center">
+                {getStatusBadge(quote.status)}
               </div>
+            </div>
 
-              {quote.location && (
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-5 h-5 text-gray-600 mt-1" />
+            <div className="space-y-6 mb-8">
+              <div className="bg-gray-50 rounded-lg p-6">
+                <div className="flex items-start gap-3 mb-4">
+                  <Briefcase className="w-5 h-5 text-gray-600 mt-1" />
                   <div>
-                    <div className="text-sm text-gray-600 mb-1">Location</div>
-                    <div className="font-semibold text-gray-900">{quote.location}</div>
+                    <div className="text-sm text-gray-600 mb-1">Service Type</div>
+                    <div className="font-semibold text-gray-900">
+                      {getServiceTypeLabel(quote.service_type)}
+                    </div>
                   </div>
                 </div>
-              )}
 
-              {!quote.location && (
-                <div className="text-sm text-gray-600">
-                  Details included in quote
-                </div>
-              )}
-            </div>
+                {quote.location && (
+                  <div className="flex items-start gap-3">
+                    <MapPin className="w-5 h-5 text-gray-600 mt-1" />
+                    <div>
+                      <div className="text-sm text-gray-600 mb-1">Location</div>
+                      <div className="font-semibold text-gray-900">{quote.location}</div>
+                    </div>
+                  </div>
+                )}
 
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
-              <div className="flex items-start gap-3">
-                <DollarSign className="w-6 h-6 text-orange-600 mt-1" />
-                <div className="flex-1">
-                  <div className="text-sm text-gray-600 mb-2">Estimated Total</div>
-                  {quote.estimate_low && quote.estimate_high ? (
-                    <div className="text-3xl font-bold text-gray-900 mb-1">
-                      ${quote.estimate_low.toFixed(2)} - ${quote.estimate_high.toFixed(2)}
-                    </div>
-                  ) : quote.expected_price ? (
-                    <div className="text-3xl font-bold text-gray-900 mb-1">
-                      ${quote.expected_price.toFixed(2)}
-                    </div>
-                  ) : null}
+                {!quote.location && (
+                  <div className="text-sm text-gray-600">
+                    Details included in quote
+                  </div>
+                )}
+              </div>
 
-                  {quote.cap_amount && (
-                    <div className="text-sm text-gray-700 mt-2 bg-white rounded px-3 py-2">
-                      Not-to-exceed: <span className="font-semibold">${quote.cap_amount.toFixed(2)}</span>
-                    </div>
-                  )}
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+                <div className="flex items-start gap-3">
+                  <DollarSign className="w-6 h-6 text-orange-600 mt-1" />
+                  <div className="flex-1">
+                    <div className="text-sm text-gray-600 mb-2">Estimated Total</div>
+                    {quote.estimate_low && quote.estimate_high ? (
+                      <div className="text-3xl font-bold text-gray-900 mb-1">
+                        ${quote.estimate_low.toFixed(2)} – ${quote.estimate_high.toFixed(2)} CAD
+                      </div>
+                    ) : quote.expected_price ? (
+                      <div className="text-3xl font-bold text-gray-900 mb-1">
+                        ${quote.expected_price.toFixed(2)} CAD
+                      </div>
+                    ) : null}
+
+                    {quote.cap_amount && (
+                      <div className="text-sm text-gray-700 mt-2 bg-white rounded px-3 py-2">
+                        Not-to-exceed: <span className="font-semibold">${quote.cap_amount.toFixed(2)} CAD</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="space-y-3">
-            <button
-              onClick={() => handleResponse('accept')}
-              disabled={responding}
-              className="w-full bg-green-600 text-white py-4 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              <CheckCircle className="w-5 h-5" />
-              {responding ? 'Processing...' : 'Accept Quote'}
-            </button>
-            <button
-              onClick={() => handleResponse('decline')}
-              disabled={responding}
-              className="w-full bg-gray-200 text-gray-700 py-4 rounded-lg font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              <XCircle className="w-5 h-5" />
-              Decline Quote
-            </button>
-          </div>
+            <div className="bg-gray-50 rounded-lg px-4 py-3 mb-6 text-sm text-gray-600 text-center">
+              Accepting this quote will prompt you to review and sign the BudgetWorks Service Agreement.
+            </div>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              Questions? Contact us to discuss any details
-            </p>
+            <div className="space-y-3">
+              <button
+                onClick={handleAcceptClick}
+                disabled={responding}
+                className="w-full bg-green-600 text-white py-4 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <CheckCircle className="w-5 h-5" />
+                {responding ? 'Processing...' : 'Accept Quote'}
+              </button>
+              <button
+                onClick={handleDecline}
+                disabled={responding}
+                className="w-full bg-gray-200 text-gray-700 py-4 rounded-lg font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <XCircle className="w-5 h-5" />
+                Decline Quote
+              </button>
+            </div>
+
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
+                Questions? Contact us to discuss any details
+              </p>
+            </div>
           </div>
         </div>
-      </div>
-    </PublicLayout>
+      </PublicLayout>
+
+      {showAgreement && (
+        <ServiceAgreementModal
+          onAccept={handleAgreementAccept}
+          onCancel={() => setShowAgreement(false)}
+          submitting={responding}
+        />
+      )}
+    </>
   );
 }
