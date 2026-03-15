@@ -57,6 +57,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
     reference: '',
     notes: '',
   });
+  const [paymentError, setPaymentError] = useState('');
   const [recordingPayment, setRecordingPayment] = useState(false);
   const [sendingInvoice, setSendingInvoice] = useState(false);
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
@@ -372,13 +373,14 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
   const handleRecordPayment = async () => {
     if (!selectedInvoice || !paymentData.amount) return;
 
+    setPaymentError('');
     const amount = parseFloat(paymentData.amount);
     if (isNaN(amount) || amount <= 0) {
-      alert('Please enter a valid payment amount');
+      setPaymentError('Please enter a valid payment amount.');
       return;
     }
     if (amount > selectedInvoice.remaining_balance + 0.005) {
-      alert('Payment amount cannot exceed remaining balance');
+      setPaymentError('Payment amount cannot exceed remaining balance.');
       return;
     }
 
@@ -775,7 +777,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Payment History</h3>
               {selectedInvoice.remaining_balance > 0 && (
-                <Button variant="primary" onClick={() => setShowPaymentModal(true)}>
+                <Button variant="primary" onClick={() => { setPaymentError(''); setShowPaymentModal(true); }}>
                   <Plus className="w-4 h-4 mr-2" />
                   Record Payment
                 </Button>
@@ -871,12 +873,17 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
                       Notes (optional)
                     </label>
                     <Input
-                      type="text"
+                      type="textarea"
+                      rows={2}
                       value={paymentData.notes}
                       onChange={(e) => setPaymentData({ ...paymentData, notes: e.target.value })}
                       placeholder="Any additional notes"
                     />
                   </div>
+
+                  {paymentError && (
+                    <p className="text-sm text-red-600">{paymentError}</p>
+                  )}
 
                   <div className="flex gap-3 pt-4">
                     <Button

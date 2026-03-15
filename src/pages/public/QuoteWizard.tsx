@@ -227,7 +227,9 @@ export function QuoteWizard({ onNavigate, onLogin, onSignup }: QuoteWizardProps)
     }
     if (step === 3) return true;
     if (step === 4) {
-      if (!state.contactName.trim() || !state.contactEmail.trim()) return false;
+      if (!state.contactName.trim()) return false;
+      const email = state.contactEmail.trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return false;
       if ((state.contactMethod === 'sms' || state.contactMethod === 'call') && !state.contactPhone.trim()) return false;
       return true;
     }

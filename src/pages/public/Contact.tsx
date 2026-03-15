@@ -42,8 +42,20 @@ export function Contact({ onNavigate, onLogin }: ContactProps) {
       message: formData.message.trim(),
     };
 
-    if (!trimmed.name || !trimmed.email || !trimmed.message) {
-      setError('Please fill in all required fields.');
+    if (!trimmed.name) {
+      setError('Full name is required.');
+      return;
+    }
+    if (!trimmed.email) {
+      setError('Email address is required.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed.email)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (!trimmed.message) {
+      setError('Message is required.');
       return;
     }
 

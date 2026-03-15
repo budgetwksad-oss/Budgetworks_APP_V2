@@ -997,6 +997,12 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
   const validatePhoneContact = () => {
     if (!phoneContact.contact_name.trim()) return 'Contact name is required';
     if (!phoneContact.location_address.trim()) return 'Location address is required';
+    const email = phoneContact.contact_email.trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Please enter a valid email address';
+    const method = phoneContact.preferred_contact_method;
+    if ((method === 'sms' || method === 'call') && !phoneContact.contact_phone.trim()) {
+      return 'Phone number is required for SMS/call contact method';
+    }
     return null;
   };
 

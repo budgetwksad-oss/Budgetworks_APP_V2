@@ -35,18 +35,56 @@ export function PublicQuoteForm({ onNavigate, onLogin }: PublicQuoteFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     setError('');
+
+    const trimmedName = formData.fullName.trim();
+    const trimmedEmail = formData.email.trim();
+    const trimmedPhone = formData.phone.trim();
+    const trimmedAddress = formData.address.trim();
+    const trimmedDescription = formData.description.trim();
+
+    if (!trimmedName) {
+      setError('Full name is required.');
+      return;
+    }
+    if (!trimmedEmail) {
+      setError('Email address is required.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (!trimmedPhone) {
+      setError('Phone number is required.');
+      return;
+    }
+    if (!formData.serviceType) {
+      setError('Please select a service type.');
+      return;
+    }
+    if (!trimmedAddress) {
+      setError('Service location address is required.');
+      return;
+    }
+    if (!trimmedDescription) {
+      setError('Project description is required.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const { error: insertError } = await supabase.from('public_quote_requests').insert({
-        contact_name: formData.fullName,
-        contact_email: formData.email,
-        contact_phone: formData.phone,
+        contact_name: trimmedName,
+        contact_email: trimmedEmail.toLowerCase(),
+        contact_phone: trimmedPhone,
         service_type: formData.serviceType,
-        location_address: formData.address,
+        location_address: trimmedAddress,
         preferred_date: formData.preferredDate || null,
-        description: formData.description,
+        description: trimmedDescription,
         preferred_contact_method: formData.preferredContactMethod,
         status: 'new',
       });
