@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Paperclip, Upload, Download, Eye, Trash2, FileText, Image as ImageIcon, File } from 'lucide-react';
+import { Paperclip, Upload, Download, Eye, Trash2, FileText, Image as ImageIcon, File, X } from 'lucide-react';
 import { Button } from './Button';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -33,6 +33,13 @@ export function FileAttachments({ entityType, entityId, allowUpload = true, titl
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   useEffect(() => {
     loadAttachments();
@@ -98,15 +105,18 @@ export function FileAttachments({ entityType, entityId, allowUpload = true, titl
       e.target.value = '';
     } catch (err: any) {
       console.error('Error uploading file:', err);
-      alert('Failed to upload file: ' + err.message);
+      showToast('error', 'Failed to upload file: ' + err.message);
     } finally {
       setUploading(false);
     }
   };
 
-  const handleDelete = async (attachmentId: string) => {
-    if (!confirm('Are you sure you want to delete this attachment?')) return;
+  const handleDelete = (attachmentId: string) => {
+    setConfirmDeleteId(attachmentId);
+  };
 
+  const confirmDelete = async (attachmentId: string) => {
+    setConfirmDeleteId(null);
     try {
       const { error } = await supabase
         .from('attachments')
@@ -117,7 +127,7 @@ export function FileAttachments({ entityType, entityId, allowUpload = true, titl
       await loadAttachments();
     } catch (err: any) {
       console.error('Error deleting attachment:', err);
-      alert('Failed to delete attachment: ' + err.message);
+      showToast('error', 'Failed to delete attachment: ' + err.message);
     }
   };
 
@@ -165,6 +175,26 @@ export function FileAttachments({ entityType, entityId, allowUpload = true, titl
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg">
+      {toast && (
+        <div className={`flex items-center gap-3 p-3 mx-4 mt-4 rounded-lg border ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+          <span className="text-sm font-medium flex-1">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="text-current opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+
+      {confirmDeleteId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
+            <p className="text-sm font-semibold text-gray-900 mb-2">Delete Attachment?</p>
+            <p className="text-sm text-gray-500 mb-4">This cannot be undone.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDeleteId(null)} className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">Cancel</button>
+              <button onClick={() => confirmDelete(confirmDeleteId)} className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="p-4 border-b border-gray-200 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Paperclip className="w-5 h-5 text-gray-600" />

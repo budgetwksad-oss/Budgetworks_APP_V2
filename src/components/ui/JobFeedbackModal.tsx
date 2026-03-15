@@ -33,12 +33,14 @@ export function JobFeedbackModal({
   const [timeliness, setTimeliness] = useState(existingFeedback?.timeliness || 0);
   const [wouldRecommend, setWouldRecommend] = useState(existingFeedback?.would_recommend ?? true);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
 
   const handleSubmit = async () => {
     if (rating === 0) {
-      alert('Please provide an overall rating');
+      setFormError('Please provide an overall rating');
       return;
     }
+    setFormError('');
 
     setSubmitting(true);
     try {
@@ -74,7 +76,7 @@ export function JobFeedbackModal({
       onClose();
     } catch (err: any) {
       console.error('Error submitting feedback:', err);
-      alert('Failed to submit feedback: ' + err.message);
+      setFormError('Failed to submit feedback: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -185,7 +187,13 @@ export function JobFeedbackModal({
           </div>
         </div>
 
-        <div className="p-6 border-t border-gray-200 flex gap-3 justify-end sticky bottom-0 bg-white">
+        <div className="p-6 border-t border-gray-200 sticky bottom-0 bg-white space-y-3">
+          {formError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{formError}</p>
+            </div>
+          )}
+          <div className="flex gap-3 justify-end">
           <Button variant="secondary" onClick={onClose} disabled={submitting}>
             Cancel
           </Button>
@@ -197,6 +205,7 @@ export function JobFeedbackModal({
             <Send className="w-4 h-4 mr-2" />
             {submitting ? 'Submitting...' : existingFeedback ? 'Update Feedback' : 'Submit Feedback'}
           </Button>
+          </div>
         </div>
       </div>
     </div>

@@ -36,6 +36,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [selectedPhotoType, setSelectedPhotoType] = useState<'before' | 'during' | 'after'>('before');
+  const [confirmingComplete, setConfirmingComplete] = useState(false);
 
   useEffect(() => {
     loadJob();
@@ -134,7 +135,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
     }
   };
 
-  const handleCompleteJob = async () => {
+  const handleCompleteJob = () => {
     if (!job) return;
 
     if ((job.before_photos || []).length === 0 || (job.after_photos || []).length === 0) {
@@ -142,9 +143,12 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
       return;
     }
 
-    if (window.confirm('Are you sure you want to mark this job as completed?')) {
-      await handleUpdateStatus('completed');
-    }
+    setConfirmingComplete(true);
+  };
+
+  const confirmCompleteJob = async () => {
+    setConfirmingComplete(false);
+    await handleUpdateStatus('completed');
   };
 
   if (loading) {
@@ -286,15 +290,25 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
                 </Button>
               )}
               {job.status === 'in_progress' && (
-                <Button
-                  variant="primary"
-                  onClick={handleCompleteJob}
-                  className="w-full bg-green-600 hover:bg-green-700"
-                  disabled={loading}
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Complete Job
-                </Button>
+                confirmingComplete ? (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm font-medium text-green-800 mb-3">Mark this job as completed?</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setConfirmingComplete(false)} className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+                      <button onClick={confirmCompleteJob} disabled={loading} className="flex-1 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50">Confirm Complete</button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    variant="primary"
+                    onClick={handleCompleteJob}
+                    className="w-full bg-green-600 hover:bg-green-700"
+                    disabled={loading}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Complete Job
+                  </Button>
+                )
               )}
               {job.status === 'completed' && (
                 <div className="text-center p-4 bg-green-50 rounded-lg">

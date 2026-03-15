@@ -11,13 +11,15 @@ interface PhotoUploadProps {
 export function PhotoUpload({ onPhotosChange, existingPhotos = [], maxPhotos = 10 }: PhotoUploadProps) {
   const [photos, setPhotos] = useState<string[]>(existingPhotos);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
+    setUploadError('');
 
     if (photos.length + files.length > maxPhotos) {
-      alert(`Maximum ${maxPhotos} photos allowed`);
+      setUploadError(`Maximum ${maxPhotos} photos allowed`);
       return;
     }
 
@@ -40,7 +42,7 @@ export function PhotoUpload({ onPhotosChange, existingPhotos = [], maxPhotos = 1
       onPhotosChange(updatedPhotos);
     } catch (error) {
       console.error('Error uploading photos:', error);
-      alert('Failed to upload photos. Please try again.');
+      setUploadError('Failed to upload photos. Please try again.');
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -126,7 +128,14 @@ export function PhotoUpload({ onPhotosChange, existingPhotos = [], maxPhotos = 1
         </div>
       )}
 
-      {photos.length >= maxPhotos && (
+      {uploadError && (
+        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <p className="text-sm text-red-700">{uploadError}</p>
+        </div>
+      )}
+
+      {photos.length >= maxPhotos && !uploadError && (
         <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
           <AlertCircle className="w-5 h-5 text-yellow-600" />
           <p className="text-sm text-yellow-700">
