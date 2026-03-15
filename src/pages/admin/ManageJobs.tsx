@@ -50,6 +50,9 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
   const [isOpenForClaims, setIsOpenForClaims] = useState(false);
   const [crewPayMin, setCrewPayMin] = useState(0);
   const [crewPayMax, setCrewPayMax] = useState(0);
+  const [crewHourlyRate, setCrewHourlyRate] = useState<number | ''>('');
+  const [numberOfCrew, setNumberOfCrew] = useState<number | ''>('');
+  const [jobDurationHours, setJobDurationHours] = useState<number | ''>('');
   const [selectedCrewForAssignment, setSelectedCrewForAssignment] = useState<string>('');
   const [selectedRole, setSelectedRole] = useState<'driver' | 'helper'>('helper');
   const [updating, setUpdating] = useState(false);
@@ -102,6 +105,9 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
       setIsOpenForClaims(selectedJob.is_open_for_claims || false);
       setCrewPayMin(selectedJob.crew_pay_min || 0);
       setCrewPayMax(selectedJob.crew_pay_max || 0);
+      setCrewHourlyRate(selectedJob.crew_hourly_rate ?? '');
+      setNumberOfCrew(selectedJob.number_of_crew ?? '');
+      setJobDurationHours(selectedJob.job_duration_hours ?? '');
       setMarketplaceError('');
     }
   }, [selectedJob]);
@@ -206,6 +212,14 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
     return 'unstaffed';
   };
 
+  const calcCrewCost = (rate: number | '', crew: number | '', hours: number | ''): number | null => {
+    const r = Number(rate);
+    const c = Number(crew);
+    const h = Number(hours);
+    if (r > 0 && c > 0 && h > 0) return parseFloat((r * c * h).toFixed(2));
+    return null;
+  };
+
   const handleUpdateScheduling = async () => {
     if (!selectedJob) return;
 
@@ -236,6 +250,8 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
           ? null
           : selectedJob.marketplace_posted_at;
 
+      const computedCrewCost = calcCrewCost(crewHourlyRate, numberOfCrew, jobDurationHours);
+
       const { error } = await supabase
         .from('jobs')
         .update({
@@ -250,6 +266,10 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
           crew_pay_max: crewPayMax || null,
           marketplace_posted_at: marketplacePostedAt,
           staffing_status: newStaffingStatus,
+          crew_hourly_rate: crewHourlyRate !== '' ? Number(crewHourlyRate) : null,
+          number_of_crew: numberOfCrew !== '' ? Number(numberOfCrew) : null,
+          job_duration_hours: jobDurationHours !== '' ? Number(jobDurationHours) : null,
+          crew_cost: computedCrewCost,
         })
         .eq('id', selectedJob.id);
 
@@ -730,9 +750,17 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
           ];
 
       if (invoiceModal.markCompleteOnCreate) {
+        const completionCrewCost = calcCrewCost(crewHourlyRate, numberOfCrew, jobDurationHours);
         await supabase
           .from('jobs')
-          .update({ status: 'completed', completed_at: new Date().toISOString() })
+          .update({
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            crew_hourly_rate: crewHourlyRate !== '' ? Number(crewHourlyRate) : null,
+            number_of_crew: numberOfCrew !== '' ? Number(numberOfCrew) : null,
+            job_duration_hours: jobDurationHours !== '' ? Number(jobDurationHours) : null,
+            crew_cost: completionCrewCost,
+          })
           .eq('id', selectedJob.id);
       }
 
@@ -1053,6 +1081,62 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
                   </div>
                 </div>
 
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-1">Labor Cost (Internal)</h4>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Used to calculate crew_cost = rate × crew × hours. Not shown to customers.
+                  </p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Hourly Rate ($)
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="e.g. 30"
+                        value={crewHourlyRate}
+                        onChange={(e) => setCrewHourlyRate(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        # of Crew
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="e.g. 2"
+                        value={numberOfCrew}
+                        onChange={(e) => setNumberOfCrew(e.target.value === '' ? '' : parseInt(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Duration (hrs)
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.25"
+                        placeholder="e.g. 3"
+                        value={jobDurationHours}
+                        onChange={(e) => setJobDurationHours(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                  {calcCrewCost(crewHourlyRate, numberOfCrew, jobDurationHours) !== null && (
+                    <div className="mt-3 flex items-center justify-between px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
+                      <span className="text-sm text-gray-600">Estimated Crew Cost</span>
+                      <span className="text-sm font-bold text-gray-900">
+                        ${calcCrewCost(crewHourlyRate, numberOfCrew, jobDurationHours)!.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
                 {selectedJob.status !== 'scheduled_draft' && (
                   <div className="pt-2">
                     <div className="flex items-center gap-2">
@@ -1320,6 +1404,21 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
                 <p className="font-medium text-gray-900">
                   ${Number(selectedJob.quote?.total_amount ?? 0).toFixed(2)}
                 </p>
+              </div>
+              <div>
+                <p className="text-gray-500 mb-1">Crew Labor Cost</p>
+                {selectedJob.crew_cost != null ? (
+                  <div>
+                    <p className="font-medium text-gray-900">${Number(selectedJob.crew_cost).toFixed(2)}</p>
+                    {selectedJob.crew_hourly_rate != null && selectedJob.number_of_crew != null && selectedJob.job_duration_hours != null && (
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        ${Number(selectedJob.crew_hourly_rate).toFixed(2)}/hr × {selectedJob.number_of_crew} crew × {Number(selectedJob.job_duration_hours)}h
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">Not set</p>
+                )}
               </div>
               <div>
                 <p className="text-gray-500 mb-1">Job Status</p>

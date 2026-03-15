@@ -115,6 +115,10 @@ export type Job = {
   assigned_crew_ids: string[];
   crew_pay_min: number | null;
   crew_pay_max: number | null;
+  crew_hourly_rate: number | null;
+  number_of_crew: number | null;
+  job_duration_hours: number | null;
+  crew_cost: number | null;
   marketplace_posted_at: string | null;
   internal_notes: string | null;
   completion_notes: string | null;
