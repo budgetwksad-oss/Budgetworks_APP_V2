@@ -6,7 +6,7 @@ import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { ArrowLeft, Briefcase, Calendar, Users, Clock, MapPin, X, FileText, Copy, Check, AlertTriangle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Briefcase, Calendar, Users, Clock, MapPin, X, FileText, Copy, Check, AlertTriangle } from 'lucide-react';
 
 interface InvoiceModalState {
   open: boolean;
@@ -153,9 +153,9 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
 
       setJobs(jobsWithDetails);
       setLoadError('');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error loading jobs:', error);
-      setLoadError(error?.message || 'Failed to load jobs');
+      setLoadError(error instanceof Error ? error.message : 'Failed to load jobs');
     } finally {
       setLoading(false);
     }
@@ -312,9 +312,9 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
 
       setSelectedCrewForAssignment('');
       await refreshSelectedJob(selectedJob.id);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error assigning crew:', error);
-      showToast('error', error?.message || 'Failed to assign crew member. Please try again.');
+      showToast('error', error instanceof Error ? error.message : 'Failed to assign crew member. Please try again.');
     } finally {
       setUpdating(false);
     }
@@ -400,7 +400,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
             },
           });
         }
-      } catch (_enqueueErr) {
+      } catch {
         // Non-fatal
       }
 
@@ -648,7 +648,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
         } else {
           notificationWarning = 'Invoice created but no email or phone on file — notification not sent.';
         }
-      } catch (_e) {
+      } catch {
         notificationWarning = 'Invoice created but notification could not be queued.';
       }
 
@@ -658,9 +658,9 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
         generatedLink: invoiceLink,
         notificationWarning,
       }));
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error creating invoice:', err);
-      setInvoiceModal(s => ({ ...s, submitting: false, invoiceError: 'Failed to create invoice: ' + (err.message ?? String(err)) }));
+      setInvoiceModal(s => ({ ...s, submitting: false, invoiceError: 'Failed to create invoice: ' + (err instanceof Error ? err.message : String(err)) }));
     }
   };
 

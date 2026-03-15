@@ -33,9 +33,12 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
 
   useEffect(() => {
+    if (!user) return;
     loadAssignedJobs();
     checkActiveLog();
-  }, [user]);
+    // loadAssignedJobs and checkActiveLog are stable for the lifetime of this component
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   useEffect(() => {
     if (activeLog) {
@@ -70,7 +73,7 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
 
       if (error) throw error;
       setJobs(data || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error loading jobs:', err);
     }
   };
@@ -96,7 +99,7 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
 
       if (error) throw error;
       setActiveLog(data as unknown as ActiveTimeLog | null);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error checking active log:', err);
     }
   };
@@ -133,8 +136,8 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
 
       setActiveLog(data as unknown as ActiveTimeLog);
       setSelectedJobId('');
-    } catch (err: any) {
-      setError(err.message || 'Failed to clock in');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to clock in');
     } finally {
       setLoading(false);
     }
@@ -158,8 +161,8 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
 
       setActiveLog(null);
       setElapsedTime('00:00:00');
-    } catch (err: any) {
-      setError(err.message || 'Failed to clock out');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to clock out');
     } finally {
       setLoading(false);
     }

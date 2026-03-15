@@ -24,6 +24,7 @@ import {
   DemoDebrisClass,
   EstimateResult,
   PricingBreakdownLine,
+  QuoteInputs,
 } from '../../lib/pricingEngine';
 import {
   ArrowLeft,
@@ -118,7 +119,7 @@ function PhoneContactForm({
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Preferred Contact</label>
           <select
             value={value.preferred_contact_method}
-            onChange={(e) => set('preferred_contact_method', e.target.value as any)}
+            onChange={(e) => set('preferred_contact_method', e.target.value as 'sms' | 'email' | 'call')}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none text-sm"
           >
             <option value="sms">SMS</option>
@@ -331,7 +332,7 @@ function MovingInputPanel({
   value: MovingInputs;
   onChange: (v: MovingInputs) => void;
 }) {
-  const set = (k: keyof MovingInputs, v: any) => onChange({ ...value, [k]: v });
+  const set = (k: keyof MovingInputs, v: MovingInputs[keyof MovingInputs]) => onChange({ ...value, [k]: v });
   const addons = value.addons ?? {};
   const setAddon = (k: string, v: boolean) => onChange({ ...value, addons: { ...addons, [k]: v } });
   const specialItems = value.special_items ?? {};
@@ -470,7 +471,7 @@ function JunkInputPanel({
   value: JunkInputs;
   onChange: (v: JunkInputs) => void;
 }) {
-  const set = (k: keyof JunkInputs, v: any) => onChange({ ...value, [k]: v } as JunkInputs);
+  const set = (k: keyof JunkInputs, v: JunkInputs[keyof JunkInputs]) => onChange({ ...value, [k]: v } as JunkInputs);
   const addons = value.addons ?? {};
   const setAddon = (k: string, v: boolean) => onChange({ ...value, addons: { ...addons, [k]: v } } as JunkInputs);
   const categories = value.item_categories ?? {};
@@ -540,7 +541,7 @@ function DemoInputPanel({
   value: DemoInputs;
   onChange: (v: DemoInputs) => void;
 }) {
-  const set = (k: keyof DemoInputs, v: any) => onChange({ ...value, [k]: v } as DemoInputs);
+  const set = (k: keyof DemoInputs, v: DemoInputs[keyof DemoInputs]) => onChange({ ...value, [k]: v } as DemoInputs);
   const addons = value.addons ?? {};
   const setAddon = (k: string, v: boolean) => onChange({ ...value, addons: { ...addons, [k]: v } } as DemoInputs);
 
@@ -811,7 +812,7 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
     ? phoneContact.service_type
     : serviceTypeOverride || ((lead?.service_type as PricingServiceType) ?? 'moving');
 
-  const [pricingSettings, setPricingSettings] = useState<Record<string, any> | null>(null);
+  const [pricingSettings, setPricingSettings] = useState<Record<string, unknown> | null>(null);
   const [pricingConfigured, setPricingConfigured] = useState(false);
   const [taxRate, setTaxRate] = useState(0.15);
   const [loadingSettings, setLoadingSettings] = useState(false);
@@ -856,6 +857,7 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
 
   useEffect(() => {
     loadPricingAndTax();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serviceType]);
 
   const loadPricingAndTax = async () => {
@@ -897,7 +899,7 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
     const inputs = buildQuoteInputs();
     setIsCalculating(true);
     try {
-      const result = calculateEstimate(serviceType, inputs as any, pricingSettings, taxRate);
+      const result = calculateEstimate(serviceType, inputs as QuoteInputs, pricingSettings, taxRate);
       setEstimateResult(result);
       if (!manualOverride) {
         setEstimateLow(String(result.estimate_low));
@@ -917,6 +919,7 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [movingInputs, junkInputs, demoInputs, serviceType, pricingSettings, taxRate, loadingSettings]);
 
   const handleDownloadPDF = async () => {
@@ -937,7 +940,9 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
         companyEmail = data.email;
         companyAddress = data.address;
       }
-    } catch (_) {}
+    } catch {
+      // non-fatal: use default company info
+    }
 
     const contact = resolvedLead();
     const low = manualOverride && estimateLow ? parseFloat(estimateLow) : estimateResult?.estimate_low ?? parseFloat(estimateLow) ?? 0;
@@ -1058,7 +1063,7 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
           description: activeLead?.description ?? phoneContact.description,
         };
 
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       quote_number: null,
       line_items: [],
       subtotal: 0,
@@ -1125,8 +1130,8 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
 
       setDraftSaved(true);
       setTimeout(() => setDraftSaved(false), 4000);
-    } catch (err: any) {
-      setError(err.message || 'Failed to save quote');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save quote');
     } finally {
       setLoading(false);
     }
@@ -1255,9 +1260,11 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
             },
           });
         }
-      } catch (_enqueueErr) {}
-    } catch (err: any) {
-      setError(err.message || 'Failed to send quote');
+      } catch {
+        // non-fatal: notification enqueue failure
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send quote');
     } finally {
       setLoading(false);
     }

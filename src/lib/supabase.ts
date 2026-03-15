@@ -69,9 +69,9 @@ export type Quote = {
   estimate_high: number | null;
   expected_price: number | null;
   cap_amount: number | null;
-  pricing_snapshot: any | null;
-  quote_inputs: any | null;
-  staffing_defaults: any | null;
+  pricing_snapshot: Record<string, unknown> | null;
+  quote_inputs: Record<string, unknown> | null;
+  staffing_defaults: Record<string, unknown> | null;
   accepted_at: string | null;
   declined_at: string | null;
   accepted_method: 'magic_link' | 'phone' | null;
@@ -308,7 +308,7 @@ export async function upsertNotificationPreference(
   userId: string,
   audience: NotificationAudience,
   preferences: { sms_enabled?: boolean; email_enabled?: boolean }
-): Promise<{ data: NotificationPreference | null; error: any }> {
+): Promise<{ data: NotificationPreference | null; error: unknown }> {
   try {
     const { data: existing } = await supabase
       .from('notification_preferences')
@@ -347,7 +347,7 @@ export async function upsertNotificationPreference(
 export async function getNotificationPreference(
   userId: string,
   audience: NotificationAudience
-): Promise<{ data: NotificationPreference | null; error: any }> {
+): Promise<{ data: NotificationPreference | null; error: unknown }> {
   try {
     const { data, error } = await supabase
       .from('notification_preferences')
@@ -387,7 +387,7 @@ export type NotificationTemplateV2 = {
 
 export async function getNotificationTemplatesV2(): Promise<{
   data: NotificationTemplateV2[] | null;
-  error: any;
+  error: unknown;
 }> {
   try {
     const { data, error } = await supabase
@@ -403,7 +403,7 @@ export async function getNotificationTemplatesV2(): Promise<{
 
 export async function upsertNotificationTemplateV2(
   template: Partial<NotificationTemplateV2> & { id?: string }
-): Promise<{ data: NotificationTemplateV2 | null; error: any }> {
+): Promise<{ data: NotificationTemplateV2 | null; error: unknown }> {
   try {
     if (template.id) {
       const enabled = template.enabled ?? true;
@@ -488,7 +488,7 @@ export async function getNotificationQueue(
   statuses: NotificationQueueStatus[] = ['pending', 'failed']
 ): Promise<{
   data: NotificationQueueItem[] | null;
-  error: any;
+  error: unknown;
 }> {
   try {
     const { data, error } = await supabase
@@ -506,7 +506,7 @@ export async function getNotificationQueue(
 
 export async function getNotificationQueueAll(): Promise<{
   data: NotificationQueueItem[] | null;
-  error: any;
+  error: unknown;
 }> {
   try {
     const { data, error } = await supabase
@@ -525,9 +525,9 @@ export async function updateNotificationQueueStatus(
   queueId: string,
   status: NotificationQueueStatus,
   errorMessage?: string
-): Promise<{ data: NotificationQueueItem | null; error: any }> {
+): Promise<{ data: NotificationQueueItem | null; error: unknown }> {
   try {
-    const updateData: any = { status };
+    const updateData: Record<string, unknown> = { status };
 
     if (status === 'sent') {
       updateData.sent_at = new Date().toISOString();
@@ -554,14 +554,14 @@ export type PricingServiceType = 'moving' | 'junk_removal' | 'demolition';
 export type PricingSettingsRow = {
   id: string;
   service_type: PricingServiceType;
-  settings: Record<string, any>;
+  settings: Record<string, unknown>;
   is_configured: boolean;
   updated_at: string;
 };
 
 export async function fetchPricingSettings(
   service_type: PricingServiceType
-): Promise<{ data: PricingSettingsRow | null; error: any }> {
+): Promise<{ data: PricingSettingsRow | null; error: unknown }> {
   try {
     const { data, error } = await supabase
       .from('pricing_settings')
@@ -576,9 +576,9 @@ export async function fetchPricingSettings(
 
 export async function upsertPricingSettings(
   service_type: PricingServiceType,
-  settings: Record<string, any>,
+  settings: Record<string, unknown>,
   is_configured: boolean
-): Promise<{ data: PricingSettingsRow | null; error: any }> {
+): Promise<{ data: PricingSettingsRow | null; error: unknown }> {
   try {
     const { data, error } = await supabase
       .from('pricing_settings')
@@ -624,7 +624,8 @@ export async function logAudit(params: LogAuditParams): Promise<void> {
       message: params.message ?? null,
       metadata: params.metadata ?? null,
     });
-  } catch (_) {
+  } catch {
+    // intentionally swallow audit log errors
   }
 }
 
@@ -632,7 +633,7 @@ export async function logNotification(
   queueItem: NotificationQueueItem,
   status: NotificationQueueStatus,
   errorMessage?: string
-): Promise<{ data: NotificationLog | null; error: any }> {
+): Promise<{ data: NotificationLog | null; error: unknown }> {
   try {
     const { data, error } = await supabase
       .from('notification_log')
@@ -660,7 +661,7 @@ export async function logNotification(
 
 export async function getNotificationDeliveryStats(): Promise<{
   data: { pending: number; sent: number; failed: number; cancelled: number } | null;
-  error: any;
+  error: unknown;
 }> {
   try {
     const { data, error } = await supabase

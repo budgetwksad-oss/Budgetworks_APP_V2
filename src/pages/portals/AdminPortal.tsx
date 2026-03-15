@@ -52,6 +52,8 @@ type Page =
   | 'contact-messages'
   | 'settings';
 
+type LeadRow = (ServiceRequest | PublicQuoteRequest) & { _kind?: 'public' };
+
 interface OpsData {
   newLeads: number;
   pendingQuotes: number;
@@ -59,12 +61,29 @@ interface OpsData {
   jobsInProgress: number;
   unpaidInvoices: number;
   newContactMessages: number;
-  todayJobs: any[];
-  recentLeads: (ServiceRequest | PublicQuoteRequest & { _kind: 'public' })[];
-  inProgressJobs: any[];
-  needsCrewJobs: any[];
-  overdueInvoices: any[];
+  todayJobs: JobRow[];
+  recentLeads: LeadRow[];
+  inProgressJobs: JobRow[];
+  needsCrewJobs: JobRow[];
+  overdueInvoices: InvoiceRow[];
 }
+
+type JobRow = {
+  id: string;
+  status: string;
+  service_type?: string | null;
+  scheduled_date?: string | null;
+  crew_ids?: string[] | null;
+  service_requests?: { location_address?: string } | null;
+};
+
+type InvoiceRow = {
+  id: string;
+  invoice_number?: string | null;
+  due_date?: string | null;
+  total_amount?: number | null;
+  status?: string | null;
+};
 
 type NotificationsSubPage = 'delivery' | 'templates';
 
@@ -196,7 +215,7 @@ export function AdminPortal() {
 
       const leads = [
         ...(customerLeadsRes.data || []),
-        ...(guestLeadsRes.data || []).map((r: any) => ({ ...r, _kind: 'public' })),
+        ...(guestLeadsRes.data || []).map((r: PublicQuoteRequest) => ({ ...r, _kind: 'public' as const })),
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 6);
 
       setOps({
@@ -207,7 +226,7 @@ export function AdminPortal() {
         unpaidInvoices: invoicesRes.data?.length || 0,
         newContactMessages: contactMsgsRes.count || 0,
         todayJobs: todayJobsList,
-        recentLeads: leads as any,
+        recentLeads: leads as LeadRow[],
         inProgressJobs: inProgress.slice(0, 5),
         needsCrewJobs: needsCrew.slice(0, 5),
         overdueInvoices: invoicesRes.data || [],
@@ -567,7 +586,7 @@ export function AdminPortal() {
                   <p className="text-sm text-gray-400">No pending requests</p>
                 </div>
               ) : (
-                ops.recentLeads.map((lead: any) => (
+                ops.recentLeads.map((lead) => (
                   <div
                     key={lead.id}
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
@@ -623,7 +642,7 @@ export function AdminPortal() {
                   <p className="text-sm text-gray-400">No jobs in progress</p>
                 </div>
               ) : (
-                ops.inProgressJobs.map((job: any) => (
+                ops.inProgressJobs.map((job) => (
                   <div
                     key={job.id}
                     className="flex items-center justify-between p-3 bg-green-50 border border-green-100 rounded-lg hover:bg-green-100 transition-colors cursor-pointer"
@@ -668,7 +687,7 @@ export function AdminPortal() {
                   <p className="text-sm text-gray-400">All jobs have crew assigned</p>
                 </div>
               ) : (
-                ops.needsCrewJobs.map((job: any) => (
+                ops.needsCrewJobs.map((job) => (
                   <div
                     key={job.id}
                     className="flex items-center justify-between p-3 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 transition-colors cursor-pointer"
@@ -711,7 +730,7 @@ export function AdminPortal() {
                   <p className="text-sm text-gray-400">No outstanding invoices</p>
                 </div>
               ) : (
-                ops.overdueInvoices.slice(0, 5).map((inv: any) => {
+                ops.overdueInvoices.slice(0, 5).map((inv) => {
                   const isOverdue = inv.status === 'overdue' ||
                     (inv.due_date && new Date(inv.due_date) < new Date());
                   return (
@@ -766,7 +785,7 @@ export function AdminPortal() {
               </Button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {ops.todayJobs.map((job: any) => (
+              {ops.todayJobs.map((job) => (
                 <div
                   key={job.id}
                   className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer"

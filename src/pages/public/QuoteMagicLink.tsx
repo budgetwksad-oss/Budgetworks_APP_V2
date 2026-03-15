@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { ServiceAgreementModal } from '../../components/ui/ServiceAgreementModal';
-import { CheckCircle, XCircle, Clock, DollarSign, MapPin, Briefcase, AlertCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, DollarSign, MapPin, Briefcase, AlertCircle, type LucideIcon } from 'lucide-react';
 
 interface QuoteMagicLinkProps {
   token: string;
@@ -35,6 +35,7 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
 
   useEffect(() => {
     loadQuote();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const loadQuote = async () => {
@@ -156,7 +157,7 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
   };
 
   const getStatusBadge = (status: string) => {
-    const badges: Record<string, { label: string; color: string; icon: any }> = {
+    const badges: Record<string, { label: string; color: string; icon: LucideIcon }> = {
       sent: { label: 'Awaiting Response', color: 'bg-blue-100 text-blue-800', icon: Clock },
       accepted: { label: 'Accepted', color: 'bg-green-100 text-green-800', icon: CheckCircle },
       declined: { label: 'Declined', color: 'bg-red-100 text-red-800', icon: XCircle },
