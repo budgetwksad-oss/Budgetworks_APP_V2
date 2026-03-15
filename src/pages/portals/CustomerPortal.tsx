@@ -41,7 +41,7 @@ interface Metrics {
 }
 
 export function CustomerPortal() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>('');
   const [metrics, setMetrics] = useState<Metrics>({
@@ -189,6 +189,17 @@ export function CustomerPortal() {
       ]
     }
   ];
+
+  if (profile?.role !== 'customer') {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600">You do not have permission to access this area.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (currentPage === 'request-quote') {
     return (

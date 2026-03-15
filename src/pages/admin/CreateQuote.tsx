@@ -361,14 +361,21 @@ function MovingInputPanel({
             { value: 'round_trip', label: 'Round Trip' },
           ]}
         />
-        <Input
-          label="Distance (km)"
-          type="number"
-          min="0"
-          value={String(value.distance_km ?? '')}
-          onChange={(e) => set('distance_km', parseFloat(e.target.value) || 0)}
-          placeholder="e.g. 25"
-        />
+        <div>
+          <Input
+            label="Distance (km)"
+            type="number"
+            min="0"
+            value={String(value.distance_km ?? '')}
+            onChange={(e) => set('distance_km', parseFloat(e.target.value) || 0)}
+            placeholder="e.g. 25"
+          />
+          {(!value.distance_km || value.distance_km === 0) && (
+            <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+              <span>Distance is required for accurate truck and fuel cost estimates.</span>
+            </p>
+          )}
+        </div>
         <SelectField
           label="Extra movers (0–4)"
           value={String(value.extra_movers ?? 0)}

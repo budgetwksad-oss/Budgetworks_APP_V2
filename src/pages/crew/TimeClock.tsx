@@ -150,10 +150,15 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
     setError('');
 
     try {
+      const clockOutTime = new Date();
+      const clockInTime = new Date(activeLog.clock_in_time);
+      const hoursWorked = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
+
       const { error } = await supabase
         .from('time_entries')
         .update({
-          clock_out_time: new Date().toISOString()
+          clock_out_time: clockOutTime.toISOString(),
+          hours_worked: parseFloat(hoursWorked.toFixed(4)),
         })
         .eq('id', activeLog.id);
 

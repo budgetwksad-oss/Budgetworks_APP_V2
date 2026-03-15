@@ -117,7 +117,7 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
         .select('*')
         .eq('job_id', selectedJob.id)
         .eq('crew_member_id', user.id)
-        .is('clock_out', null)
+        .is('clock_out_time', null)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
@@ -229,7 +229,7 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
         .insert({
           job_id: selectedJob.id,
           crew_member_id: user.id,
-          clock_in: new Date().toISOString(),
+          clock_in_time: new Date().toISOString(),
         })
         .select()
         .single();
@@ -250,14 +250,14 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
 
     try {
       const clockOutTime = new Date();
-      const clockInTime = new Date(timeEntry.clock_in);
+      const clockInTime = new Date(timeEntry.clock_in_time);
       const hoursWorked = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
 
       const { error } = await supabase
         .from('time_entries')
         .update({
-          clock_out: clockOutTime.toISOString(),
-          hours_worked: Math.round(hoursWorked * 100) / 100,
+          clock_out_time: clockOutTime.toISOString(),
+          hours_worked: parseFloat(hoursWorked.toFixed(4)),
         })
         .eq('id', timeEntry.id);
 
@@ -438,7 +438,7 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-semibold text-green-700">Clocked In</span>
                       <span className="text-2xl font-bold text-green-700">
-                        {formatTimestamp(timeEntry.clock_in)}
+                        {formatTimestamp(timeEntry.clock_in_time)}
                       </span>
                     </div>
                   </div>

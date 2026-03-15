@@ -86,15 +86,16 @@ export function CrewPortal() {
 
       const { data: timeLogs } = await supabase
         .from('time_entries')
-        .select('clock_in, clock_out')
+        .select('clock_in_time, clock_out_time, hours_worked')
         .eq('crew_member_id', user.id)
-        .gte('clock_in', weekAgo.toISOString());
+        .gte('clock_in_time', weekAgo.toISOString());
 
       const hoursThisWeek = (timeLogs || [])
-        .filter(log => log.clock_out)
+        .filter(log => log.clock_out_time)
         .reduce((sum, log) => {
-          const start = new Date(log.clock_in);
-          const end = new Date(log.clock_out!);
+          if (log.hours_worked) return sum + Number(log.hours_worked);
+          const start = new Date(log.clock_in_time);
+          const end = new Date(log.clock_out_time!);
           return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }, 0);
 
@@ -102,7 +103,7 @@ export function CrewPortal() {
         .from('time_entries')
         .select('id')
         .eq('crew_member_id', user.id)
-        .is('clock_out', null)
+        .is('clock_out_time', null)
         .maybeSingle();
 
       setMetrics({
@@ -205,46 +206,73 @@ export function CrewPortal() {
     }
   ];
 
+  if (profile?.role !== 'crew') {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600">You do not have permission to access this area.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const agreementOverlay = needsAgreement ? (
+    <ContractorAgreementModal
+      crewName={profile?.full_name}
+      onAccept={acceptAgreement}
+      submitting={agreementSubmitting}
+    />
+  ) : null;
+
   if (currentPage === 'my-jobs') {
     return (
-      <CrewJobs
-        sidebarSections={sidebarSections}
-        onBack={() => setCurrentPage('dashboard')}
-      />
+      <>
+        {agreementOverlay}
+        <CrewJobs
+          sidebarSections={sidebarSections}
+          onBack={() => setCurrentPage('dashboard')}
+        />
+      </>
     );
   }
 
   if (currentPage === 'available-jobs') {
     return (
-      <AvailableJobs
-        sidebarSections={sidebarSections}
-        onBack={() => setCurrentPage('dashboard')}
-      />
+      <>
+        {agreementOverlay}
+        <AvailableJobs
+          sidebarSections={sidebarSections}
+          onBack={() => setCurrentPage('dashboard')}
+        />
+      </>
     );
   }
 
   if (currentPage === 'profile') {
-    return <Profile onBack={() => setCurrentPage('dashboard')} />;
+    return (
+      <>
+        {agreementOverlay}
+        <Profile onBack={() => setCurrentPage('dashboard')} />
+      </>
+    );
   }
 
   if (currentPage === 'job-detail' && selectedJobId) {
     return (
-      <JobDetail
-        jobId={selectedJobId}
-        onBack={() => setCurrentPage('my-jobs')}
-      />
+      <>
+        {agreementOverlay}
+        <JobDetail
+          jobId={selectedJobId}
+          onBack={() => setCurrentPage('my-jobs')}
+        />
+      </>
     );
   }
 
   return (
     <>
-    {needsAgreement && (
-      <ContractorAgreementModal
-        crewName={profile?.full_name}
-        onAccept={acceptAgreement}
-        submitting={agreementSubmitting}
-      />
-    )}
+    {agreementOverlay}
     <PortalLayout
       portalName="Crew Portal"
       sidebarSections={sidebarSections}

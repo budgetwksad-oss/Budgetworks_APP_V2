@@ -673,7 +673,7 @@ export function calculateEstimate(
   taxRateFraction: number
 ): EstimateResult {
   const effectiveSettings = pricingSettings ?? {};
-  const effectiveTax = taxRateFraction > 0 ? taxRateFraction : 0.15;
+  const effectiveTax = taxRateFraction ?? 0.15;
 
   switch (service_type) {
     case 'moving':

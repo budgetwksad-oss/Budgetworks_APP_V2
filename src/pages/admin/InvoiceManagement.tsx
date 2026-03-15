@@ -66,6 +66,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
   const [invoiceLink, setInvoiceLink] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [companyInfo, setCompanyInfo] = useState({ name: 'BudgetWorks', address: 'Halifax, Nova Scotia', phone: '(844) 404-1240', email: 'info@budgetworks.ca' });
 
   const showToast = (type: 'success' | 'error', message: string) => {
     setToast({ type, message });
@@ -74,7 +75,28 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     loadInvoices();
+    loadCompanyInfo();
   }, []);
+
+  const loadCompanyInfo = async () => {
+    try {
+      const { data } = await supabase
+        .from('company_settings')
+        .select('business_name, address, phone, email')
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (data) {
+        setCompanyInfo({
+          name: data.business_name || 'BudgetWorks',
+          address: data.address || 'Halifax, Nova Scotia',
+          phone: data.phone || '(844) 404-1240',
+          email: data.email || 'info@budgetworks.ca',
+        });
+      }
+    } catch {
+    }
+  };
 
   useEffect(() => {
     let filtered = invoices;
@@ -221,7 +243,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
           total: invoice.total_amount,
           notes: invoice.notes,
           status: invoice.status
-        });
+        }, companyInfo);
 
         await new Promise(resolve => setTimeout(resolve, 500));
       }
@@ -466,7 +488,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
       status: invoice.status
     };
 
-    downloadInvoicePDF(pdfData);
+    downloadInvoicePDF(pdfData, companyInfo);
   };
 
   const handleSendInvoice = async (invoice: InvoiceDetail) => {

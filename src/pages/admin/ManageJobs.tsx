@@ -471,6 +471,34 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
     }
   };
 
+  const handleMarkInProgress = async () => {
+    if (!selectedJob) return;
+    setUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('jobs')
+        .update({ status: 'in_progress', started_at: new Date().toISOString() })
+        .eq('id', selectedJob.id);
+      if (error) throw error;
+      logAudit({
+        action_key: 'job_started',
+        entity_type: 'job',
+        entity_id: selectedJob.id,
+        message: 'Job marked as in progress',
+        metadata: { customer_name: selectedJob.customer_name, service_type: selectedJob.service_type },
+        actor_role: 'admin',
+      });
+      await loadJobs();
+      const { data } = await supabase.from('jobs').select('*').eq('id', selectedJob.id).single();
+      if (data) setSelectedJob(prev => prev ? { ...prev, ...data } : prev);
+    } catch (error) {
+      console.error('Error marking job in progress:', error);
+      showToast('error', 'Failed to update job status.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleResetClaims = () => {
     setConfirmingReset(true);
   };
@@ -1088,30 +1116,44 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900">Job Information</h3>
-              {(selectedJob.customer_email || selectedJob.customer_phone) && (
-                <div className="flex items-center gap-2">
-                  {selectedJob.status !== 'completed' && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => openInvoiceModal(true)}
-                      className="flex items-center gap-2"
-                    >
-                      <Check className="w-4 h-4" />
-                      Complete & Invoice
-                    </Button>
-                  )}
+              <div className="flex items-center gap-2 flex-wrap">
+                {selectedJob.status === 'scheduled' && (
                   <Button
-                    variant="primary"
+                    variant="secondary"
                     size="sm"
-                    onClick={() => openInvoiceModal(false)}
+                    onClick={handleMarkInProgress}
+                    disabled={updating}
                     className="flex items-center gap-2"
                   >
-                    <FileText className="w-4 h-4" />
-                    {selectedJob.status === 'completed' ? 'Create Invoice' : 'Invoice Only'}
+                    <Clock className="w-4 h-4" />
+                    Mark In Progress
                   </Button>
-                </div>
-              )}
+                )}
+                {(selectedJob.customer_email || selectedJob.customer_phone) && (
+                  <>
+                    {selectedJob.status !== 'completed' && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => openInvoiceModal(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <Check className="w-4 h-4" />
+                        Complete & Invoice
+                      </Button>
+                    )}
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => openInvoiceModal(false)}
+                      className="flex items-center gap-2"
+                    >
+                      <FileText className="w-4 h-4" />
+                      {selectedJob.status === 'completed' ? 'Create Invoice' : 'Invoice Only'}
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
