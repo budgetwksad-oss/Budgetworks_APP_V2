@@ -62,11 +62,24 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
           .eq('id', job.service_request_id)
           .maybeSingle();
 
-        if (quote && request) {
+        if (quote) {
           jobsWithDetails.push({
             ...job,
             quote,
-            service_request: request,
+            service_request: request || {
+              id: job.service_request_id,
+              customer_id: job.customer_id,
+              service_type: job.service_type || quote?.pricing_snapshot?.service_type || 'moving',
+              location_address: quote?.pricing_snapshot?.location || 'See job details',
+              contact_name: job.customer_name,
+              preferred_date: null,
+              contact_phone: job.customer_phone,
+              description: quote?.pricing_snapshot?.description || null,
+              photos_urls: [],
+              status: 'accepted',
+              created_at: job.created_at,
+              updated_at: job.updated_at,
+            },
           });
         }
       }

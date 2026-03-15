@@ -284,67 +284,23 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
     setUpdating(true);
 
     try {
-      const currentAssignments = selectedJob.crew_assignments || [];
+      const { data: result, error } = await supabase.rpc('admin_assign_job_position', {
+        p_job_id:  selectedJob.id,
+        p_user_id: selectedCrewForAssignment,
+        p_role:    selectedRole,
+      });
 
-      const alreadyAssigned = currentAssignments.some(
-        a => a.user_id === selectedCrewForAssignment
-      );
-
-      if (alreadyAssigned) {
-        alert('This crew member is already assigned to this job');
-        setUpdating(false);
+      if (error) throw error;
+      if (result && result.success === false) {
+        alert(result.error || 'Failed to assign crew member');
         return;
       }
 
-      const newAssignment: CrewAssignment = {
-        user_id: selectedCrewForAssignment,
-        role: selectedRole,
-        claimed_at: new Date().toISOString(),
-        assigned_by: user?.id || null,
-      };
-
-      const updatedAssignments = [...currentAssignments, newAssignment];
-      const updatedCrewIds = [...new Set([
-        ...(selectedJob.assigned_crew_ids || []),
-        selectedCrewForAssignment,
-      ])];
-
-      const newStaffingStatus = calculateStaffingStatus({
-        ...selectedJob,
-        crew_assignments: updatedAssignments,
-      });
-
-      const { error } = await supabase
-        .from('jobs')
-        .update({
-          crew_assignments: updatedAssignments,
-          assigned_crew_ids: updatedCrewIds,
-          staffing_status: newStaffingStatus,
-        })
-        .eq('id', selectedJob.id);
-
-      if (error) throw error;
-
       setSelectedCrewForAssignment('');
-      await loadJobs();
-
-      const { data } = await supabase
-        .from('jobs')
-        .select('*')
-        .eq('id', selectedJob.id)
-        .single();
-
-      if (data) {
-        const updatedJob = jobs.find(j => j.id === selectedJob.id);
-        if (updatedJob) {
-          setSelectedJob({
-            ...updatedJob,
-            ...data,
-          });
-        }
-      }
-    } catch (error) {
+      await refreshSelectedJob(selectedJob.id);
+    } catch (error: any) {
       console.error('Error assigning crew:', error);
+      alert(error?.message || 'Failed to assign crew member. Please try again.');
     } finally {
       setUpdating(false);
     }
