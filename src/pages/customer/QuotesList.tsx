@@ -155,7 +155,7 @@ export function QuotesList({ sidebarSections, onBack }: QuotesListProps = {}) {
             <div className="border-t border-b py-6 mb-6">
               <h3 className="font-semibold text-gray-900 mb-4">Line Items</h3>
               <div className="space-y-3">
-                {selectedQuote.line_items.map((item, index) => (
+                {(selectedQuote.line_items || []).map((item, index) => (
                   <div key={index} className="flex justify-between items-start">
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">{item.description}</p>
@@ -357,7 +357,7 @@ export function QuotesList({ sidebarSections, onBack }: QuotesListProps = {}) {
                   </div>
                   <div className="flex items-center gap-2">
                     <DollarSign className="w-4 h-4" />
-                    <span>{quote.line_items.length} items</span>
+                    <span>{(quote.line_items || []).length} items</span>
                   </div>
                 </div>
               </Card>

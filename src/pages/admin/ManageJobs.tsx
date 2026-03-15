@@ -739,7 +739,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
         breadcrumbs={[
           { label: 'Dashboard', onClick: onBack },
           { label: 'Jobs', onClick: () => setSelectedJob(null) },
-          { label: getServiceLabel(selectedJob.service_request.service_type) }
+          { label: getServiceLabel(selectedJob.service_request?.service_type || selectedJob.service_type || '') }
         ]}
       >
         <div className="space-y-6">
@@ -1111,7 +1111,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
               <div>
                 <p className="text-gray-500 mb-1">Quote Amount</p>
                 <p className="font-medium text-gray-900">
-                  ${Number(selectedJob.quote.total_amount).toFixed(2)}
+                  ${Number(selectedJob.quote?.total_amount ?? 0).toFixed(2)}
                 </p>
               </div>
               <div>
@@ -1452,7 +1452,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-bold text-orange-600">
-                        ${Number(job.quote.total_amount).toFixed(2)}
+                        ${Number(job.quote?.total_amount ?? 0).toFixed(2)}
                       </p>
                     </div>
                   </div>

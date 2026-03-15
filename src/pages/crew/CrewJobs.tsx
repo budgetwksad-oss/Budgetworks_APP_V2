@@ -215,7 +215,7 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
         breadcrumbs={[
           { label: 'Dashboard', onClick: onBack },
           { label: 'My Jobs', onClick: () => setSelectedJob(null) },
-          { label: getServiceLabel(selectedJob.service_request.service_type) }
+          { label: getServiceLabel(selectedJob.service_request?.service_type || selectedJob.service_type || '') }
         ]}
       >
         <div className="space-y-4 pb-6">
@@ -232,7 +232,7 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <span className="px-4 py-2 text-sm font-bold bg-orange-100 text-orange-700 rounded-full">
-                  {getServiceLabel(selectedJob.service_request.service_type)}
+                  {getServiceLabel(selectedJob.service_request?.service_type || selectedJob.service_type || '')}
                 </span>
                 <span className={`px-4 py-2 text-sm font-bold rounded-full ${getStatusBadge(selectedJob.status)}`}>
                   {selectedJob.status.replace('_', ' ').toUpperCase()}
@@ -249,12 +249,12 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
                 <h3 className="text-sm font-semibold text-gray-500 mb-2">Location</h3>
                 <div className="flex items-start gap-2 text-gray-900">
                   <MapPin className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-lg">{selectedJob.service_request.location_address}</p>
+                  <p className="text-lg">{selectedJob.service_request?.location_address || ''}</p>
                 </div>
                 <Button
                   variant="ghost"
                   onClick={() => {
-                    const address = encodeURIComponent(selectedJob.service_request.location_address);
+                    const address = encodeURIComponent(selectedJob.service_request?.location_address || '');
                     window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
                   }}
                   className="mt-2 flex items-center gap-2 text-blue-600"
@@ -286,7 +286,7 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
                 </div>
               )}
 
-              {selectedJob.service_request.contact_phone && (
+              {selectedJob.service_request?.contact_phone && (
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h3 className="text-sm font-semibold text-gray-500 mb-2">Contact</h3>
                   <p className="text-lg text-gray-900">{selectedJob.service_request.contact_phone}</p>
@@ -294,7 +294,7 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
               )}
             </div>
 
-            {selectedJob.service_request.description && (
+            {selectedJob.service_request?.description && (
               <div className="mb-6">
                 <h3 className="text-sm font-semibold text-gray-500 mb-2">Description</h3>
                 <p className="text-gray-900 whitespace-pre-wrap bg-gray-50 p-4 rounded-lg">
@@ -399,7 +399,7 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <span className="px-3 py-1.5 text-sm font-bold bg-orange-100 text-orange-700 rounded-full">
-                          {getServiceLabel(job.service_request.service_type)}
+                          {getServiceLabel(job.service_request?.service_type || job.service_type || '')}
                         </span>
                         <span className={`px-3 py-1.5 text-sm font-bold rounded-full ${getStatusBadge(job.status)}`}>
                           {job.status.replace('_', ' ').toUpperCase()}
@@ -410,7 +410,7 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
                       </div>
                       <div className="flex items-start gap-2 text-gray-700 mb-2">
                         <MapPin className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <span className="font-semibold text-base">{job.service_request.location_address}</span>
+                        <span className="font-semibold text-base">{job.service_request?.location_address || ''}</span>
                       </div>
                     </div>
                   </div>

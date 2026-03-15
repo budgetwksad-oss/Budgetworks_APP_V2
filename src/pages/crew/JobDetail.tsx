@@ -137,7 +137,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
   const handleCompleteJob = async () => {
     if (!job) return;
 
-    if (job.before_photos.length === 0 || job.after_photos.length === 0) {
+    if ((job.before_photos || []).length === 0 || (job.after_photos || []).length === 0) {
       setError('Please upload before and after photos before completing the job');
       return;
     }

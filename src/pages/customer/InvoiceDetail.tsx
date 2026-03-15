@@ -24,7 +24,7 @@ interface InvoiceData {
   jobs: {
     service_type: string;
     scheduled_date: string;
-  };
+  } | null;
   payments: Array<{
     id: string;
     amount: number;
@@ -172,10 +172,12 @@ export function InvoiceDetail({ invoiceId, onBack }: { invoiceId: string; onBack
                   {new Date(invoice.due_date).toLocaleDateString()}
                 </span>
               </div>
+              {invoice.jobs && (
+              <>
               <div className="flex justify-between">
                 <span className="text-gray-600">Service Type:</span>
                 <span className="font-medium text-gray-900 capitalize">
-                  {invoice.jobs.service_type.replace('_', ' ')}
+                  {invoice.jobs.service_type?.replace('_', ' ')}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -186,6 +188,8 @@ export function InvoiceDetail({ invoiceId, onBack }: { invoiceId: string; onBack
                     : 'Not scheduled'}
                 </span>
               </div>
+              </>
+              )}
             </div>
           </Card>
 

@@ -149,7 +149,7 @@ export function JobsList({ sidebarSections, onBack }: JobsListProps = {}) {
         breadcrumbs={[
           { label: 'Dashboard', onClick: onBack },
           { label: 'My Jobs', onClick: () => setSelectedJob(null) },
-          { label: getServiceLabel(selectedJob.service_request.service_type) }
+          { label: getServiceLabel(selectedJob.service_request?.service_type || selectedJob.service_type || '') }
         ]}
       >
         <div className="space-y-6">
@@ -167,7 +167,7 @@ export function JobsList({ sidebarSections, onBack }: JobsListProps = {}) {
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-1">Job Details</h2>
                 <p className="text-gray-600">
-                  {getServiceLabel(selectedJob.service_request.service_type)} - Quote #{selectedJob.quote.quote_number}
+                  {getServiceLabel(selectedJob.service_request?.service_type || selectedJob.service_type || '')}{selectedJob.quote ? ` - Quote #${selectedJob.quote.quote_number}` : ''}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -204,7 +204,7 @@ export function JobsList({ sidebarSections, onBack }: JobsListProps = {}) {
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Location</h3>
                 <div className="flex items-start gap-2 text-gray-900">
                   <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
-                  <p>{selectedJob.service_request.location_address}</p>
+                  <p>{selectedJob.service_request?.location_address || ''}</p>
                 </div>
               </div>
 
@@ -221,12 +221,14 @@ export function JobsList({ sidebarSections, onBack }: JobsListProps = {}) {
                 </div>
               )}
 
+              {selectedJob.quote && (
               <div>
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Quote Total</h3>
                 <p className="text-2xl font-bold text-orange-600">
                   ${Number(selectedJob.quote.total_amount).toFixed(2)}
                 </p>
               </div>
+              )}
 
               {selectedJob.completed_at && (
                 <div>
@@ -275,10 +277,11 @@ export function JobsList({ sidebarSections, onBack }: JobsListProps = {}) {
               </div>
             )}
 
+            {selectedJob.quote && (
             <div className="border-t pt-6">
               <h3 className="font-semibold text-gray-900 mb-4">Quote Breakdown</h3>
               <div className="space-y-3 mb-4">
-                {selectedJob.quote.line_items.map((item, index) => (
+                {(selectedJob.quote.line_items || []).map((item, index) => (
                   <div key={index} className="flex justify-between items-start">
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">{item.description}</p>
@@ -305,6 +308,7 @@ export function JobsList({ sidebarSections, onBack }: JobsListProps = {}) {
                 </div>
               </div>
             </div>
+            )}
           </Card>
         </div>
         {showFeedbackModal && feedbackJobId && (
@@ -370,7 +374,7 @@ export function JobsList({ sidebarSections, onBack }: JobsListProps = {}) {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <span className="px-3 py-1 text-sm font-semibold bg-orange-100 text-orange-700 rounded-full">
-                        {getServiceLabel(job.service_request.service_type)}
+                        {getServiceLabel(job.service_request?.service_type || job.service_type || '')}
                       </span>
                       <span className={`px-3 py-1 text-sm font-semibold rounded-full ${getStatusBadge(job.status)}`}>
                         {getStatusLabel(job.status)}
@@ -378,12 +382,12 @@ export function JobsList({ sidebarSections, onBack }: JobsListProps = {}) {
                     </div>
                     <div className="flex items-start gap-2 text-gray-700 mb-2">
                       <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
-                      <span className="font-medium">{job.service_request.location_address}</span>
+                      <span className="font-medium">{job.service_request?.location_address || ''}</span>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-orange-600">
-                      ${Number(job.quote.total_amount).toFixed(2)}
+                      ${Number(job.quote?.total_amount ?? 0).toFixed(2)}
                     </p>
                   </div>
                 </div>
