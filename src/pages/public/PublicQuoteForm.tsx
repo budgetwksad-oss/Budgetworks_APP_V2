@@ -4,6 +4,7 @@ import { Truck, Trash2, Hammer, CheckCircle } from 'lucide-react';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { supabase } from '../../lib/supabase';
+import { checkQuoteRateLimit } from '../../lib/quoteRateLimit';
 
 import { PublicPage } from '../../types/public';
 
@@ -77,6 +78,12 @@ export function PublicQuoteForm({ onNavigate, onLogin }: PublicQuoteFormProps) {
     setIsSubmitting(true);
 
     try {
+      const { allowed, ip } = await checkQuoteRateLimit();
+      if (!allowed) {
+        setError('Too many quote requests were submitted from this device. Please try again later.');
+        return;
+      }
+
       const { error: insertError } = await supabase.from('public_quote_requests').insert({
         contact_name: trimmedName,
         contact_email: trimmedEmail.toLowerCase(),
@@ -87,6 +94,7 @@ export function PublicQuoteForm({ onNavigate, onLogin }: PublicQuoteFormProps) {
         description: trimmedDescription,
         preferred_contact_method: formData.preferredContactMethod,
         status: 'new',
+        ip_address: ip || null,
       });
 
       if (insertError) throw insertError;

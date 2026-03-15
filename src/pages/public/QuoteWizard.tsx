@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 
 import { PublicPage } from '../../types/public';
+import { checkQuoteRateLimit } from '../../lib/quoteRateLimit';
 
 interface QuoteWizardProps {
   onNavigate: (page: PublicPage) => void;
@@ -243,6 +244,11 @@ export function QuoteWizard({ onNavigate, onLogin, onSignup }: QuoteWizardProps)
     setSubmitting(true);
     setError('');
     try {
+      const { allowed, ip } = await checkQuoteRateLimit();
+      if (!allowed) {
+        setError('Too many quote requests were submitted from this device. Please try again later.');
+        return;
+      }
       const locationAddress = state.service === 'moving' ? state.pickupAddress : state.address;
       const serviceLabel = state.service === 'moving' ? 'Moving' : state.service === 'junk_removal' ? 'Junk Removal' : 'Light Demolition';
       const { error: err } = await supabase.from('public_quote_requests').insert({
@@ -256,6 +262,7 @@ export function QuoteWizard({ onNavigate, onLogin, onSignup }: QuoteWizardProps)
         description: `${serviceLabel}: ${buildDescription(state)}`,
         details: buildDetails(state),
         status: 'new',
+        ip_address: ip || null,
       });
       if (err) throw err;
       onNavigate('quote-success');
