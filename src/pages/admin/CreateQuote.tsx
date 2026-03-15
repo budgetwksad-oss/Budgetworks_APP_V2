@@ -41,6 +41,9 @@ import {
   Download,
   Info,
   Loader2,
+  Truck,
+  Trash2,
+  Hammer,
 } from 'lucide-react';
 import { downloadQuotePDF } from '../../lib/quotePDF';
 
@@ -121,18 +124,6 @@ function PhoneContactForm({
             <option value="sms">SMS</option>
             <option value="email">Email</option>
             <option value="call">Call</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Service Type *</label>
-          <select
-            value={value.service_type}
-            onChange={(e) => set('service_type', e.target.value as PricingServiceType)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none text-sm"
-          >
-            <option value="moving">Moving</option>
-            <option value="junk_removal">Junk Removal</option>
-            <option value="demolition">Light Demo</option>
           </select>
         </div>
         <Input
@@ -223,6 +214,56 @@ function SelectField({
 
 function SubSectionLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2 mt-4">{children}</p>;
+}
+
+// ─── Service Type Selector ─────────────────────────────────────────────────
+
+const SERVICE_OPTIONS: { value: PricingServiceType; label: string; icon: React.ElementType; description: string }[] = [
+  { value: 'moving', label: 'Moving', icon: Truck, description: 'Local & long-distance moving' },
+  { value: 'junk_removal', label: 'Junk Removal', icon: Trash2, description: 'Furniture, appliances & debris' },
+  { value: 'demolition', label: 'Light Demo', icon: Hammer, description: 'Interior demolition & removal' },
+];
+
+function ServiceTypeSelector({
+  value,
+  onChange,
+}: {
+  value: PricingServiceType;
+  onChange: (v: PricingServiceType) => void;
+}) {
+  return (
+    <div className="mb-6">
+      <p className="text-sm font-semibold text-gray-700 mb-3">Select Service Type</p>
+      <div className="grid grid-cols-3 gap-3">
+        {SERVICE_OPTIONS.map(({ value: v, label, icon: Icon, description }) => {
+          const active = value === v;
+          return (
+            <button
+              key={v}
+              type="button"
+              onClick={() => onChange(v)}
+              className={`relative flex flex-col items-center gap-2 px-4 py-4 rounded-xl border-2 transition-all duration-150 text-center cursor-pointer focus:outline-none ${
+                active
+                  ? 'border-orange-500 bg-orange-50 shadow-sm'
+                  : 'border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-50/40'
+              }`}
+            >
+              <div className={`p-2.5 rounded-lg ${active ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                <Icon className="w-5 h-5" />
+              </div>
+              <div>
+                <p className={`text-sm font-semibold ${active ? 'text-orange-700' : 'text-gray-800'}`}>{label}</p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-tight">{description}</p>
+              </div>
+              {active && (
+                <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-orange-500" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 // ─── Moving Location Sub-form ─────────────────────────────────────────────
@@ -1228,8 +1269,13 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
       <PortalLayout
         portalName="Admin Portal"
         sidebarSections={sidebarSections}
-        activeItemId="service-requests"
-        breadcrumbs={[{ label: 'Leads', onClick: onSuccess }, { label: 'Create Quote' }]}
+        activeItemId={isPhoneMode ? 'create-quote' : 'service-requests'}
+        breadcrumbs={[
+          isPhoneMode
+            ? { label: 'Quote Studio', onClick: onSuccess }
+            : { label: 'Leads', onClick: onSuccess },
+          { label: 'Create Quote' },
+        ]}
       >
         <div className="min-h-[60vh] flex items-center justify-center">
           <Card className="w-full max-w-2xl p-8">
@@ -1289,14 +1335,30 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
     <PortalLayout
       portalName="Admin Portal"
       sidebarSections={sidebarSections}
-      activeItemId="service-requests"
-      breadcrumbs={[{ label: 'Leads', onClick: onBack }, { label: isPhoneMode ? 'New Phone Quote' : 'Create Quote' }]}
+      activeItemId={isPhoneMode ? 'create-quote' : 'service-requests'}
+      breadcrumbs={[
+        isPhoneMode
+          ? { label: 'Quote Studio', onClick: onBack }
+          : { label: 'Leads', onClick: onBack },
+        { label: isPhoneMode ? 'New Phone Quote' : 'Create Quote' },
+      ]}
     >
       <div className="space-y-6">
         <Button variant="ghost" onClick={onBack} className="flex items-center gap-2">
           <ArrowLeft className="w-4 h-4" />
           Back to Leads
         </Button>
+
+        <ServiceTypeSelector
+          value={serviceType}
+          onChange={(v) => {
+            if (isPhoneMode) {
+              setPhoneContact((prev) => ({ ...prev, service_type: v }));
+            } else {
+              setServiceTypeOverride(v);
+            }
+          }}
+        />
 
         {isPhoneMode && (
           <PhoneContactForm value={phoneContact} onChange={setPhoneContact} />
@@ -1312,19 +1374,6 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
                     <span className="px-3 py-1.5 text-sm font-semibold bg-orange-100 text-orange-700 rounded-full">
                       {getServiceLabel(serviceType)}
                     </span>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Override service</label>
-                      <select
-                        value={serviceTypeOverride}
-                        onChange={(e) => setServiceTypeOverride(e.target.value as PricingServiceType | '')}
-                        className="px-2 py-1 border border-gray-300 rounded-md text-xs focus:ring-1 focus:ring-orange-500 outline-none"
-                      >
-                        <option value="">Auto-detect</option>
-                        <option value="moving">Moving</option>
-                        <option value="junk_removal">Junk Removal</option>
-                        <option value="demolition">Light Demo</option>
-                      </select>
-                    </div>
                   </div>
                   <div>
                     <h4 className="text-xs font-medium text-gray-500 mb-1">Contact</h4>
