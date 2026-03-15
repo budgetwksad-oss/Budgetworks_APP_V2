@@ -89,10 +89,10 @@ export function QuoteSuccess({ onNavigate, onLogin }: QuoteSuccessProps) {
                 Need Immediate Help?
               </h3>
               <a
-                href="tel:+19025551234"
+                href="tel:+18444041240"
                 className="text-orange-500 hover:text-orange-600 font-semibold text-sm"
               >
-                Call us at (902) 555-1234
+                Call us at (844) 404-1240
               </a>
             </div>
           </div>

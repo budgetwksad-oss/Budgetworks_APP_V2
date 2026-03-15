@@ -95,8 +95,8 @@ export function Footer({ onNavigate, onLogin }: FooterProps) {
               </li>
               <li className="flex items-start space-x-3 text-gray-400 text-sm">
                 <Phone className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
-                <a href="tel:+19025551234" className="hover:text-orange-500 transition-colors">
-                  (902) 555-1234
+                <a href="tel:+18444041240" className="hover:text-orange-500 transition-colors">
+                  (844) 404-1240
                 </a>
               </li>
               <li className="flex items-start space-x-3 text-gray-400 text-sm">

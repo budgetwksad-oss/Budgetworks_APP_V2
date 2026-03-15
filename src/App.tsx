@@ -3,6 +3,7 @@ import { useAuth } from './contexts/AuthContext';
 import { Login } from './pages/auth/Login';
 import { Signup } from './pages/auth/Signup';
 import { ForgotPassword } from './pages/auth/ForgotPassword';
+import { ResetPassword } from './pages/auth/ResetPassword';
 import { CustomerPortal } from './pages/portals/CustomerPortal';
 import { CrewPortal } from './pages/portals/CrewPortal';
 import { AdminPortal } from './pages/portals/AdminPortal';
@@ -22,7 +23,7 @@ import { PrivacyPolicy } from './pages/public/PrivacyPolicy';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { PublicPage } from './types/public';
 
-type AuthView = 'login' | 'signup' | 'forgot-password';
+type AuthView = 'login' | 'signup' | 'forgot-password' | 'reset-password';
 
 function pathnameToPage(pathname: string): PublicPage | null {
   switch (pathname) {
@@ -43,7 +44,10 @@ function pathnameToPage(pathname: string): PublicPage | null {
 
 function App() {
   const { user, profile, loading } = useAuth();
-  const [authView, setAuthView] = useState<AuthView>('login');
+  const [authView, setAuthView] = useState<AuthView>(() => {
+    if (window.location.pathname === '/reset-password') return 'reset-password';
+    return 'login';
+  });
   const [publicPage, setPublicPage] = useState<PublicPage>(() => {
     const page = pathnameToPage(window.location.pathname);
     return page ?? 'home';
@@ -62,6 +66,11 @@ function App() {
 
   const navigate = useCallback((path: string) => {
     window.history.pushState({}, '', path);
+    if (path === '/reset-password') {
+      setAuthView('reset-password');
+      setShowAuth(true);
+      return;
+    }
     const page = pathnameToPage(path);
     if (page) {
       setPublicPage(page);
@@ -93,6 +102,11 @@ function App() {
   useEffect(() => {
     const onPopState = () => {
       const pathname = window.location.pathname;
+      if (pathname === '/reset-password') {
+        setAuthView('reset-password');
+        setShowAuth(true);
+        return;
+      }
       if (pathname.startsWith('/q/')) {
         const token = pathname.split('/q/')[1];
         if (token) { setMagicLinkToken(token); return; }
@@ -169,6 +183,10 @@ function App() {
           onNavigateHome={goToHome}
         />
       );
+    }
+
+    if (authView === 'reset-password') {
+      return <ResetPassword onSwitchToLogin={() => { setAuthView('login'); navigate('/'); }} onGoHome={goToHome} />;
     }
 
     if (showAuth) {

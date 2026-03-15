@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Bell, Mail, Calendar, DollarSign, User, AlertCircle, CheckCircle } from 'lucide-react';
+import { Bell, Mail, Calendar, DollarSign, User, AlertCircle, CheckCircle, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { checkAndSendReminders } from '../../lib/paymentReminders';
 
@@ -30,6 +30,12 @@ export function PaymentReminders({ onBack }: PaymentRemindersProps) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [lastCheckResult, setLastCheckResult] = useState<any>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 5000);
+  };
 
   useEffect(() => {
     loadReminderHistory();
@@ -90,13 +96,13 @@ export function PaymentReminders({ onBack }: PaymentRemindersProps) {
       await loadReminderHistory();
 
       if (result.remindersSent > 0) {
-        alert(`Successfully sent ${result.remindersSent} payment reminder(s)!`);
+        showToast('success', `Successfully sent ${result.remindersSent} payment reminder(s)!`);
       } else {
-        alert('No payment reminders needed at this time.');
+        showToast('success', 'No payment reminders needed at this time.');
       }
     } catch (err: any) {
       console.error('Error checking reminders:', err);
-      alert('Failed to check reminders: ' + err.message);
+      showToast('error', 'Failed to check reminders: ' + err.message);
     } finally {
       setSending(false);
     }
@@ -154,6 +160,12 @@ export function PaymentReminders({ onBack }: PaymentRemindersProps) {
       ]}
     >
       <div className="space-y-6">
+        {toast && (
+          <div className={`flex items-center gap-3 p-4 rounded-lg border ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button onClick={() => setToast(null)} className="ml-auto text-current opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
+          </div>
+        )}
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">

@@ -74,6 +74,13 @@ export function NotificationsOutbox() {
   const [processing, setProcessing] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('pending');
   const [stats, setStats] = useState({ pending: 0, sent: 0, failed: 0, cancelled: 0 });
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: 'markSent' | 'cancel'; item: NotificationQueueItem } | null>(null);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -106,35 +113,31 @@ export function NotificationsOutbox() {
     try {
       await navigator.clipboard.writeText(text);
     } catch {
-      alert('Failed to copy');
+      showToast('error', 'Failed to copy message to clipboard');
     }
   };
 
-  const handleMarkSent = async (item: NotificationQueueItem) => {
-    if (!confirm('Mark this notification as sent?')) return;
-    setProcessing(item.id);
-    try {
-      const { error } = await updateNotificationQueueStatus(item.id, 'sent');
-      if (error) throw error;
-      await logNotification(item, 'sent');
-      await loadData();
-    } catch (err: any) {
-      alert('Failed: ' + err.message);
-    } finally {
-      setProcessing(null);
-    }
+  const handleMarkSent = (item: NotificationQueueItem) => {
+    setConfirmAction({ type: 'markSent', item });
   };
 
-  const handleCancel = async (item: NotificationQueueItem) => {
-    if (!confirm('Cancel this notification?')) return;
+  const handleCancel = (item: NotificationQueueItem) => {
+    setConfirmAction({ type: 'cancel', item });
+  };
+
+  const executeConfirmedAction = async () => {
+    if (!confirmAction) return;
+    const { type, item } = confirmAction;
+    setConfirmAction(null);
     setProcessing(item.id);
     try {
-      const { error } = await updateNotificationQueueStatus(item.id, 'cancelled');
+      const newStatus = type === 'markSent' ? 'sent' : 'cancelled';
+      const { error } = await updateNotificationQueueStatus(item.id, newStatus);
       if (error) throw error;
-      await logNotification(item, 'cancelled');
+      await logNotification(item, newStatus);
       await loadData();
     } catch (err: any) {
-      alert('Failed: ' + err.message);
+      showToast('error', 'Failed: ' + err.message);
     } finally {
       setProcessing(null);
     }
@@ -146,6 +149,34 @@ export function NotificationsOutbox() {
 
   return (
     <div className="space-y-6">
+      {toast && (
+        <div className={`flex items-center gap-3 p-4 rounded-lg border ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+          <span className="text-sm font-medium flex-1">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="text-current opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+
+      {confirmAction && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
+            <p className="text-sm font-semibold text-gray-900 mb-1">
+              {confirmAction.type === 'markSent' ? 'Mark as Sent?' : 'Cancel Notification?'}
+            </p>
+            <p className="text-sm text-gray-500 mb-4">
+              {confirmAction.type === 'markSent'
+                ? 'This will mark the notification as manually sent and log the delivery.'
+                : 'This will cancel the notification and prevent it from being sent.'}
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmAction(null)} className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">Cancel</button>
+              <button onClick={executeConfirmedAction} className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${confirmAction.type === 'markSent' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
+                {confirmAction.type === 'markSent' ? 'Mark Sent' : 'Cancel Notification'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">

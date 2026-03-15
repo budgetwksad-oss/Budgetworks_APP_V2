@@ -3,7 +3,7 @@ import { PortalLayout } from '../../components/layout/PortalLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Settings as SettingsIcon, Save, Building2, Mail, Phone, MapPin, Bell, DollarSign } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Building2, Mail, Phone, MapPin, Bell, DollarSign, X } from 'lucide-react';
 import { supabase, getNotificationPreference, upsertNotificationPreference, NotificationPreference } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { NotificationsTemplates } from './NotificationsTemplates';
@@ -32,14 +32,20 @@ export function Settings({ onBack }: SettingsProps) {
   const [settings, setSettings] = useState<CompanySettings>({
     company_name: 'BudgetWorks',
     company_email: 'info@budgetworks.ca',
-    company_phone: '(902) 555-1234',
+    company_phone: '(844) 404-1240',
     company_address: 'Halifax, Nova Scotia',
-    tax_rate: 0.08,
+    tax_rate: 0.15,
     invoice_terms: 'Payment due within 30 days',
     invoice_footer: 'Thank you for your business!'
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000);
+  };
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreference | null>(null);
   const [notifLoading, setNotifLoading] = useState(true);
   const [notifError, setNotifError] = useState('');
@@ -62,7 +68,7 @@ export function Settings({ onBack }: SettingsProps) {
         setSettings({
           company_name: data.business_name || 'BudgetWorks',
           company_email: data.email || 'info@budgetworks.ca',
-          company_phone: data.phone || '(902) 555-1234',
+          company_phone: data.phone || '(844) 404-1240',
           company_address: data.address || 'Halifax, Nova Scotia',
           tax_rate: data.tax_rate || 0.14,
           invoice_terms: data.invoice_terms || 'Payment due within 30 days',
@@ -148,10 +154,10 @@ export function Settings({ onBack }: SettingsProps) {
         if (error) throw error;
       }
 
-      alert('Settings saved successfully!');
+      showToast('success', 'Settings saved successfully!');
     } catch (err: any) {
       console.error('Error saving settings:', err);
-      alert('Failed to save settings: ' + err.message);
+      showToast('error', 'Failed to save settings: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -179,6 +185,12 @@ export function Settings({ onBack }: SettingsProps) {
       ]}
     >
       <div className="space-y-6">
+        {toast && (
+          <div className={`flex items-center gap-3 p-4 rounded-lg border ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button onClick={() => setToast(null)} className="ml-auto text-current opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
+          </div>
+        )}
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -296,7 +308,7 @@ export function Settings({ onBack }: SettingsProps) {
                   type="tel"
                   value={settings.company_phone}
                   onChange={(e) => setSettings({ ...settings, company_phone: e.target.value })}
-                  placeholder="(902) 555-1234"
+                  placeholder="(844) 404-1240"
                 />
               </div>
             </div>
@@ -330,7 +342,7 @@ export function Settings({ onBack }: SettingsProps) {
                 max="100"
                 value={settings.tax_rate * 100}
                 onChange={(e) => setSettings({ ...settings, tax_rate: parseFloat(e.target.value) / 100 })}
-                placeholder="8.0"
+                placeholder="15.0"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Current rate: {(settings.tax_rate * 100).toFixed(2)}%

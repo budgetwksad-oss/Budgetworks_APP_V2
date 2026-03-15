@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { FileText, Download, Calendar, TrendingUp, Users, Briefcase, DollarSign } from 'lucide-react';
+import { FileText, Download, Calendar, TrendingUp, Users, Briefcase, DollarSign, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import {
   exportToCSV,
@@ -20,6 +20,12 @@ interface ReportsProps {
 
 export function Reports({ onBack }: ReportsProps) {
   const [generating, setGenerating] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000);
+  };
   const [dateRange, setDateRange] = useState({
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
@@ -64,7 +70,7 @@ export function Reports({ onBack }: ReportsProps) {
       }
     } catch (err: any) {
       console.error('Error generating jobs report:', err);
-      alert('Failed to generate report: ' + err.message);
+      showToast('error', 'Failed to generate report: ' + err.message);
     } finally {
       setGenerating(null);
     }
@@ -109,7 +115,7 @@ export function Reports({ onBack }: ReportsProps) {
       }
     } catch (err: any) {
       console.error('Error generating invoices report:', err);
-      alert('Failed to generate report: ' + err.message);
+      showToast('error', 'Failed to generate report: ' + err.message);
     } finally {
       setGenerating(null);
     }
@@ -154,7 +160,7 @@ export function Reports({ onBack }: ReportsProps) {
       }
     } catch (err: any) {
       console.error('Error generating customers report:', err);
-      alert('Failed to generate report: ' + err.message);
+      showToast('error', 'Failed to generate report: ' + err.message);
     } finally {
       setGenerating(null);
     }
@@ -173,7 +179,7 @@ export function Reports({ onBack }: ReportsProps) {
       }
     } catch (err: any) {
       console.error('Error generating revenue report:', err);
-      alert('Failed to generate report: ' + err.message);
+      showToast('error', 'Failed to generate report: ' + err.message);
     } finally {
       setGenerating(null);
     }
@@ -233,6 +239,12 @@ export function Reports({ onBack }: ReportsProps) {
       ]}
     >
       <div className="space-y-6">
+        {toast && (
+          <div className={`flex items-center gap-3 p-4 rounded-lg border ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button onClick={() => setToast(null)} className="ml-auto text-current opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
+          </div>
+        )}
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">

@@ -846,6 +846,7 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [draftSaved, setDraftSaved] = useState(false);
   const [quoteId, setQuoteId] = useState<string | null>(null);
   const [createdLeadId, setCreatedLeadId] = useState<string | null>(null);
   const [magicLink, setMagicLink] = useState<string | null>(null);
@@ -872,7 +873,7 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
         setPricingConfigured(false);
       }
       if (taxRes.data?.tax_rate) {
-        setTaxRate((taxRes.data.tax_rate ?? 15) / 100);
+        setTaxRate(taxRes.data.tax_rate);
       }
     } catch (err) {
       console.error('Error loading pricing settings', err);
@@ -1122,7 +1123,8 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
         metadata: { quote_id: savedQuoteId, estimate_low: payload.estimate_low, estimate_high: payload.estimate_high },
       });
 
-      alert('Quote saved as draft');
+      setDraftSaved(true);
+      setTimeout(() => setDraftSaved(false), 4000);
     } catch (err: any) {
       setError(err.message || 'Failed to save quote');
     } finally {
@@ -1524,6 +1526,12 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
                 {error && (
                   <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                     <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                )}
+
+                {draftSaved && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-700 font-medium">Quote saved as draft.</p>
                   </div>
                 )}
 

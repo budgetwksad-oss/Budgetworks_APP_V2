@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { FileText, Download, Eye, DollarSign, Calendar, AlertCircle, PlusCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { downloadInvoicePDF } from '../../lib/invoicePDF';
 
 interface Invoice {
   id: string;
@@ -56,6 +57,38 @@ export function InvoicesList({ onBack, onViewDetail }: { onBack: () => void; onV
       console.error('Error loading invoices:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownload = async (invoiceId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('*, profiles!customer_id(full_name, email, address)')
+        .eq('id', invoiceId)
+        .maybeSingle();
+
+      if (error || !data) return;
+
+      const lineItems = Array.isArray(data.line_items) ? data.line_items : [];
+      const customerProfile = data.profiles as any;
+
+      downloadInvoicePDF({
+        invoice_number: data.invoice_number,
+        created_at: data.created_at,
+        due_date: data.due_date,
+        customer_name: customerProfile?.full_name || '',
+        customer_email: customerProfile?.email || data.customer_email_snapshot || '',
+        customer_address: customerProfile?.address || '',
+        line_items: lineItems,
+        subtotal: data.subtotal,
+        tax_amount: data.tax_amount,
+        total: data.total_amount,
+        notes: data.notes || '',
+        status: data.status,
+      });
+    } catch (err) {
+      console.error('Error downloading invoice:', err);
     }
   };
 
@@ -238,7 +271,7 @@ export function InvoicesList({ onBack, onViewDetail }: { onBack: () => void; onV
                       <Eye className="w-4 h-4 mr-2" />
                       View
                     </Button>
-                    <Button variant="secondary" size="sm" className="flex-1 lg:flex-none">
+                    <Button variant="secondary" size="sm" className="flex-1 lg:flex-none" onClick={() => handleDownload(invoice.id)}>
                       <Download className="w-4 h-4 mr-2" />
                       Download
                     </Button>

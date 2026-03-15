@@ -132,12 +132,14 @@ function EditModal({ template, eventKey, onClose, onSave }: EditModalProps) {
     enabled: template?.enabled ?? true,
     service_type: template?.service_type || null
   });
+  const [bodyError, setBodyError] = useState('');
 
   const handleSubmit = () => {
     if (!formData.body.trim()) {
-      alert('Body is required');
+      setBodyError('Body is required');
       return;
     }
+    setBodyError('');
 
     onSave({
       id: template?.id,
@@ -229,6 +231,7 @@ function EditModal({ template, eventKey, onClose, onSave }: EditModalProps) {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               placeholder="Message body..."
             />
+            {bodyError && <p className="text-xs text-red-600 mt-1 font-medium">{bodyError}</p>}
             <p className="text-xs text-gray-500 mt-2">
               Available placeholders: {'{customer_name}'} {'{service_label}'} {'{range}'} {'{quote_link}'} {'{job_date}'} {'{arrival_window}'} {'{company_phone}'} {'{invoice_total}'} {'{invoice_link}'}
             </p>
@@ -268,6 +271,13 @@ export function NotificationsTemplates() {
   const [editingTemplate, setEditingTemplate] = useState<NotificationTemplateV2 | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [confirmSeedDefaults, setConfirmSeedDefaults] = useState(false);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   useEffect(() => {
     loadTemplates();
@@ -297,7 +307,7 @@ export function NotificationsTemplates() {
       setShowCreateModal(false);
     } catch (err: any) {
       console.error('Error saving template:', err);
-      alert('Failed to save template: ' + err.message);
+      showToast('error', 'Failed to save template: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -312,25 +322,26 @@ export function NotificationsTemplates() {
       await loadTemplates();
     } catch (err: any) {
       console.error('Error toggling template:', err);
-      alert('Failed to update template: ' + err.message);
+      showToast('error', 'Failed to update template: ' + err.message);
     }
   };
 
-  const seedDefaults = async () => {
-    if (!confirm('This will create default templates for all events. Continue?')) {
-      return;
-    }
+  const seedDefaults = () => {
+    setConfirmSeedDefaults(true);
+  };
 
+  const executeSeedDefaults = async () => {
+    setConfirmSeedDefaults(false);
     setSaving(true);
     try {
       for (const template of DEFAULT_TEMPLATES) {
         await upsertNotificationTemplateV2(template);
       }
       await loadTemplates();
-      alert('Default templates created successfully');
+      showToast('success', 'Default templates created successfully');
     } catch (err: any) {
       console.error('Error seeding templates:', err);
-      alert('Failed to create templates: ' + err.message);
+      showToast('error', 'Failed to create templates: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -357,6 +368,26 @@ export function NotificationsTemplates() {
 
   return (
     <div className="space-y-6">
+      {toast && (
+        <div className={`flex items-center gap-3 p-4 rounded-lg border ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+          <span className="text-sm font-medium flex-1">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="text-current opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+
+      {confirmSeedDefaults && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
+            <p className="text-sm font-semibold text-gray-900 mb-2">Seed Default Templates?</p>
+            <p className="text-sm text-gray-500 mb-4">This will create default notification templates for all events. Existing templates will not be overwritten.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmSeedDefaults(false)} className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">Cancel</button>
+              <button onClick={executeSeedDefaults} disabled={saving} className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">

@@ -6,7 +6,7 @@ import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { ActivityTimeline } from '../../components/ui/ActivityTimeline';
-import { MapPin, Phone, Calendar, ArrowLeft, Mail, User, FileText, Save, PhoneCall, AlertTriangle, RefreshCw, Inbox } from 'lucide-react';
+import { MapPin, Phone, Calendar, ArrowLeft, Mail, User, FileText, Save, PhoneCall, AlertTriangle, RefreshCw, Inbox, X } from 'lucide-react';
 import { CreateQuote } from './CreateQuote';
 
 interface ServiceRequestsProps {
@@ -40,6 +40,12 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
   const [loadError, setLoadError] = useState<string>('');
   const [internalNotes, setInternalNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   useEffect(() => {
     loadRequests();
@@ -140,7 +146,7 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
       }
     } catch (error) {
       console.error('Error updating status:', error);
-      alert('Failed to update status');
+      showToast('error', 'Failed to update status');
     }
   };
 
@@ -166,10 +172,10 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
       });
 
       setSelectedRequest({ ...selectedRequest, internal_notes: internalNotes });
-      alert('Notes saved successfully');
+      showToast('success', 'Notes saved successfully');
     } catch (error) {
       console.error('Error saving notes:', error);
-      alert('Failed to save notes');
+      showToast('error', 'Failed to save notes');
     } finally {
       setSavingNotes(false);
     }
@@ -270,6 +276,12 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
         ]}
       >
         <div className="space-y-6">
+          {toast && (
+            <div className={`flex items-center gap-3 p-4 rounded-lg border ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+              <span className="text-sm font-medium">{toast.message}</span>
+              <button onClick={() => setToast(null)} className="ml-auto text-current opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
+            </div>
+          )}
           <Button
             variant="ghost"
             onClick={() => {

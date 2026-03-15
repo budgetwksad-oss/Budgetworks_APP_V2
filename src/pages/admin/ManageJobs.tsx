@@ -17,6 +17,7 @@ interface InvoiceModalState {
   generatedLink: string | null;
   notificationWarning: string | null;
   copied: boolean;
+  invoiceError: string | null;
 }
 
 type JobWithDetails = Job & {
@@ -52,6 +53,14 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
   const [updating, setUpdating] = useState(false);
   const [marketplaceError, setMarketplaceError] = useState<string>('');
   const [loadError, setLoadError] = useState<string>('');
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [confirmRemoveUserId, setConfirmRemoveUserId] = useState<string | null>(null);
+  const [confirmingReset, setConfirmingReset] = useState(false);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const defaultDueDate = () => {
     const d = new Date();
@@ -68,6 +77,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
     generatedLink: null,
     notificationWarning: null,
     copied: false,
+    invoiceError: null,
   });
 
   useEffect(() => {
@@ -292,7 +302,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
 
       if (error) throw error;
       if (result && result.success === false) {
-        alert(result.error || 'Failed to assign crew member');
+        showToast('error', result.error || 'Failed to assign crew member');
         return;
       }
 
@@ -300,7 +310,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
       await refreshSelectedJob(selectedJob.id);
     } catch (error: any) {
       console.error('Error assigning crew:', error);
-      alert(error?.message || 'Failed to assign crew member. Please try again.');
+      showToast('error', error?.message || 'Failed to assign crew member. Please try again.');
     } finally {
       setUpdating(false);
     }
@@ -310,12 +320,12 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
     if (!selectedJob) return;
 
     if (!scheduledDate) {
-      alert('Please set a scheduled date before finalizing');
+      showToast('error', 'Please set a scheduled date before finalizing');
       return;
     }
 
     if (driversNeeded + helpersNeeded === 0) {
-      alert('Please set staffing needs (at least one driver or helper) before finalizing');
+      showToast('error', 'Please set staffing needs (at least one driver or helper) before finalizing');
       return;
     }
 
@@ -410,7 +420,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
       setSelectedJob(null);
     } catch (error) {
       console.error('Error finalizing job:', error);
-      alert('Failed to finalize job. Please try again.');
+      showToast('error', 'Failed to finalize job. Please try again.');
     } finally {
       setUpdating(false);
     }
@@ -431,7 +441,12 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
 
   const handleRemoveCrewAssignment = async (userId: string) => {
     if (!selectedJob) return;
-    if (!window.confirm(`Remove ${getCrewName(userId)} from this job?`)) return;
+    setConfirmRemoveUserId(userId);
+  };
+
+  const confirmRemoveCrewAssignment = async (userId: string) => {
+    if (!selectedJob) return;
+    setConfirmRemoveUserId(null);
     setUpdating(true);
 
     try {
@@ -446,15 +461,19 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
       await refreshSelectedJob(selectedJob.id);
     } catch (error) {
       console.error('Error removing crew assignment:', error);
-      alert('Failed to remove assignment. Please try again.');
+      showToast('error', 'Failed to remove assignment. Please try again.');
     } finally {
       setUpdating(false);
     }
   };
 
-  const handleResetClaims = async () => {
+  const handleResetClaims = () => {
+    setConfirmingReset(true);
+  };
+
+  const confirmResetClaims = async () => {
     if (!selectedJob) return;
-    if (!window.confirm('Reset all crew claims for this job? This will clear all assignments and remove it from the marketplace.')) return;
+    setConfirmingReset(false);
     setUpdating(true);
 
     try {
@@ -469,7 +488,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
       await refreshSelectedJob(selectedJob.id);
     } catch (error) {
       console.error('Error resetting job claims:', error);
-      alert('Failed to reset claims. Please try again.');
+      showToast('error', 'Failed to reset claims. Please try again.');
     } finally {
       setUpdating(false);
     }
@@ -490,6 +509,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
       generatedLink: null,
       notificationWarning: null,
       copied: false,
+      invoiceError: null,
     });
   };
 
@@ -497,9 +517,10 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
     if (!selectedJob) return;
     const totalNum = parseFloat(invoiceModal.total);
     if (isNaN(totalNum) || totalNum <= 0) {
-      alert('Please enter a valid invoice total.');
+      setInvoiceModal(s => ({ ...s, invoiceError: 'Please enter a valid invoice total.' }));
       return;
     }
+    setInvoiceModal(s => ({ ...s, invoiceError: null }));
 
     setInvoiceModal(s => ({ ...s, submitting: true }));
 
@@ -599,8 +620,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
       }));
     } catch (err: any) {
       console.error('Error creating invoice:', err);
-      alert('Failed to create invoice: ' + (err.message ?? String(err)));
-      setInvoiceModal(s => ({ ...s, submitting: false }));
+      setInvoiceModal(s => ({ ...s, submitting: false, invoiceError: 'Failed to create invoice: ' + (err.message ?? String(err)) }));
     }
   };
 
@@ -699,6 +719,13 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
         ]}
       >
         <div className="space-y-6">
+          {toast && (
+            <div className={`flex items-center gap-3 p-4 rounded-lg border ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+              <span className="text-sm font-medium flex-1">{toast.message}</span>
+              <button onClick={() => setToast(null)} className="text-current opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
+            </div>
+          )}
+
           <Button
             variant="ghost"
             onClick={() => setSelectedJob(null)}
@@ -1095,6 +1122,16 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
                 Use these to correct mistakes. Actions are irreversible.
               </p>
 
+              {confirmRemoveUserId && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-4">
+                  <span className="text-sm text-amber-800">Remove <strong>{getCrewName(confirmRemoveUserId)}</strong> from this job?</span>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button onClick={() => setConfirmRemoveUserId(null)} className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors">Cancel</button>
+                    <button onClick={() => confirmRemoveCrewAssignment(confirmRemoveUserId)} disabled={updating} className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 transition-colors disabled:opacity-50">Confirm</button>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3">
                 {selectedJob.crew_assignments?.length > 0 && (
                   <div>
@@ -1128,21 +1165,31 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
                 )}
 
                 <div className="border-t pt-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">Reset All Claims</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Clears all crew assignments, resets staffing to unstaffed, and removes from marketplace.
-                      </p>
+                  {confirmingReset ? (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm font-medium text-red-800 mb-3">Reset all crew claims for this job? This will clear all assignments and remove it from the marketplace.</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => setConfirmingReset(false)} className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors">Cancel</button>
+                        <button onClick={confirmResetClaims} disabled={updating} className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 transition-colors disabled:opacity-50">Confirm Reset</button>
+                      </div>
                     </div>
-                    <button
-                      onClick={handleResetClaims}
-                      disabled={updating}
-                      className="flex-shrink-0 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                    >
-                      Reset Claims
-                    </button>
-                  </div>
+                  ) : (
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Reset All Claims</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          Clears all crew assignments, resets staffing to unstaffed, and removes from marketplace.
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleResetClaims}
+                        disabled={updating}
+                        className="flex-shrink-0 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                      >
+                        Reset Claims
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>
@@ -1241,6 +1288,13 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
                       placeholder="Payment instructions, thank-you note..."
                     />
                   </div>
+
+                  {invoiceModal.invoiceError && (
+                    <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-red-700">{invoiceModal.invoiceError}</p>
+                    </div>
+                  )}
 
                   <div className="flex gap-3 pt-2">
                     <Button

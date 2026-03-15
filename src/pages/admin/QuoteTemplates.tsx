@@ -4,7 +4,7 @@ import { PortalLayout } from '../../components/layout/PortalLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { FileText, Plus, X, Edit, Trash2, Copy, CheckCircle } from 'lucide-react';
+import { FileText, Plus, X, CreditCard as Edit, Trash2, Copy, CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface LineItem {
@@ -35,6 +35,13 @@ export function QuoteTemplates({ onBack }: QuoteTemplatesProps) {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<QuoteTemplate | null>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000);
+  };
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -93,9 +100,12 @@ export function QuoteTemplates({ onBack }: QuoteTemplatesProps) {
     setShowForm(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this template?')) return;
+  const handleDelete = (id: string) => {
+    setConfirmDeleteId(id);
+  };
 
+  const confirmDelete = async (id: string) => {
+    setConfirmDeleteId(null);
     try {
       const { error } = await supabase
         .from('quote_templates')
@@ -104,10 +114,10 @@ export function QuoteTemplates({ onBack }: QuoteTemplatesProps) {
 
       if (error) throw error;
       await loadTemplates();
-      alert('Template deleted successfully');
+      showToast('success', 'Template deleted successfully');
     } catch (err: any) {
       console.error('Error deleting template:', err);
-      alert('Failed to delete template: ' + err.message);
+      showToast('error', 'Failed to delete template: ' + err.message);
     }
   };
 
@@ -115,7 +125,7 @@ export function QuoteTemplates({ onBack }: QuoteTemplatesProps) {
     e.preventDefault();
 
     if (!formData.name || formData.line_items.length === 0) {
-      alert('Please fill in all required fields');
+      showToast('error', 'Please fill in all required fields');
       return;
     }
 
@@ -133,21 +143,21 @@ export function QuoteTemplates({ onBack }: QuoteTemplatesProps) {
           .eq('id', editingTemplate.id);
 
         if (error) throw error;
-        alert('Template updated successfully');
+        showToast('success', 'Template updated successfully');
       } else {
         const { error } = await supabase
           .from('quote_templates')
           .insert([templateData]);
 
         if (error) throw error;
-        alert('Template created successfully');
+        showToast('success', 'Template created successfully');
       }
 
       await loadTemplates();
       handleCancel();
     } catch (err: any) {
       console.error('Error saving template:', err);
-      alert('Failed to save template: ' + err.message);
+      showToast('error', 'Failed to save template: ' + err.message);
     }
   };
 
@@ -221,6 +231,12 @@ export function QuoteTemplates({ onBack }: QuoteTemplatesProps) {
         ]}
       >
         <form onSubmit={handleSubmit} className="space-y-6">
+          {toast && (
+            <div className={`flex items-center gap-3 p-4 rounded-lg border ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+              <span className="text-sm font-medium">{toast.message}</span>
+              <button type="button" onClick={() => setToast(null)} className="ml-auto text-current opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
+            </div>
+          )}
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold text-gray-900">
               {editingTemplate ? 'Edit Template' : 'Create Template'}
@@ -414,6 +430,26 @@ export function QuoteTemplates({ onBack }: QuoteTemplatesProps) {
       ]}
     >
       <div className="space-y-6">
+        {toast && (
+          <div className={`flex items-center gap-3 p-4 rounded-lg border ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button type="button" onClick={() => setToast(null)} className="ml-auto text-current opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
+          </div>
+        )}
+
+        {confirmDeleteId && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
+              <p className="text-sm font-semibold text-gray-900 mb-2">Delete Template?</p>
+              <p className="text-sm text-gray-500 mb-4">This action cannot be undone. The template will be permanently removed.</p>
+              <div className="flex gap-3">
+                <button onClick={() => setConfirmDeleteId(null)} className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">Cancel</button>
+                <button onClick={() => confirmDelete(confirmDeleteId)} className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">Delete</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">

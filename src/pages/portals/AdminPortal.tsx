@@ -22,7 +22,8 @@ import {
   RefreshCw,
   Clock,
   CheckCircle2,
-  Circle
+  Circle,
+  Mail
 } from 'lucide-react';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { supabase, ServiceRequest, PublicQuoteRequest } from '../../lib/supabase';
@@ -36,6 +37,7 @@ import { PricingSettings } from '../admin/PricingSettings';
 import { NotificationsOutbox } from '../admin/NotificationsOutbox';
 import { NotificationsTemplates } from '../admin/NotificationsTemplates';
 import { Reports } from '../admin/Reports';
+import { ContactMessages } from '../admin/ContactMessages';
 
 type Page =
   | 'dashboard'
@@ -47,6 +49,7 @@ type Page =
   | 'pricing'
   | 'notifications'
   | 'reports'
+  | 'contact-messages'
   | 'settings';
 
 interface OpsData {
@@ -55,6 +58,7 @@ interface OpsData {
   jobsNeedingCrew: number;
   jobsInProgress: number;
   unpaidInvoices: number;
+  newContactMessages: number;
   todayJobs: any[];
   recentLeads: (ServiceRequest | PublicQuoteRequest & { _kind: 'public' })[];
   inProgressJobs: any[];
@@ -117,6 +121,7 @@ export function AdminPortal() {
     jobsNeedingCrew: 0,
     jobsInProgress: 0,
     unpaidInvoices: 0,
+    newContactMessages: 0,
     todayJobs: [],
     recentLeads: [],
     inProgressJobs: [],
@@ -142,6 +147,7 @@ export function AdminPortal() {
         quotesRes,
         jobsRes,
         invoicesRes,
+        contactMsgsRes,
       ] = await Promise.all([
         supabase
           .from('service_requests')
@@ -171,6 +177,10 @@ export function AdminPortal() {
           .in('status', ['sent', 'overdue', 'unpaid'])
           .order('due_date', { ascending: true })
           .limit(10),
+        supabase
+          .from('contact_messages')
+          .select('id', { count: 'exact' })
+          .eq('status', 'new'),
       ]);
 
       const allJobs = jobsRes.data || [];
@@ -195,6 +205,7 @@ export function AdminPortal() {
         jobsNeedingCrew: needsCrew.length,
         jobsInProgress: inProgress.length,
         unpaidInvoices: invoicesRes.data?.length || 0,
+        newContactMessages: contactMsgsRes.count || 0,
         todayJobs: todayJobsList,
         recentLeads: leads as any,
         inProgressJobs: inProgress.slice(0, 5),
@@ -267,6 +278,13 @@ export function AdminPortal() {
           label: 'Advanced Reporting',
           icon: BarChart2,
           onClick: () => setCurrentPage('reports')
+        },
+        {
+          id: 'contact-messages',
+          label: 'Contact Messages',
+          icon: Mail,
+          onClick: () => setCurrentPage('contact-messages'),
+          badge: ops.newContactMessages
         },
         {
           id: 'settings',
@@ -350,6 +368,22 @@ export function AdminPortal() {
       <Reports
         onBack={() => setCurrentPage('dashboard')}
       />
+    );
+  }
+
+  if (currentPage === 'contact-messages') {
+    return (
+      <PortalLayout
+        portalName="Admin Portal"
+        sidebarSections={sidebarSections}
+        activeItemId="contact-messages"
+        breadcrumbs={[
+          { label: 'Admin Portal', onClick: () => setCurrentPage('dashboard') },
+          { label: 'Contact Messages' }
+        ]}
+      >
+        <ContactMessages />
+      </PortalLayout>
     );
   }
 

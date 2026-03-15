@@ -184,10 +184,10 @@ export function Services({ onNavigate, onLogin }: ServicesProps) {
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
             <a
-              href="tel:+19025551234"
+              href="tel:+18444041240"
               className="bg-black text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-900 transition-all shadow-xl"
             >
-              Call (902) 555-1234
+              Call (844) 404-1240
             </a>
           </div>
         </div>

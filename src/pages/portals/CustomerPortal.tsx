@@ -8,6 +8,7 @@ import {
   FileText,
   DollarSign,
   User,
+  Briefcase,
   Plus,
   ArrowRight,
   AlertCircle
@@ -15,6 +16,7 @@ import {
 import { MenuSection } from '../../components/layout/Sidebar';
 import { RequestQuote } from '../customer/RequestQuote';
 import { QuotesList } from '../customer/QuotesList';
+import { JobsList } from '../customer/JobsList';
 import { InvoicesList } from '../customer/InvoicesList';
 import { InvoiceDetail } from '../customer/InvoiceDetail';
 import { Profile } from '../customer/Profile';
@@ -24,6 +26,7 @@ import { supabase } from '../../lib/supabase';
 type Page =
   | 'dashboard'
   | 'quotes'
+  | 'jobs'
   | 'invoices'
   | 'invoice-detail'
   | 'profile'
@@ -164,6 +167,13 @@ export function CustomerPortal() {
           badge: metrics.activeQuotes
         },
         {
+          id: 'jobs',
+          label: 'My Jobs',
+          icon: Briefcase,
+          onClick: () => setCurrentPage('jobs'),
+          badge: metrics.scheduledJobs
+        },
+        {
           id: 'invoices',
           label: 'Invoices',
           icon: FileText,
@@ -196,6 +206,14 @@ export function CustomerPortal() {
     return (
       <QuotesList
         sidebarSections={sidebarSections}
+        onBack={() => setCurrentPage('dashboard')}
+      />
+    );
+  }
+
+  if (currentPage === 'jobs') {
+    return (
+      <JobsList
         onBack={() => setCurrentPage('dashboard')}
       />
     );
@@ -272,7 +290,7 @@ export function CustomerPortal() {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card
             className="p-6 hover:shadow-md transition-shadow cursor-pointer"
             onClick={() => setCurrentPage('quotes')}
@@ -284,6 +302,21 @@ export function CustomerPortal() {
               <div>
                 <p className="text-2xl font-bold text-gray-900">{metrics.activeQuotes}</p>
                 <p className="text-sm text-gray-600">Active Quotes</p>
+              </div>
+            </div>
+          </Card>
+
+          <Card
+            className="p-6 hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => setCurrentPage('jobs')}
+          >
+            <div className="flex items-center gap-4">
+              <div className="bg-blue-100 p-3 rounded-lg">
+                <Briefcase className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">{metrics.scheduledJobs}</p>
+                <p className="text-sm text-gray-600">Scheduled Jobs</p>
               </div>
             </div>
           </Card>

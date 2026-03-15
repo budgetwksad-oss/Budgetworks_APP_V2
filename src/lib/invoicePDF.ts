@@ -32,7 +32,7 @@ interface CompanyInfo {
 const DEFAULT_COMPANY_INFO: CompanyInfo = {
   name: 'BudgetWorks',
   address: 'Halifax, Nova Scotia',
-  phone: '(902) 555-1234',
+  phone: '(844) 404-1240',
   email: 'info@budgetworks.ca'
 };
 
@@ -201,7 +201,7 @@ export function getInvoicePDFBase64(invoice: InvoiceData, companyInfo?: CompanyI
 }
 
 function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-CA', {
     style: 'currency',
     currency: 'CAD'
   }).format(amount);

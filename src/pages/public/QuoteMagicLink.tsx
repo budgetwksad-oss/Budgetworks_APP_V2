@@ -31,6 +31,7 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
   const [responding, setResponding] = useState(false);
   const [response, setResponse] = useState<'accept' | 'decline' | null>(null);
   const [showAgreement, setShowAgreement] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     loadQuote();
@@ -95,13 +96,13 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
 
       if (rpcError) {
         console.error('Error responding to quote:', rpcError);
-        alert('There was an error processing your response. Please try again.');
+        setActionError('There was an error processing your response. Please try again.');
         return;
       }
 
       if (!rpcData?.success) {
         console.error('Quote response failed:', rpcData?.error);
-        alert('There was an error processing your response. Please try again.');
+        setActionError('There was an error processing your response. Please try again.');
         return;
       }
 
@@ -109,7 +110,7 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
       setResponse('accept');
     } catch (err) {
       console.error('Error:', err);
-      alert('There was an error processing your response. Please try again.');
+      setActionError('There was an error processing your response. Please try again.');
     } finally {
       setResponding(false);
     }
@@ -126,20 +127,20 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
 
       if (rpcError) {
         console.error('Error responding to quote:', rpcError);
-        alert('There was an error processing your response. Please try again.');
+        setActionError('There was an error processing your response. Please try again.');
         return;
       }
 
       if (!rpcData?.success) {
         console.error('Quote decline failed:', rpcData?.error);
-        alert('There was an error processing your response. Please try again.');
+        setActionError('There was an error processing your response. Please try again.');
         return;
       }
 
       setResponse('decline');
     } catch (err) {
       console.error('Error:', err);
-      alert('There was an error processing your response. Please try again.');
+      setActionError('There was an error processing your response. Please try again.');
     } finally {
       setResponding(false);
     }
@@ -425,6 +426,14 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
             <div className="bg-gray-50 rounded-lg px-4 py-3 mb-6 text-sm text-gray-600 text-center">
               Accepting this quote will prompt you to review and sign the BudgetWorks Service Agreement.
             </div>
+
+            {actionError && (
+              <div className="flex items-center gap-3 p-4 mb-4 rounded-lg bg-red-50 border border-red-200 text-red-800">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <span className="text-sm font-medium">{actionError}</span>
+                <button onClick={() => setActionError(null)} className="ml-auto text-red-600 hover:text-red-800"><XCircle className="w-4 h-4" /></button>
+              </div>
+            )}
 
             <div className="space-y-3">
               <button

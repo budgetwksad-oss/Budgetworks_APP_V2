@@ -29,13 +29,13 @@ export function TermsOfService({ onNavigate, onLogin }: Props) {
           <div className="prose prose-gray max-w-none">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">1. Acceptance of Terms</h2>
             <p className="text-gray-700 mb-6">
-              By accessing or using BudgetWorks Moving's services, you agree to be bound by these Terms of
+              By accessing or using BudgetWorks's services, you agree to be bound by these Terms of
               Service. If you do not agree to these terms, please do not use our services.
             </p>
 
             <h2 className="text-2xl font-bold text-gray-900 mb-4">2. Services Provided</h2>
             <p className="text-gray-700 mb-4">
-              BudgetWorks Moving provides the following services:
+              BudgetWorks provides the following services:
             </p>
             <ul className="list-disc pl-6 text-gray-700 mb-6 space-y-2">
               <li>Residential and commercial moving services</li>
@@ -85,7 +85,7 @@ export function TermsOfService({ onNavigate, onLogin }: Props) {
 
             <h2 className="text-2xl font-bold text-gray-900 mb-4">7. Liability and Insurance</h2>
             <p className="text-gray-700 mb-6">
-              BudgetWorks Moving carries appropriate liability insurance. However, we are not responsible
+              BudgetWorks carries appropriate liability insurance. However, we are not responsible
               for damage to items that were improperly packed by the customer, pre-existing damage,
               or items of exceptional value unless specifically declared and insured separately.
             </p>
@@ -119,12 +119,12 @@ export function TermsOfService({ onNavigate, onLogin }: Props) {
             <h2 className="text-2xl font-bold text-gray-900 mb-4">11. Intellectual Property</h2>
             <p className="text-gray-700 mb-6">
               All content on our website, including text, graphics, logos, and software, is the property
-              of BudgetWorks Moving and is protected by copyright and other intellectual property laws.
+              of BudgetWorks and is protected by copyright and other intellectual property laws.
             </p>
 
             <h2 className="text-2xl font-bold text-gray-900 mb-4">12. Limitation of Liability</h2>
             <p className="text-gray-700 mb-6">
-              To the maximum extent permitted by law, BudgetWorks Moving shall not be liable for any
+              To the maximum extent permitted by law, BudgetWorks shall not be liable for any
               indirect, incidental, special, consequential, or punitive damages resulting from your
               use of our services.
             </p>
@@ -148,9 +148,9 @@ export function TermsOfService({ onNavigate, onLogin }: Props) {
             </p>
             <div className="mt-4 p-4 bg-gray-50 rounded-lg">
               <p className="text-gray-700">
-                <strong>BudgetWorks Moving</strong><br />
+                <strong>BudgetWorks</strong><br />
                 Email: legal@budgetworks.ca<br />
-                Phone: 1-800-BUDGET-MOVE
+                Phone: (844) 404-1240
               </p>
             </div>
           </div>

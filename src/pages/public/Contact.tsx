@@ -63,7 +63,7 @@ export function Contact({ onNavigate, onLogin }: ContactProps) {
     setIsSubmitting(true);
 
     const { error: dbError } = await supabase
-      .from('contact_submissions')
+      .from('contact_messages')
       .insert(trimmed);
 
     setIsSubmitting(false);
@@ -81,8 +81,8 @@ export function Contact({ onNavigate, onLogin }: ContactProps) {
     {
       icon: Phone,
       title: 'Phone',
-      details: '(902) 555-1234',
-      link: 'tel:+19025551234',
+      details: '(844) 404-1240',
+      link: 'tel:+18444041240',
     },
     {
       icon: Mail,

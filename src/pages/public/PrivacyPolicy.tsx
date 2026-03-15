@@ -29,7 +29,7 @@ export function PrivacyPolicy({ onNavigate, onLogin }: Props) {
           <div className="prose prose-gray max-w-none">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">1. Introduction</h2>
             <p className="text-gray-700 mb-6">
-              BudgetWorks Moving ("we," "our," or "us") is committed to protecting your privacy. This Privacy
+              BudgetWorks ("we," "our," or "us") is committed to protecting your privacy. This Privacy
               Policy explains how we collect, use, disclose, and safeguard your information when you use our
               website and services.
             </p>
@@ -118,9 +118,9 @@ export function PrivacyPolicy({ onNavigate, onLogin }: Props) {
             </p>
             <div className="mt-4 p-4 bg-gray-50 rounded-lg">
               <p className="text-gray-700">
-                <strong>BudgetWorks Moving</strong><br />
+                <strong>BudgetWorks</strong><br />
                 Email: privacy@budgetworks.ca<br />
-                Phone: 1-800-BUDGET-MOVE
+                Phone: (844) 404-1240
               </p>
             </div>
           </div>

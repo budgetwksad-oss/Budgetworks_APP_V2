@@ -65,6 +65,12 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
   const [generatingLink, setGeneratingLink] = useState(false);
   const [invoiceLink, setInvoiceLink] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   useEffect(() => {
     loadInvoices();
@@ -137,11 +143,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
 
   const handleBulkSendInvoices = async () => {
     if (selectedInvoices.length === 0) {
-      alert('Please select invoices to send');
-      return;
-    }
-
-    if (!confirm(`Send ${selectedInvoices.length} invoice(s) via email?`)) {
+      showToast('error', 'Please select invoices to send');
       return;
     }
 
@@ -185,11 +187,11 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
         }
       }
 
-      alert(`Sent ${successCount} invoice(s) successfully${errorCount > 0 ? `. ${errorCount} failed.` : '.'}`);
+      showToast('success', `Sent ${successCount} invoice(s) successfully${errorCount > 0 ? `. ${errorCount} failed.` : '.'}`);
       setSelectedInvoices([]);
     } catch (err: any) {
       console.error('Error sending invoices:', err);
-      alert('Failed to send invoices: ' + err.message);
+      showToast('error', 'Failed to send invoices: ' + err.message);
     } finally {
       setBulkSending(false);
     }
@@ -197,7 +199,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
 
   const handleBulkDownloadPDFs = async () => {
     if (selectedInvoices.length === 0) {
-      alert('Please select invoices to download');
+      showToast('error', 'Please select invoices to download');
       return;
     }
 
@@ -224,21 +226,17 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      alert(`Downloaded ${selectedInvoices.length} invoice(s)`);
+      showToast('success', `Downloaded ${selectedInvoices.length} invoice(s)`);
       setSelectedInvoices([]);
     } catch (err: any) {
       console.error('Error downloading invoices:', err);
-      alert('Failed to download invoices: ' + err.message);
+      showToast('error', 'Failed to download invoices: ' + err.message);
     }
   };
 
   const handleBulkUpdateStatus = async (newStatus: string) => {
     if (selectedInvoices.length === 0) {
-      alert('Please select invoices to update');
-      return;
-    }
-
-    if (!confirm(`Update ${selectedInvoices.length} invoice(s) status to "${newStatus}"?`)) {
+      showToast('error', 'Please select invoices to update');
       return;
     }
 
@@ -251,21 +249,17 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
       if (error) throw error;
 
       await loadInvoices();
-      alert(`Updated ${selectedInvoices.length} invoice(s) to ${newStatus}`);
+      showToast('success', `Updated ${selectedInvoices.length} invoice(s) to ${newStatus}`);
       setSelectedInvoices([]);
     } catch (err: any) {
       console.error('Error updating invoices:', err);
-      alert('Failed to update invoices: ' + err.message);
+      showToast('error', 'Failed to update invoices: ' + err.message);
     }
   };
 
   const handleBulkDelete = async () => {
     if (selectedInvoices.length === 0) {
-      alert('Please select invoices to delete');
-      return;
-    }
-
-    if (!confirm(`Are you sure you want to delete ${selectedInvoices.length} invoice(s)? This action cannot be undone.`)) {
+      showToast('error', 'Please select invoices to delete');
       return;
     }
 
@@ -278,17 +272,17 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
       if (error) throw error;
 
       await loadInvoices();
-      alert(`Deleted ${selectedInvoices.length} invoice(s)`);
+      showToast('success', `Deleted ${selectedInvoices.length} invoice(s)`);
       setSelectedInvoices([]);
     } catch (err: any) {
       console.error('Error deleting invoices:', err);
-      alert('Failed to delete invoices: ' + err.message);
+      showToast('error', 'Failed to delete invoices: ' + err.message);
     }
   };
 
   const handleBulkExportCSV = () => {
     if (selectedInvoices.length === 0) {
-      alert('Please select invoices to export');
+      showToast('error', 'Please select invoices to export');
       return;
     }
 
@@ -322,7 +316,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
 
-    alert(`Exported ${selectedInvoices.length} invoice(s) to CSV`);
+    showToast('success', `Exported ${selectedInvoices.length} invoice(s) to CSV`);
     setSelectedInvoices([]);
   };
 
@@ -447,10 +441,10 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
       await loadInvoices();
 
       const statusLabel = newStatus === 'paid' ? 'Invoice marked as paid.' : 'Partial payment recorded.';
-      alert(`Payment recorded. ${statusLabel}`);
+      showToast('success', `Payment recorded. ${statusLabel}`);
     } catch (err: any) {
       console.error('Error recording payment:', err);
-      alert('Failed to record payment: ' + (err.message ?? err));
+      showToast('error', 'Failed to record payment: ' + (err.message ?? err));
     } finally {
       setRecordingPayment(false);
     }
@@ -518,10 +512,10 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
         await loadInvoices();
       }
 
-      alert('Invoice sent successfully!');
+      showToast('success', 'Invoice sent successfully!');
     } catch (err: any) {
       console.error('Error sending invoice:', err);
-      alert('Failed to send invoice: ' + err.message);
+      showToast('error', 'Failed to send invoice: ' + err.message);
     } finally {
       setSendingInvoice(false);
     }
@@ -545,7 +539,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
       setInvoiceLink(`${window.location.origin}/i/${token}`);
     } catch (err: any) {
       console.error('Error generating link:', err);
-      alert('Failed to generate invoice link: ' + err.message);
+      showToast('error', 'Failed to generate invoice link: ' + err.message);
     } finally {
       setGeneratingLink(false);
     }
@@ -602,6 +596,12 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
         ]}
       >
         <div className="space-y-6">
+          {toast && (
+            <div className={`flex items-center gap-3 p-4 rounded-lg border ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+              <span className="text-sm font-medium">{toast.message}</span>
+              <button onClick={() => setToast(null)} className="ml-auto text-current opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
+            </div>
+          )}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">{selectedInvoice.invoice_number}</h2>
@@ -921,6 +921,12 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
       ]}
     >
       <div className="space-y-6">
+        {toast && (
+          <div className={`flex items-center gap-3 p-4 rounded-lg border ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button onClick={() => setToast(null)} className="ml-auto text-current opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
+          </div>
+        )}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">

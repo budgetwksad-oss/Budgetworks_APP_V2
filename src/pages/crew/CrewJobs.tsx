@@ -31,6 +31,12 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
   const [completing, setCompleting] = useState(false);
   const [photoError, setPhotoError] = useState('');
   const [completionError, setCompletionError] = useState('');
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000);
+  };
   const [selectedPhotoTab, setSelectedPhotoTab] = useState<'before' | 'after'>('before');
   const [jobCrewPhotos, setJobCrewPhotos] = useState<{ before: any[]; after: any[] }>({ before: [], after: [] });
 
@@ -232,7 +238,7 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
       setTimeEntry(data);
     } catch (error) {
       console.error('Error clocking in:', error);
-      alert('Failed to clock in');
+      showToast('error', 'Failed to clock in');
     } finally {
       setUpdating(false);
     }
@@ -259,7 +265,7 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
       setTimeEntry(null);
     } catch (error) {
       console.error('Error clocking out:', error);
-      alert('Failed to clock out');
+      showToast('error', 'Failed to clock out');
     } finally {
       setUpdating(false);
     }
@@ -333,6 +339,12 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
         ]}
       >
         <div className="space-y-4 pb-6">
+          {toast && (
+            <div className={`flex items-center gap-3 p-4 rounded-lg border ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+              <span className="text-sm font-medium">{toast.message}</span>
+              <button onClick={() => setToast(null)} className="ml-auto text-current opacity-60 hover:opacity-100"><AlertCircle className="w-4 h-4" /></button>
+            </div>
+          )}
           <Button
             variant="ghost"
             onClick={() => setSelectedJob(null)}

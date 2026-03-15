@@ -81,7 +81,7 @@ export function ContractorAgreementModal({ crewName, onAccept, submitting }: Con
 
           <div className="bg-gray-50 rounded-lg p-4 text-xs text-gray-500 leading-relaxed">
             This agreement is governed by the laws of the Province of Nova Scotia and the federal laws
-            of Canada. BudgetWorks Moving — {new Date().getFullYear()}.
+            of Canada. BudgetWorks — {new Date().getFullYear()}.
           </div>
         </div>
 

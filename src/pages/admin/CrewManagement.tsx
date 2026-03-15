@@ -3,7 +3,7 @@ import { PortalLayout } from '../../components/layout/PortalLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { UserPlus, Search, Mail, Phone, Calendar, Briefcase, Clock, CheckCircle, X, Edit2, Save } from 'lucide-react';
+import { UserPlus, Search, Mail, Phone, Calendar, Briefcase, Clock, CheckCircle, X, CreditCard as Edit2, Save } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface CrewMember {
@@ -43,6 +43,12 @@ export function CrewManagement({ onBack }: { onBack: () => void }) {
   const [editingQualifications, setEditingQualifications] = useState(false);
   const [canDrive, setCanDrive] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   useEffect(() => {
     loadCrewMembers();
@@ -165,7 +171,7 @@ export function CrewManagement({ onBack }: { onBack: () => void }) {
       setEditingQualifications(false);
     } catch (err: any) {
       console.error('Error updating qualifications:', err);
-      alert('Failed to update qualifications');
+      showToast('error', 'Failed to update qualifications');
     } finally {
       setSaving(false);
     }
@@ -211,6 +217,12 @@ export function CrewManagement({ onBack }: { onBack: () => void }) {
         ]}
       >
         <div className="space-y-6">
+          {toast && (
+            <div className={`flex items-center gap-3 p-4 rounded-lg border ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+              <span className="text-sm font-medium">{toast.message}</span>
+              <button onClick={() => setToast(null)} className="ml-auto text-current opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
+            </div>
+          )}
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">{selectedCrew.full_name}</h2>
