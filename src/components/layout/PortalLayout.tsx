@@ -3,9 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/Button';
 import { Truck, LogOut } from 'lucide-react';
 import { Sidebar, MobileSidebarOverlay, MobileMenuButton, MenuSection } from './Sidebar';
-import { GlobalSearch } from '../ui/GlobalSearch';
 import { NotificationCenter } from '../ui/NotificationCenter';
-import { HelpCenter } from '../ui/HelpCenter';
 
 interface PortalLayoutProps {
   children: React.ReactNode;
@@ -13,8 +11,6 @@ interface PortalLayoutProps {
   sidebarSections?: MenuSection[];
   activeItemId?: string;
   breadcrumbs?: { label: string; onClick?: () => void }[];
-  showSearch?: boolean;
-  onNavigate?: (page: string, id?: string) => void;
 }
 
 export function PortalLayout({
@@ -23,8 +19,6 @@ export function PortalLayout({
   sidebarSections,
   activeItemId,
   breadcrumbs,
-  showSearch = false,
-  onNavigate
 }: PortalLayoutProps) {
   const { profile, signOut } = useAuth();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -92,12 +86,6 @@ export function PortalLayout({
               </div>
 
               <div className="flex items-center gap-4">
-                {showSearch && onNavigate && (
-                  <div className="hidden md:block">
-                    <GlobalSearch onNavigate={onNavigate} />
-                  </div>
-                )}
-                <HelpCenter />
                 <NotificationCenter />
                 <div className="text-right hidden sm:block">
                   <p className="text-sm font-medium text-gray-900">{profile?.full_name}</p>

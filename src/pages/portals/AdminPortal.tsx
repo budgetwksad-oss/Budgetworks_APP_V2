@@ -13,13 +13,14 @@ import {
   MapPin,
   Phone,
   ClipboardList,
-  Package,
   UserPlus,
   ArrowRight,
   AlertCircle,
   Plus,
   Settings as SettingsIcon,
-  MessageSquare
+  Tag,
+  Bell,
+  BarChart2
 } from 'lucide-react';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { supabase, ServiceRequest, PublicQuoteRequest } from '../../lib/supabase';
@@ -28,10 +29,12 @@ import { ManageJobs } from '../admin/ManageJobs';
 import { CrewManagement } from '../admin/CrewManagement';
 import { InvoiceManagement } from '../admin/InvoiceManagement';
 import { Settings } from '../admin/Settings';
-import { TestimonialsManager } from '../admin/TestimonialsManager';
 import { CreateQuote } from '../admin/CreateQuote';
+import { PricingSettings } from '../admin/PricingSettings';
+import { NotificationsOutbox } from '../admin/NotificationsOutbox';
+import { Reports } from '../admin/Reports';
 import { getDashboardStats, getRevenueByMonth, getRecentActivity } from '../../lib/analytics';
-import { LineChart, DonutChart, StatCard } from '../../components/ui/Chart';
+import { LineChart, DonutChart } from '../../components/ui/Chart';
 
 type Page =
   | 'dashboard'
@@ -40,8 +43,10 @@ type Page =
   | 'crew'
   | 'invoices'
   | 'create-quote'
-  | 'settings'
-  | 'testimonials';
+  | 'pricing'
+  | 'notifications'
+  | 'reports'
+  | 'settings';
 
 interface Metrics {
   pendingRequests: number;
@@ -186,10 +191,22 @@ export function AdminPortal() {
           badge: metrics.unpaidInvoices
         },
         {
-          id: 'testimonials',
-          label: 'Testimonials',
-          icon: MessageSquare,
-          onClick: () => setCurrentPage('testimonials')
+          id: 'pricing',
+          label: 'Pricing',
+          icon: Tag,
+          onClick: () => setCurrentPage('pricing')
+        },
+        {
+          id: 'notifications',
+          label: 'Notifications',
+          icon: Bell,
+          onClick: () => setCurrentPage('notifications')
+        },
+        {
+          id: 'reports',
+          label: 'Advanced Reporting',
+          icon: BarChart2,
+          onClick: () => setCurrentPage('reports')
         },
         {
           id: 'settings',
@@ -248,10 +265,41 @@ export function AdminPortal() {
     );
   }
 
-  if (currentPage === 'testimonials') {
+  if (currentPage === 'pricing') {
     return (
-      <TestimonialsManager
+      <PortalLayout
+        portalName="Admin Portal"
         sidebarSections={sidebarSections}
+        activeItemId={currentPage}
+        breadcrumbs={[
+          { label: 'Admin Portal', onClick: () => setCurrentPage('dashboard') },
+          { label: 'Pricing' }
+        ]}
+      >
+        <PricingSettings />
+      </PortalLayout>
+    );
+  }
+
+  if (currentPage === 'notifications') {
+    return (
+      <PortalLayout
+        portalName="Admin Portal"
+        sidebarSections={sidebarSections}
+        activeItemId={currentPage}
+        breadcrumbs={[
+          { label: 'Admin Portal', onClick: () => setCurrentPage('dashboard') },
+          { label: 'Notifications' }
+        ]}
+      >
+        <NotificationsOutbox />
+      </PortalLayout>
+    );
+  }
+
+  if (currentPage === 'reports') {
+    return (
+      <Reports
         onBack={() => setCurrentPage('dashboard')}
       />
     );
@@ -278,17 +326,11 @@ export function AdminPortal() {
     });
   };
 
-  const handleGlobalNavigation = (page: string, id?: string) => {
-    setCurrentPage(page as Page);
-  };
-
   return (
     <PortalLayout
       portalName="Admin Portal"
       sidebarSections={sidebarSections}
       activeItemId={currentPage}
-      showSearch={true}
-      onNavigate={handleGlobalNavigation}
     >
       <div className="space-y-6">
         <div className="flex items-center justify-between">

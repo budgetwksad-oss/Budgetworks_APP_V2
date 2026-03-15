@@ -3,13 +3,12 @@ import { PortalLayout } from '../../components/layout/PortalLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Settings as SettingsIcon, Save, Building2, Mail, Phone, MapPin, Bell, DollarSign, BarChart2 } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Building2, Mail, Phone, MapPin, Bell, DollarSign } from 'lucide-react';
 import { supabase, getNotificationPreference, upsertNotificationPreference, NotificationPreference } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { NotificationsTemplates } from './NotificationsTemplates';
 import { NotificationsOutbox } from './NotificationsOutbox';
 import { PricingSettings } from './PricingSettings';
-import { OpsCenter } from './OpsCenter';
 
 interface CompanySettings {
   company_name: string;
@@ -25,7 +24,7 @@ interface SettingsProps {
   onBack: () => void;
 }
 
-type SettingsTab = 'company' | 'notifications' | 'outbox' | 'pricing' | 'ops';
+type SettingsTab = 'company' | 'notifications' | 'outbox' | 'pricing';
 
 export function Settings({ onBack }: SettingsProps) {
   const { user } = useAuth();
@@ -236,17 +235,6 @@ export function Settings({ onBack }: SettingsProps) {
               <DollarSign className="w-3.5 h-3.5" />
               Pricing
             </button>
-            <button
-              onClick={() => setActiveTab('ops')}
-              className={`pb-3 px-2 border-b-2 font-medium text-sm transition-colors flex items-center gap-1.5 ${
-                activeTab === 'ops'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <BarChart2 className="w-3.5 h-3.5" />
-              Ops Center
-            </button>
           </nav>
         </div>
 
@@ -265,8 +253,6 @@ export function Settings({ onBack }: SettingsProps) {
             </div>
             <PricingSettings />
           </div>
-        ) : activeTab === 'ops' ? (
-          <OpsCenter />
         ) : (
           <>
         <Card className="p-6">

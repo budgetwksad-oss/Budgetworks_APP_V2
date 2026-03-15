@@ -19,7 +19,6 @@ import { JunkRemoval } from './pages/public/JunkRemoval';
 import { LightDemo } from './pages/public/LightDemo';
 import { TermsOfService } from './pages/public/TermsOfService';
 import { PrivacyPolicy } from './pages/public/PrivacyPolicy';
-import { KeyboardShortcuts } from './components/ui/KeyboardShortcuts';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { PublicPage } from './types/public';
 
@@ -239,7 +238,6 @@ function App() {
   return (
     <ErrorBoundary>
       {renderPortal()}
-      <KeyboardShortcuts />
     </ErrorBoundary>
   );
 }
