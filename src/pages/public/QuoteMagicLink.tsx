@@ -59,8 +59,8 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
 
       const quoteData: QuoteData = {
         quote_id: data.quote.id,
-        service_type: data.service?.service_type || 'unknown',
-        location: data.service?.location_address || data.service?.location,
+        service_type: data.service?.service_type || data.quote.pricing_snapshot?.service_type || 'unknown',
+        location: data.service?.location_address,
         estimate_low: data.quote.estimate_low,
         estimate_high: data.quote.estimate_high,
         expected_price: data.quote.expected_price,
@@ -68,6 +68,7 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
         status: data.quote.status,
         customer_name: data.customer?.name,
         customer_email: data.customer?.email,
+        lead_id: data.service?.id,
       };
 
       setQuote(quoteData);
@@ -87,21 +88,19 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
     try {
       setResponding(true);
 
-      await supabase
-        .from('quotes')
-        .update({
-          agreement_accepted: true,
-          agreement_accepted_at: new Date().toISOString(),
-        })
-        .eq('id', quote!.quote_id);
-
-      const { error: rpcError } = await supabase.rpc('respond_to_quote_by_token_notify', {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('respond_to_quote_by_token_notify', {
         p_token: token,
         p_action: 'accept',
       });
 
       if (rpcError) {
         console.error('Error responding to quote:', rpcError);
+        alert('There was an error processing your response. Please try again.');
+        return;
+      }
+
+      if (!rpcData?.success) {
+        console.error('Quote response failed:', rpcData?.error);
         alert('There was an error processing your response. Please try again.');
         return;
       }
@@ -120,13 +119,19 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
     try {
       setResponding(true);
 
-      const { error: rpcError } = await supabase.rpc('respond_to_quote_by_token_notify', {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('respond_to_quote_by_token_notify', {
         p_token: token,
         p_action: 'decline',
       });
 
       if (rpcError) {
         console.error('Error responding to quote:', rpcError);
+        alert('There was an error processing your response. Please try again.');
+        return;
+      }
+
+      if (!rpcData?.success) {
+        console.error('Quote decline failed:', rpcData?.error);
         alert('There was an error processing your response. Please try again.');
         return;
       }
