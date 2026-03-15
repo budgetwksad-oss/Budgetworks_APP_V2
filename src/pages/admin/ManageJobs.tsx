@@ -58,6 +58,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [confirmRemoveUserId, setConfirmRemoveUserId] = useState<string | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   const showToast = (type: 'success' | 'error', message: string) => {
     setToast({ type, message });
@@ -400,6 +401,31 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
             },
           });
         }
+
+        const { data: crewProfiles } = await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .in('id', (selectedJob.assigned_crew_ids || []).filter(Boolean));
+
+        for (const crew of (crewProfiles || [])) {
+          if (crew.email) {
+            await supabase.rpc('enqueue_notification', {
+              p_event_key: 'job_scheduled',
+              p_audience: 'crew',
+              p_channel: 'email',
+              p_service_type: selectedJob.service_type || 'moving',
+              p_to_email: crew.email,
+              p_to_phone: '',
+              p_payload: {
+                customer_name: selectedJob.customer_name || '',
+                service_label: serviceLabel,
+                job_date: scheduledDate,
+                arrival_window: arrivalWindow,
+                company_phone: companyPhone,
+              },
+            }).catch(() => {});
+          }
+        }
       } catch {
         // Non-fatal
       }
@@ -521,6 +547,103 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
     } catch (error) {
       console.error('Error resetting job claims:', error);
       showToast('error', 'Failed to reset claims. Please try again.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleCancelJob = () => {
+    setConfirmingCancel(true);
+  };
+
+  const confirmCancelJob = async () => {
+    if (!selectedJob) return;
+    setConfirmingCancel(false);
+    setUpdating(true);
+
+    try {
+      const { error } = await supabase
+        .from('jobs')
+        .update({ status: 'cancelled' })
+        .eq('id', selectedJob.id);
+
+      if (error) throw error;
+
+      logAudit({
+        action_key: 'job_cancelled',
+        entity_type: 'job',
+        entity_id: selectedJob.id,
+        message: `Job cancelled for ${selectedJob.customer_name}`,
+        metadata: { customer_name: selectedJob.customer_name, service_type: selectedJob.service_type },
+        actor_role: 'admin',
+      });
+
+      try {
+        const serviceLabel = getServiceLabel(selectedJob.service_type || 'moving');
+        const jobDate = selectedJob.scheduled_date || '';
+
+        const customerEmail = selectedJob.customer_email || '';
+        const customerPhone = selectedJob.customer_phone || '';
+        const channel = customerEmail ? 'email' : customerPhone ? 'sms' : '';
+
+        if (channel) {
+          await supabase.rpc('enqueue_notification', {
+            p_event_key: 'job_cancelled',
+            p_audience: 'customer',
+            p_channel: channel,
+            p_service_type: selectedJob.service_type || 'moving',
+            p_to_email: channel === 'email' ? customerEmail : '',
+            p_to_phone: channel === 'sms' ? customerPhone : '',
+            p_payload: {
+              customer_name: selectedJob.customer_name || '',
+              service_label: serviceLabel,
+              job_date: jobDate,
+            },
+          }).catch(() => {});
+        }
+
+        const { data: crewProfiles } = await supabase
+          .from('profiles')
+          .select('id, email')
+          .in('id', (selectedJob.assigned_crew_ids || []).filter(Boolean));
+
+        for (const crew of (crewProfiles || [])) {
+          if (crew.email) {
+            await supabase.rpc('enqueue_notification', {
+              p_event_key: 'job_cancelled',
+              p_audience: 'crew',
+              p_channel: 'email',
+              p_service_type: selectedJob.service_type || 'moving',
+              p_to_email: crew.email,
+              p_to_phone: '',
+              p_payload: {
+                service_label: serviceLabel,
+                job_date: jobDate,
+              },
+            }).catch(() => {});
+          }
+        }
+
+        await supabase.rpc('enqueue_admin_ops', {
+          p_event_key: 'job_cancelled',
+          p_channel: 'email',
+          p_service_type: selectedJob.service_type || 'moving',
+          p_payload: {
+            customer_name: selectedJob.customer_name || '',
+            service_label: serviceLabel,
+            job_date: jobDate,
+          },
+        }).catch(() => {});
+      } catch {
+        // Non-fatal
+      }
+
+      showToast('success', 'Job cancelled.');
+      await loadJobs();
+      setSelectedJob(null);
+    } catch (error) {
+      console.error('Error cancelling job:', error);
+      showToast('error', 'Failed to cancel job. Please try again.');
     } finally {
       setUpdating(false);
     }
@@ -1153,6 +1276,18 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
                     </Button>
                   </>
                 )}
+                {selectedJob.status !== 'cancelled' && selectedJob.status !== 'completed' && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleCancelJob}
+                    disabled={updating}
+                    className="flex items-center gap-2 !text-red-600 !border-red-300 hover:!bg-red-50"
+                  >
+                    <X className="w-4 h-4" />
+                    Cancel Job
+                  </Button>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -1419,6 +1554,37 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
                   </div>
                 </div>
               )}
+            </Card>
+          </div>
+        )}
+
+        {confirmingCancel && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="max-w-sm w-full p-6">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Cancel Job?</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    This will cancel the job and notify the customer, assigned crew, and admin. This cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="secondary" className="flex-1" onClick={() => setConfirmingCancel(false)} disabled={updating}>
+                  Go Back
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="flex-1 !text-red-600 !border-red-300 hover:!bg-red-50"
+                  onClick={confirmCancelJob}
+                  disabled={updating}
+                >
+                  {updating ? 'Cancelling...' : 'Cancel Job'}
+                </Button>
+              </div>
             </Card>
           </div>
         )}

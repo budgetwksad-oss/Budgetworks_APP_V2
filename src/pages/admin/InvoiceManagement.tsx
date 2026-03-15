@@ -450,7 +450,7 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
       const enqueueAdmin = async () => {
         await supabase.rpc('enqueue_admin_ops', {
           p_event_key:    'payment_received',
-          p_channel:      'sms',
+          p_channel:      'email',
           p_service_type: '',
           p_payload:      payload,
         });
