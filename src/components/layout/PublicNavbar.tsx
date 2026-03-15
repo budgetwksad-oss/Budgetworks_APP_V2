@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Menu, X, Truck, ChevronDown, Package, Zap } from 'lucide-react';
 
-type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'moving' | 'junk-removal' | 'light-demo';
+type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'moving' | 'junk-removal' | 'light-demo' | 'terms' | 'privacy' | 'quote-success';
 
 interface PublicNavbarProps {
   currentPage: PublicPage;

@@ -1,6 +1,6 @@
 import { Truck, Mail, Phone, MapPin } from 'lucide-react';
 
-type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo';
+type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo' | 'terms' | 'privacy';
 
 interface FooterProps {
   onNavigate: (page: PublicPage) => void;
@@ -112,10 +112,24 @@ export function Footer({ onNavigate, onLogin }: FooterProps) {
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center">
+        <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-gray-400 text-sm">
             &copy; {currentYear} BudgetWorks Halifax. All rights reserved.
           </p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => onNavigate('terms')}
+              className="text-gray-400 hover:text-orange-500 transition-colors text-sm"
+            >
+              Terms of Service
+            </button>
+            <button
+              onClick={() => onNavigate('privacy')}
+              className="text-gray-400 hover:text-orange-500 transition-colors text-sm"
+            >
+              Privacy Policy
+            </button>
+          </div>
         </div>
       </div>
     </footer>

@@ -2,16 +2,18 @@ import { ReactNode } from 'react';
 import { PublicNavbar } from './PublicNavbar';
 import { Footer } from './Footer';
 
-type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo';
+type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo' | 'terms' | 'privacy';
 
 interface PublicLayoutProps {
   children: ReactNode;
-  currentPage: PublicPage;
-  onNavigate: (page: PublicPage) => void;
-  onLogin: () => void;
+  currentPage?: PublicPage;
+  onNavigate?: (page: PublicPage) => void;
+  onLogin?: () => void;
 }
 
-export function PublicLayout({ children, currentPage, onNavigate, onLogin }: PublicLayoutProps) {
+function noop() {}
+
+export function PublicLayout({ children, currentPage = 'home', onNavigate = noop, onLogin = noop }: PublicLayoutProps) {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <PublicNavbar currentPage={currentPage} onNavigate={onNavigate} onLogin={onLogin} />

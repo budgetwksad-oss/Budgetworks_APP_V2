@@ -1,9 +1,16 @@
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { Card } from '../../components/ui/Card';
 
-export function TermsOfService() {
+type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo' | 'terms' | 'privacy';
+
+interface Props {
+  onNavigate?: (page: PublicPage) => void;
+  onLogin?: () => void;
+}
+
+export function TermsOfService({ onNavigate, onLogin }: Props) {
   return (
-    <PublicLayout>
+    <PublicLayout currentPage="terms" onNavigate={onNavigate} onLogin={onLogin}>
       <div className="max-w-4xl mx-auto px-4 py-12">
         <h1 className="text-4xl font-bold text-gray-900 mb-4">Terms of Service</h1>
         <p className="text-gray-600 mb-8">Last updated: February 10, 2026</p>

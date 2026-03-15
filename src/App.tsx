@@ -17,19 +17,27 @@ import { InvoiceMagicLink } from './pages/public/InvoiceMagicLink';
 import { Moving } from './pages/public/Moving';
 import { JunkRemoval } from './pages/public/JunkRemoval';
 import { LightDemo } from './pages/public/LightDemo';
+import { TermsOfService } from './pages/public/TermsOfService';
+import { PrivacyPolicy } from './pages/public/PrivacyPolicy';
 import { KeyboardShortcuts } from './components/ui/KeyboardShortcuts';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 type AuthView = 'login' | 'signup' | 'forgot-password';
-type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo';
+type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo' | 'terms' | 'privacy';
 
 function pathnameToPage(pathname: string): PublicPage | null {
   switch (pathname) {
+    case '/': return 'home';
+    case '/services': return 'services';
+    case '/about': return 'about';
+    case '/contact': return 'contact';
+    case '/quote': return 'quote';
+    case '/quote-success': return 'quote-success';
     case '/moving': return 'moving';
     case '/junk-removal': return 'junk-removal';
     case '/light-demo': return 'light-demo';
-    case '/quote': return 'quote';
-    case '/': return 'home';
+    case '/terms': return 'terms';
+    case '/privacy': return 'privacy';
     default: return null;
   }
 }
@@ -70,10 +78,12 @@ function App() {
       about: '/about',
       contact: '/contact',
       quote: '/quote',
-      'quote-success': '/',
+      'quote-success': '/quote-success',
       moving: '/moving',
       'junk-removal': '/junk-removal',
       'light-demo': '/light-demo',
+      terms: '/terms',
+      privacy: '/privacy',
     };
     const path = pathMap[page] ?? '/';
     window.history.pushState({}, '', path);
@@ -197,6 +207,10 @@ function App() {
         return <QuoteWizard onNavigate={navigateTo} onLogin={goToLogin} onSignup={goToSignup} />;
       case 'quote-success':
         return <QuoteSuccess onNavigate={navigateTo} onLogin={goToLogin} />;
+      case 'terms':
+        return <TermsOfService onNavigate={navigateTo} onLogin={goToLogin} />;
+      case 'privacy':
+        return <PrivacyPolicy onNavigate={navigateTo} onLogin={goToLogin} />;
       default:
         return <Home onNavigate={navigateTo} onLogin={goToLogin} onSignup={goToSignup} />;
     }
