@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, fetchPricingSettings, PricingServiceType, logAudit } from '../../lib/supabase';
 import { logActivity } from '../../lib/activityLogger';
@@ -12,9 +12,18 @@ import {
   formatCurrency,
   getServiceLabel,
   MovingInputs,
+  MovingLocation,
+  BuildingType,
+  MovingSpecialItem,
   JunkInputs,
+  JunkItemCategory,
+  JunkAccessType,
   DemoInputs,
+  DemoStructureType,
+  DemoMaterialType,
+  DemoDebrisClass,
   EstimateResult,
+  PricingBreakdownLine,
 } from '../../lib/pricingEngine';
 import {
   ArrowLeft,
@@ -25,12 +34,13 @@ import {
   Mail,
   Phone,
   User,
-  Calculator,
   AlertTriangle,
   ChevronDown,
   ChevronUp,
   Pencil,
   Download,
+  Info,
+  Loader2,
 } from 'lucide-react';
 import { downloadQuotePDF } from '../../lib/quotePDF';
 
@@ -136,7 +146,7 @@ function PhoneContactForm({
             label="Location / Address *"
             value={value.location_address}
             onChange={(e) => set('location_address', e.target.value)}
-            placeholder="123 Main St, City, Province"
+            placeholder="123 Main St, Halifax, NS"
           />
         </div>
         <div className="md:col-span-2">
@@ -154,70 +164,161 @@ function PhoneContactForm({
   );
 }
 
-// ─── Toggle Checkbox ──────────────────────────────────────────────────────
+// ─── Shared primitives ────────────────────────────────────────────────────
 
 function AddonToggle({
   label,
   checked,
   onChange,
+  hint,
 }: {
   label: string;
   checked: boolean;
   onChange: (v: boolean) => void;
+  hint?: string;
 }) {
   return (
-    <label className="flex items-center gap-2 cursor-pointer select-none">
+    <label className="flex items-start gap-2 cursor-pointer select-none">
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 rounded border-gray-300 accent-orange-500"
+        className="w-4 h-4 mt-0.5 rounded border-gray-300 accent-orange-500 shrink-0"
       />
-      <span className="text-sm text-gray-700">{label}</span>
+      <div>
+        <span className="text-sm text-gray-700">{label}</span>
+        {hint && <p className="text-xs text-gray-400 mt-0.5">{hint}</p>}
+      </div>
     </label>
   );
 }
 
-// ─── Service Input Panels ─────────────────────────────────────────────────
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  hint,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  hint?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      {hint && <p className="text-xs text-gray-400 mb-1.5">{hint}</p>}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none text-sm"
+      >
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </div>
+  );
+}
+
+function SubSectionLabel({ children }: { children: React.ReactNode }) {
+  return <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2 mt-4">{children}</p>;
+}
+
+// ─── Moving Location Sub-form ─────────────────────────────────────────────
+
+function LocationSubForm({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: MovingLocation;
+  onChange: (v: MovingLocation) => void;
+}) {
+  const BUILDING_OPTIONS = [
+    { value: 'house', label: 'House / Townhouse' },
+    { value: 'apartment', label: 'Apartment' },
+    { value: 'condo', label: 'Condo' },
+    { value: 'office', label: 'Office / Commercial' },
+    { value: 'storage', label: 'Storage Unit' },
+  ];
+
+  const needsFloor = value.building_type === 'apartment' || value.building_type === 'condo' || value.building_type === 'office';
+
+  return (
+    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+      <p className="text-sm font-semibold text-gray-700">{label}</p>
+      <SelectField
+        label="Building type"
+        value={value.building_type ?? 'house'}
+        onChange={(v) => onChange({ ...value, building_type: v as BuildingType })}
+        options={BUILDING_OPTIONS}
+      />
+      {needsFloor && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Floor level</label>
+            <input
+              type="number"
+              min="0"
+              max="40"
+              value={value.floor_level ?? 0}
+              onChange={(e) => onChange({ ...value, floor_level: parseInt(e.target.value) || 0 })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none text-sm"
+            />
+          </div>
+          <div className="flex items-end pb-2">
+            <AddonToggle
+              label="Elevator available"
+              checked={!!value.has_elevator}
+              onChange={(v) => onChange({ ...value, has_elevator: v })}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Moving Input Panel ───────────────────────────────────────────────────
 
 function MovingInputPanel({
   value,
   onChange,
 }: {
-  value: MovingInputs & { trip_type: 'one_way' | 'round_trip'; truck_provider_override?: string };
-  onChange: (v: any) => void;
+  value: MovingInputs;
+  onChange: (v: MovingInputs) => void;
 }) {
-  const set = (k: string, v: any) => onChange({ ...value, [k]: v });
+  const set = (k: keyof MovingInputs, v: any) => onChange({ ...value, [k]: v });
   const addons = value.addons ?? {};
   const setAddon = (k: string, v: boolean) => onChange({ ...value, addons: { ...addons, [k]: v } });
+  const specialItems = value.special_items ?? {};
+  const setSpecialItem = (k: MovingSpecialItem, v: boolean) => onChange({ ...value, special_items: { ...specialItems, [k]: v } });
 
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Load Size</label>
-          <select
-            value={value.load_tier}
-            onChange={(e) => set('load_tier', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none text-sm"
-          >
-            <option value="Small">Small (studio / 1 bedroom)</option>
-            <option value="Medium">Medium (2–3 bedrooms)</option>
-            <option value="Large">Large (4 bedrooms)</option>
-            <option value="XL">XL (5+ bedrooms / commercial)</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Trip Type</label>
-          <select
-            value={value.trip_type}
-            onChange={(e) => set('trip_type', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none text-sm"
-          >
-            <option value="one_way">One Way</option>
-            <option value="round_trip">Round Trip</option>
-          </select>
-        </div>
+        <SelectField
+          label="Load size"
+          value={value.load_tier}
+          onChange={(v) => set('load_tier', v)}
+          options={[
+            { value: 'Small', label: 'Small (studio / 1 bedroom)' },
+            { value: 'Medium', label: 'Medium (2–3 bedrooms)' },
+            { value: 'Large', label: 'Large (4 bedrooms)' },
+            { value: 'XL', label: 'XL (5+ bedrooms / commercial)' },
+          ]}
+        />
+        <SelectField
+          label="Trip type"
+          value={value.trip_type ?? 'one_way'}
+          onChange={(v) => set('trip_type', v as 'one_way' | 'round_trip')}
+          options={[
+            { value: 'one_way', label: 'One Way' },
+            { value: 'round_trip', label: 'Round Trip' },
+          ]}
+        />
         <Input
           label="Distance (km)"
           type="number"
@@ -226,33 +327,25 @@ function MovingInputPanel({
           onChange={(e) => set('distance_km', parseFloat(e.target.value) || 0)}
           placeholder="e.g. 25"
         />
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Extra Movers (0–4)</label>
-          <select
-            value={value.extra_movers ?? 0}
-            onChange={(e) => set('extra_movers', parseInt(e.target.value))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none text-sm"
-          >
-            {[0, 1, 2, 3, 4].map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Truck Provider</label>
-          <select
-            value={value.truck_provider_override ?? ''}
-            onChange={(e) => set('truck_provider_override', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none text-sm"
-          >
-            <option value="">Use default</option>
-            <option value="Ryder">Ryder</option>
-            <option value="U-Haul">U-Haul</option>
-            <option value="Flat Fee">Flat Fee</option>
-          </select>
-        </div>
+        <SelectField
+          label="Extra movers (0–4)"
+          value={String(value.extra_movers ?? 0)}
+          onChange={(v) => set('extra_movers', parseInt(v))}
+          options={[0, 1, 2, 3, 4].map((n) => ({ value: String(n), label: String(n) }))}
+        />
+        <SelectField
+          label="Truck provider"
+          value={value.truck_provider_override ?? ''}
+          onChange={(v) => set('truck_provider_override', v || undefined)}
+          options={[
+            { value: '', label: 'Use default' },
+            { value: 'Ryder', label: 'Ryder' },
+            { value: 'U-Haul', label: 'U-Haul' },
+            { value: 'Flat Fee', label: 'Flat Fee' },
+          ]}
+        />
         <Input
-          label="Profit Margin Override (%)"
+          label="Profit margin override (%)"
           type="number"
           min="0"
           max="100"
@@ -262,20 +355,72 @@ function MovingInputPanel({
           placeholder="Leave blank for default"
         />
       </div>
+
       <div>
-        <p className="text-sm font-medium text-gray-700 mb-2">Add-ons</p>
+        <SubSectionLabel>Weekend / Holiday</SubSectionLabel>
+        <AddonToggle
+          label="Weekend or holiday move"
+          checked={!!value.is_weekend}
+          onChange={(v) => set('is_weekend', v)}
+          hint="Applies a per-mover surcharge"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <LocationSubForm
+          label="Origin"
+          value={value.origin ?? {}}
+          onChange={(v) => set('origin', v)}
+        />
+        <LocationSubForm
+          label="Destination"
+          value={value.destination ?? {}}
+          onChange={(v) => set('destination', v)}
+        />
+      </div>
+
+      <div>
+        <SubSectionLabel>Special Items</SubSectionLabel>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {(['piano', 'safe', 'hot_tub', 'pool_table'] as MovingSpecialItem[]).map((item) => (
+            <AddonToggle
+              key={item}
+              label={item.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+              checked={!!specialItems[item]}
+              onChange={(v) => setSpecialItem(item, v)}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <SubSectionLabel>Add-ons</SubSectionLabel>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <AddonToggle label="Heavy item (+)" checked={!!addons.heavy_item} onChange={(v) => setAddon('heavy_item', v)} />
+          <AddonToggle label="Heavy item" checked={!!addons.heavy_item} onChange={(v) => setAddon('heavy_item', v)} />
           <AddonToggle label="Stairs (3+ flights)" checked={!!addons.stairs_3plus} onChange={(v) => setAddon('stairs_3plus', v)} />
           <AddonToggle label="Tight parking" checked={!!addons.parking_tight} onChange={(v) => setAddon('parking_tight', v)} />
           <AddonToggle label="Packing service" checked={!!addons.packing} onChange={(v) => setAddon('packing', v)} />
           <AddonToggle label="Assembly / disassembly" checked={!!addons.assembly} onChange={(v) => setAddon('assembly', v)} />
           <AddonToggle label="Overnight storage" checked={!!addons.overnight_storage} onChange={(v) => setAddon('overnight_storage', v)} />
+          <AddonToggle label="Elevator booking" checked={!!addons.elevator_booking} onChange={(v) => setAddon('elevator_booking', v)} hint="Book elevator in advance for apt/condo" />
         </div>
       </div>
     </div>
   );
 }
+
+// ─── Junk Input Panel ─────────────────────────────────────────────────────
+
+const JUNK_CATEGORY_OPTIONS: { key: JunkItemCategory; label: string; hint?: string }[] = [
+  { key: 'general', label: 'General household / furniture' },
+  { key: 'appliance_no_freon', label: 'Appliances (no refrigerant)', hint: 'Washer, dryer, stove, dishwasher' },
+  { key: 'appliance_freon', label: 'Appliances with refrigerant', hint: 'Fridge, AC unit, freezer' },
+  { key: 'electronics', label: 'Electronics / WEEE', hint: 'TVs, computers, monitors' },
+  { key: 'mattress', label: 'Mattresses' },
+  { key: 'tires', label: 'Tires', hint: 'Charged per unit at job site' },
+  { key: 'construction_debris', label: 'Construction / renovation debris', hint: 'Drywall, wood, flooring' },
+  { key: 'paint_hazmat', label: 'Paint / hazardous materials', hint: 'May require separate HRM drop-off' },
+];
 
 function JunkInputPanel({
   value,
@@ -284,39 +429,68 @@ function JunkInputPanel({
   value: JunkInputs;
   onChange: (v: JunkInputs) => void;
 }) {
-  const set = (k: string, v: any) => onChange({ ...value, [k]: v } as JunkInputs);
+  const set = (k: keyof JunkInputs, v: any) => onChange({ ...value, [k]: v } as JunkInputs);
   const addons = value.addons ?? {};
   const setAddon = (k: string, v: boolean) => onChange({ ...value, addons: { ...addons, [k]: v } } as JunkInputs);
+  const categories = value.item_categories ?? {};
+  const setCategory = (k: JunkItemCategory, v: boolean) => onChange({ ...value, item_categories: { ...categories, [k]: v } } as JunkInputs);
 
   return (
     <div className="space-y-5">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Load Size</label>
-        <select
-          value={value.load_tier}
-          onChange={(e) => set('load_tier', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none text-sm"
-        >
-          <option value="1/8 Load">1/8 Load</option>
-          <option value="1/4 Load">1/4 Load</option>
-          <option value="1/2 Load">1/2 Load</option>
-          <option value="3/4 Load">3/4 Load</option>
-          <option value="Full Load">Full Load</option>
-        </select>
+        <SubSectionLabel>What are we picking up?</SubSectionLabel>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+          {JUNK_CATEGORY_OPTIONS.map(({ key, label, hint }) => (
+            <AddonToggle
+              key={key}
+              label={label}
+              hint={hint}
+              checked={!!categories[key]}
+              onChange={(v) => setCategory(key, v)}
+            />
+          ))}
+        </div>
       </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <SelectField
+          label="Estimated load size"
+          value={value.load_tier}
+          onChange={(v) => set('load_tier', v)}
+          options={[
+            { value: '1/8 Load', label: '1/8 Load — a few small items' },
+            { value: '1/4 Load', label: '1/4 Load — small room worth' },
+            { value: '1/2 Load', label: '1/2 Load — partial truck' },
+            { value: '3/4 Load', label: '3/4 Load — large room worth' },
+            { value: 'Full Load', label: 'Full Load — entire truck' },
+          ]}
+        />
+        <SelectField
+          label="Access type"
+          value={value.access_type ?? 'ground_floor'}
+          onChange={(v) => set('access_type', v as JunkAccessType)}
+          options={[
+            { value: 'ground_floor', label: 'Ground floor / easy access' },
+            { value: 'stairs', label: 'Stairs required' },
+            { value: 'elevator', label: 'Elevator building' },
+            { value: 'attic_basement', label: 'Attic or basement' },
+          ]}
+        />
+      </div>
+
       <div>
-        <p className="text-sm font-medium text-gray-700 mb-2">Add-ons</p>
+        <SubSectionLabel>Add-ons</SubSectionLabel>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <AddonToggle label="Heavy item" checked={!!addons.heavy_item} onChange={(v) => setAddon('heavy_item', v)} />
           <AddonToggle label="Stairs (3+ flights)" checked={!!addons.stairs_3plus} onChange={(v) => setAddon('stairs_3plus', v)} />
-          <AddonToggle label="Mattress" checked={!!addons.mattress} onChange={(v) => setAddon('mattress', v)} />
-          <AddonToggle label="Appliance" checked={!!addons.appliance} onChange={(v) => setAddon('appliance', v)} />
           <AddonToggle label="Extra trip" checked={!!addons.extra_trip} onChange={(v) => setAddon('extra_trip', v)} />
         </div>
       </div>
     </div>
   );
 }
+
+// ─── Demo Input Panel ─────────────────────────────────────────────────────
 
 function DemoInputPanel({
   value,
@@ -325,40 +499,106 @@ function DemoInputPanel({
   value: DemoInputs;
   onChange: (v: DemoInputs) => void;
 }) {
-  const set = (k: string, v: any) => onChange({ ...value, [k]: v } as DemoInputs);
+  const set = (k: keyof DemoInputs, v: any) => onChange({ ...value, [k]: v } as DemoInputs);
   const addons = value.addons ?? {};
   const setAddon = (k: string, v: boolean) => onChange({ ...value, addons: { ...addons, [k]: v } } as DemoInputs);
+
+  const materialToDebris: Record<DemoMaterialType, DemoDebrisClass> = {
+    wood: 'clean_wood',
+    drywall_plaster: 'drywall',
+    concrete_masonry: 'concrete',
+    mixed: 'mixed',
+  };
+
+  const handleMaterialChange = (mat: DemoMaterialType) => {
+    onChange({ ...value, material_type: mat, debris_class: materialToDebris[mat] });
+  };
 
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Scope</label>
-          <select
-            value={value.scope_tier}
-            onChange={(e) => set('scope_tier', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none text-sm"
-          >
-            <option value="Small">Small (bathroom / closet)</option>
-            <option value="Medium">Medium (kitchen / 1–2 rooms)</option>
-            <option value="Large">Large (multi-room / whole floor)</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Extra Workers (0–4)</label>
-          <select
-            value={value.extra_workers ?? 0}
-            onChange={(e) => set('extra_workers', parseInt(e.target.value))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none text-sm"
-          >
-            {[0, 1, 2, 3, 4].map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-        </div>
+        <SelectField
+          label="Scope"
+          value={value.scope_tier}
+          onChange={(v) => set('scope_tier', v)}
+          options={[
+            { value: 'Small', label: 'Small (bathroom / closet)' },
+            { value: 'Medium', label: 'Medium (kitchen / 1–2 rooms)' },
+            { value: 'Large', label: 'Large (multi-room / whole floor)' },
+          ]}
+        />
+        <SelectField
+          label="Extra workers (0–4)"
+          value={String(value.extra_workers ?? 0)}
+          onChange={(v) => set('extra_workers', parseInt(v))}
+          options={[0, 1, 2, 3, 4].map((n) => ({ value: String(n), label: String(n) }))}
+        />
+        <SelectField
+          label="Structure type"
+          value={value.structure_type ?? 'mixed'}
+          onChange={(v) => set('structure_type', v as DemoStructureType)}
+          options={[
+            { value: 'interior_wall', label: 'Interior wall' },
+            { value: 'deck_fence', label: 'Deck / fence' },
+            { value: 'shed_garage', label: 'Shed or garage' },
+            { value: 'flooring', label: 'Flooring' },
+            { value: 'kitchen_bath', label: 'Kitchen or bathroom' },
+            { value: 'mixed', label: 'Mixed / general' },
+          ]}
+        />
+        <SelectField
+          label="Primary material"
+          value={value.material_type ?? 'mixed'}
+          onChange={(v) => handleMaterialChange(v as DemoMaterialType)}
+          options={[
+            { value: 'wood', label: 'Wood / framing' },
+            { value: 'drywall_plaster', label: 'Drywall / plaster' },
+            { value: 'concrete_masonry', label: 'Concrete / masonry' },
+            { value: 'mixed', label: 'Mixed' },
+          ]}
+          hint="Auto-selects debris class"
+        />
+        <SelectField
+          label="Debris class"
+          value={value.debris_class ?? 'mixed'}
+          onChange={(v) => set('debris_class', v as DemoDebrisClass)}
+          options={[
+            { value: 'clean_wood', label: 'Clean wood' },
+            { value: 'drywall', label: 'Drywall / plaster' },
+            { value: 'concrete', label: 'Concrete / masonry' },
+            { value: 'mixed', label: 'Mixed / general' },
+          ]}
+          hint="Determines HRM disposal rate"
+        />
+        <Input
+          label="Build year"
+          type="number"
+          min="1800"
+          max={new Date().getFullYear()}
+          value={value.build_year != null ? String(value.build_year) : ''}
+          onChange={(e) => set('build_year', e.target.value === '' ? undefined : parseInt(e.target.value))}
+          placeholder="e.g. 1985"
+        />
       </div>
+
       <div>
-        <p className="text-sm font-medium text-gray-700 mb-2">Add-ons</p>
+        <SubSectionLabel>Permit & Safety</SubSectionLabel>
+        <AddonToggle
+          label="Halifax permit required"
+          checked={!!value.needs_permit}
+          onChange={(v) => set('needs_permit', v)}
+          hint="Adds permit cost estimate to the quote"
+        />
+        {value.build_year && value.build_year < 1990 && (
+          <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+            <p className="text-xs text-amber-800">Pre-1990 build — asbestos/lead reserve will be included in the estimate.</p>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <SubSectionLabel>Add-ons</SubSectionLabel>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <AddonToggle label="Flooring removal" checked={!!addons.flooring} onChange={(v) => setAddon('flooring', v)} />
           <AddonToggle label="Tile removal" checked={!!addons.tile} onChange={(v) => setAddon('tile', v)} />
@@ -370,10 +610,12 @@ function DemoInputPanel({
   );
 }
 
-// ─── Estimate Results Display ─────────────────────────────────────────────
+// ─── Estimate Display ─────────────────────────────────────────────────────
 
 function EstimateDisplay({
   result,
+  isCalculating,
+  usingDefaults,
   manualOverride,
   onToggleOverride,
   estimateLow,
@@ -382,6 +624,8 @@ function EstimateDisplay({
   onChangeHigh,
 }: {
   result: EstimateResult;
+  isCalculating: boolean;
+  usingDefaults: boolean;
   manualOverride: boolean;
   onToggleOverride: () => void;
   estimateLow: string;
@@ -389,16 +633,31 @@ function EstimateDisplay({
   onChangeLow: (v: string) => void;
   onChangeHigh: (v: string) => void;
 }) {
-  const [showBreakdown, setShowBreakdown] = useState(false);
+  const [showBreakdown, setShowBreakdown] = useState(true);
   const snap = result.snapshot;
+  const lines: PricingBreakdownLine[] = snap.breakdown_lines ?? [];
 
   return (
     <div className="space-y-4">
-      <div className="bg-green-50 border border-green-200 rounded-xl p-5">
+      {result.advisory_notes.length > 0 && (
+        <div className="space-y-2">
+          {result.advisory_notes.map((note, i) => (
+            <div key={i} className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <Info className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-xs text-amber-800">{note}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className={`border rounded-xl p-5 transition-opacity ${isCalculating ? 'opacity-60' : 'opacity-100'} bg-green-50 border-green-200`}>
         <div className="flex items-center justify-between mb-3">
-          <h4 className="text-sm font-semibold text-green-800">Calculated Estimate</h4>
-          <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
-            Staffing: {result.staffing_defaults.drivers}d / {result.staffing_defaults.helpers}h
+          <div className="flex items-center gap-2">
+            <h4 className="text-sm font-semibold text-green-800">Live Estimate</h4>
+            {isCalculating && <Loader2 className="w-4 h-4 text-green-600 animate-spin" />}
+          </div>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${usingDefaults ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+            {usingDefaults ? 'Using Halifax defaults' : 'Using your saved rates'}
           </span>
         </div>
         <div className="grid grid-cols-3 gap-4 mb-3">
@@ -415,6 +674,7 @@ function EstimateDisplay({
             <p className="text-lg font-bold text-gray-900">{formatCurrency(result.estimate_high)}</p>
           </div>
         </div>
+
         <button
           type="button"
           onClick={() => setShowBreakdown((v) => !v)}
@@ -423,18 +683,32 @@ function EstimateDisplay({
           {showBreakdown ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           {showBreakdown ? 'Hide breakdown' : 'Show breakdown'}
         </button>
-        {showBreakdown && (
-          <div className="mt-3 pt-3 border-t border-green-200 grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-gray-700">
-            <div className="flex justify-between"><span>Subtotal (low)</span><span>{formatCurrency(snap.subtotal_low)}</span></div>
-            <div className="flex justify-between"><span>Subtotal (high)</span><span>{formatCurrency(snap.subtotal_high)}</span></div>
-            <div className="flex justify-between"><span>Tax (low)</span><span>{formatCurrency(snap.tax_low)}</span></div>
-            <div className="flex justify-between"><span>Tax (high)</span><span>{formatCurrency(snap.tax_high)}</span></div>
-            {Object.entries(snap.breakdown).map(([k, v]) => (
-              <div key={k} className="flex justify-between col-span-2">
-                <span className="text-gray-500 capitalize">{k.replace(/_/g, ' ')}</span>
-                <span>{typeof v === 'number' ? (k.includes('pct') ? `${v}%` : formatCurrency(v)) : String(v)}</span>
+
+        {showBreakdown && lines.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-green-200">
+            <div className="space-y-1.5">
+              {lines.map((line, i) => {
+                const isLast = i === lines.length - 1;
+                return (
+                  <div key={i} className={`flex justify-between items-center text-xs ${isLast ? 'pt-2 border-t border-green-300 font-semibold text-green-900' : 'text-gray-700'} ${line.is_advisory ? 'text-amber-700' : ''}`}>
+                    <span className={line.is_advisory ? 'text-amber-700' : ''}>{line.label}</span>
+                    <span>
+                      {line.low === line.high
+                        ? formatCurrency(line.low)
+                        : `${formatCurrency(line.low)} – ${formatCurrency(line.high)}`}
+                    </span>
+                  </div>
+                );
+              })}
+              <div className="flex justify-between items-center text-sm font-bold text-gray-900 pt-2 border-t border-green-300">
+                <span>Total (incl. HST)</span>
+                <span>
+                  {result.estimate_low === result.estimate_high
+                    ? formatCurrency(result.estimate_low)
+                    : `${formatCurrency(result.estimate_low)} – ${formatCurrency(result.estimate_high)}`}
+                </span>
               </div>
-            ))}
+            </div>
           </div>
         )}
       </div>
@@ -489,26 +763,40 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
     service_type: 'moving',
   });
 
+  const [serviceTypeOverride, setServiceTypeOverride] = useState<PricingServiceType | ''>('');
+
   const activeLead: UnifiedRequest | null = lead ?? null;
   const serviceType: PricingServiceType = isPhoneMode
     ? phoneContact.service_type
-    : (lead?.service_type as PricingServiceType) ?? 'moving';
+    : serviceTypeOverride || ((lead?.service_type as PricingServiceType) ?? 'moving');
 
   const [pricingSettings, setPricingSettings] = useState<Record<string, any> | null>(null);
-  const [pricingConfigured, setPricingConfigured] = useState(true);
-  const [taxRate, setTaxRate] = useState(0);
+  const [pricingConfigured, setPricingConfigured] = useState(false);
+  const [taxRate, setTaxRate] = useState(0.15);
   const [loadingSettings, setLoadingSettings] = useState(false);
 
-  const [movingInputs, setMovingInputs] = useState<MovingInputs & { trip_type: 'one_way' | 'round_trip'; truck_provider_override?: string }>({
+  const [movingInputs, setMovingInputs] = useState<MovingInputs>({
     load_tier: 'Medium',
     distance_km: 0,
     trip_type: 'one_way',
     extra_movers: 0,
+    origin: { building_type: 'house' },
+    destination: { building_type: 'house' },
   });
-  const [junkInputs, setJunkInputs] = useState<JunkInputs>({ load_tier: '1/4 Load' });
-  const [demoInputs, setDemoInputs] = useState<DemoInputs>({ scope_tier: 'Small', extra_workers: 0 });
+  const [junkInputs, setJunkInputs] = useState<JunkInputs>({
+    load_tier: '1/4 Load',
+    access_type: 'ground_floor',
+    item_categories: { general: true },
+  });
+  const [demoInputs, setDemoInputs] = useState<DemoInputs>({
+    scope_tier: 'Small',
+    extra_workers: 0,
+    material_type: 'mixed',
+    debris_class: 'mixed',
+  });
 
   const [estimateResult, setEstimateResult] = useState<EstimateResult | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
   const [manualOverride, setManualOverride] = useState(false);
   const [estimateLow, setEstimateLow] = useState('');
   const [estimateHigh, setEstimateHigh] = useState('');
@@ -521,6 +809,8 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
   const [createdLeadId, setCreatedLeadId] = useState<string | null>(null);
   const [magicLink, setMagicLink] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     loadPricingAndTax();
@@ -540,8 +830,8 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
         setPricingSettings(null);
         setPricingConfigured(false);
       }
-      if (taxRes.data) {
-        setTaxRate((taxRes.data.tax_rate ?? 0) / 100);
+      if (taxRes.data?.tax_rate) {
+        setTaxRate((taxRes.data.tax_rate ?? 15) / 100);
       }
     } catch (err) {
       console.error('Error loading pricing settings', err);
@@ -550,42 +840,42 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
     }
   };
 
-  const buildQuoteInputs = () => {
+  const buildQuoteInputs = (): MovingInputs | JunkInputs | DemoInputs => {
     if (serviceType === 'moving') {
-      const km = movingInputs.trip_type === 'round_trip'
+      const km = (movingInputs.trip_type === 'round_trip')
         ? (movingInputs.distance_km ?? 0) * 2
         : (movingInputs.distance_km ?? 0);
-      const inputs: MovingInputs = {
-        load_tier: movingInputs.load_tier,
-        distance_km: km,
-        extra_movers: movingInputs.extra_movers,
-        addons: movingInputs.addons,
-      };
-      if (movingInputs.profit_margin_pct != null) inputs.profit_margin_pct = movingInputs.profit_margin_pct;
-      if (movingInputs.truck_provider_override) {
-        return { ...inputs, _truck_provider_override: movingInputs.truck_provider_override };
-      }
-      return inputs;
+      return { ...movingInputs, distance_km: km };
     }
     if (serviceType === 'junk_removal') return junkInputs;
     return demoInputs;
   };
 
-  const handleCalculate = () => {
-    if (!pricingSettings || !pricingConfigured) return;
+  const runCalculation = () => {
     const inputs = buildQuoteInputs();
-
-    let settingsToUse = { ...pricingSettings };
-    if (serviceType === 'moving' && (inputs as any)._truck_provider_override) {
-      settingsToUse = { ...settingsToUse, truck_provider: (inputs as any)._truck_provider_override };
+    setIsCalculating(true);
+    try {
+      const result = calculateEstimate(serviceType, inputs as any, pricingSettings, taxRate);
+      setEstimateResult(result);
+      if (!manualOverride) {
+        setEstimateLow(String(result.estimate_low));
+        setEstimateHigh(String(result.estimate_high));
+      }
+    } finally {
+      setIsCalculating(false);
     }
-
-    const result = calculateEstimate(serviceType, inputs as any, settingsToUse, taxRate);
-    setEstimateResult(result);
-    setManualOverride(false);
-    setEstimateLow(String(result.estimate_low));
-    setEstimateHigh(String(result.estimate_high));
   };
+
+  useEffect(() => {
+    if (loadingSettings) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      runCalculation();
+    }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [movingInputs, junkInputs, demoInputs, serviceType, pricingSettings, taxRate, loadingSettings]);
 
   const handleDownloadPDF = async () => {
     let companyName = 'BudgetWorks';
@@ -611,6 +901,10 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
     const low = manualOverride && estimateLow ? parseFloat(estimateLow) : estimateResult?.estimate_low ?? parseFloat(estimateLow) ?? 0;
     const high = manualOverride && estimateHigh ? parseFloat(estimateHigh) : estimateResult?.estimate_high ?? parseFloat(estimateHigh) ?? 0;
 
+    const scopeSummary = serviceType === 'junk_removal' ? estimateResult?.scope_summary ?? null : null;
+    const advisoryNotes = estimateResult?.advisory_notes ?? [];
+    const breakdownLines = estimateResult?.snapshot.breakdown_lines ?? [];
+
     downloadQuotePDF({
       date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
       customerName: contact.contact_name || 'Customer',
@@ -629,6 +923,9 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
       companyPhone,
       companyEmail,
       companyAddress,
+      scopeSummary,
+      advisoryNotes: advisoryNotes.length > 0 ? advisoryNotes : undefined,
+      breakdownLines: breakdownLines.length > 0 ? breakdownLines : undefined,
     });
   };
 
@@ -695,7 +992,7 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
     const high = manualOverride && estimateHigh ? parseFloat(estimateHigh) : estimateResult?.estimate_high ?? null;
     const cap = capAmount ? parseFloat(capAmount) : null;
 
-    if (!low && !high) throw new Error('Please calculate or enter an estimate range');
+    if (!low && !high) throw new Error('Please wait for the estimate to calculate or enter values manually');
 
     const quoteInputs = buildQuoteInputs();
     const pricingSnap = estimateResult
@@ -909,9 +1206,7 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
             },
           });
         }
-      } catch (_enqueueErr) {
-        // Non-fatal
-      }
+      } catch (_enqueueErr) {}
     } catch (err: any) {
       setError(err.message || 'Failed to send quote');
     } finally {
@@ -1013,10 +1308,23 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
               <Card className="p-6 sticky top-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Lead Summary</h3>
                 <div className="space-y-4">
-                  <div>
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="px-3 py-1.5 text-sm font-semibold bg-orange-100 text-orange-700 rounded-full">
                       {getServiceLabel(serviceType)}
                     </span>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Override service</label>
+                      <select
+                        value={serviceTypeOverride}
+                        onChange={(e) => setServiceTypeOverride(e.target.value as PricingServiceType | '')}
+                        className="px-2 py-1 border border-gray-300 rounded-md text-xs focus:ring-1 focus:ring-orange-500 outline-none"
+                      >
+                        <option value="">Auto-detect</option>
+                        <option value="moving">Moving</option>
+                        <option value="junk_removal">Junk Removal</option>
+                        <option value="demolition">Light Demo</option>
+                      </select>
+                    </div>
                   </div>
                   <div>
                     <h4 className="text-xs font-medium text-gray-500 mb-1">Contact</h4>
@@ -1078,20 +1386,10 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
                 </h2>
                 <p className="text-gray-500 text-sm">
                   {isPhoneMode
-                    ? 'Enter customer details above, then calculate an estimate below.'
-                    : `Provide an estimate range for this ${getServiceLabel(serviceType).toLowerCase()} job`}
+                    ? 'Enter customer details above, then fill out the job details below. The estimate updates automatically.'
+                    : `Estimate for this ${getServiceLabel(serviceType).toLowerCase()} job — updates as you fill in the details.`}
                 </p>
               </div>
-
-              {!pricingConfigured && !loadingSettings && (
-                <div className="flex items-start gap-3 p-4 mb-6 bg-amber-50 border border-amber-200 rounded-xl text-amber-800">
-                  <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold">Pricing not configured for {getServiceLabel(serviceType)}</p>
-                    <p className="text-xs mt-0.5">Go to Settings &rarr; Pricing to configure before using the estimate calculator.</p>
-                  </div>
-                </div>
-              )}
 
               <form onSubmit={handleSendQuote} className="space-y-8">
                 <div>
@@ -1110,52 +1408,42 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
                 </div>
 
                 <div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={handleCalculate}
-                    disabled={!pricingConfigured || loadingSettings}
-                    className="flex items-center gap-2"
-                  >
-                    <Calculator className="w-4 h-4" />
-                    {loadingSettings ? 'Loading settings...' : 'Calculate Estimate'}
-                  </Button>
+                  <h3 className="text-base font-semibold text-gray-800 mb-4 pb-2 border-b">Estimate</h3>
+                  {estimateResult ? (
+                    <EstimateDisplay
+                      result={estimateResult}
+                      isCalculating={isCalculating}
+                      usingDefaults={!pricingConfigured}
+                      manualOverride={manualOverride}
+                      onToggleOverride={() => setManualOverride((v) => !v)}
+                      estimateLow={estimateLow}
+                      estimateHigh={estimateHigh}
+                      onChangeLow={setEstimateLow}
+                      onChangeHigh={setEstimateHigh}
+                    />
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Input
+                        label="Estimate Low ($)"
+                        type="number"
+                        value={estimateLow}
+                        onChange={(e) => setEstimateLow(e.target.value)}
+                        min="0"
+                        step="0.01"
+                        placeholder="Minimum estimate"
+                      />
+                      <Input
+                        label="Estimate High ($)"
+                        type="number"
+                        value={estimateHigh}
+                        onChange={(e) => setEstimateHigh(e.target.value)}
+                        min="0"
+                        step="0.01"
+                        placeholder="Maximum estimate"
+                      />
+                    </div>
+                  )}
                 </div>
-
-                {estimateResult && (
-                  <EstimateDisplay
-                    result={estimateResult}
-                    manualOverride={manualOverride}
-                    onToggleOverride={() => setManualOverride((v) => !v)}
-                    estimateLow={estimateLow}
-                    estimateHigh={estimateHigh}
-                    onChangeLow={setEstimateLow}
-                    onChangeHigh={setEstimateHigh}
-                  />
-                )}
-
-                {!estimateResult && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      label="Estimate Low ($)"
-                      type="number"
-                      value={estimateLow}
-                      onChange={(e) => setEstimateLow(e.target.value)}
-                      min="0"
-                      step="0.01"
-                      placeholder="Minimum estimate"
-                    />
-                    <Input
-                      label="Estimate High ($)"
-                      type="number"
-                      value={estimateHigh}
-                      onChange={(e) => setEstimateHigh(e.target.value)}
-                      min="0"
-                      step="0.01"
-                      placeholder="Maximum estimate"
-                    />
-                  </div>
-                )}
 
                 <Input
                   label="Cap Amount (Not-to-Exceed) — Optional"
@@ -1184,7 +1472,7 @@ export function CreateQuote({ lead, onBack, onSuccess, sidebarSections }: Create
                   </div>
                 )}
 
-                <div className="flex gap-3 pt-4 border-t">
+                <div className="flex gap-3 pt-4 border-t flex-wrap">
                   <Button type="button" variant="ghost" onClick={onBack} disabled={loading}>
                     Cancel
                   </Button>
