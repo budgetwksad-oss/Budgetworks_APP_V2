@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { PublicLayout } from '../../components/layout/PublicLayout';
-import { Mail, Phone, MapPin, Clock, ArrowRight, CheckCircle } from 'lucide-react';
+import { Mail, Phone, MapPin, Clock, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-
+import { supabase } from '../../lib/supabase';
 import { PublicPage } from '../../types/public';
 
 interface ContactProps {
@@ -20,20 +20,40 @@ export function Contact({ onNavigate, onLogin }: ContactProps) {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
+    const trimmed = {
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      phone: formData.phone.trim() || null,
+      message: formData.message.trim(),
+    };
+
+    if (!trimmed.name || !trimmed.email || !trimmed.message) {
+      setError('Please fill in all required fields.');
+      return;
+    }
+
+    setError(null);
     setIsSubmitting(true);
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const { error: dbError } = await supabase
+      .from('contact_submissions')
+      .insert(trimmed);
 
     setIsSubmitting(false);
-    setIsSubmitted(true);
 
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormData({ name: '', email: '', phone: '', message: '' });
-    }, 3000);
+    if (dbError) {
+      setError('Something went wrong. Please try again or call us directly.');
+      return;
+    }
+
+    setIsSubmitted(true);
+    setFormData({ name: '', email: '', phone: '', message: '' });
   };
 
   const contactInfo = [
@@ -137,6 +157,13 @@ export function Contact({ onNavigate, onLogin }: ContactProps) {
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <h3 className="text-2xl font-bold text-black mb-6">Send us a message</h3>
+
+                  {error && (
+                    <div className="flex items-start space-x-3 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+                      <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                      <span>{error}</span>
+                    </div>
+                  )}
 
                   <Input
                     label="Full Name"
