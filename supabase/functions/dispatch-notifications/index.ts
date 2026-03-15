@@ -52,10 +52,17 @@ Deno.serve(async (req: Request) => {
 
     for (const item of pending) {
       if (!item.to_email || !item.rendered_subject || !item.rendered_body) {
+        const errMsg = "Missing to_email, subject, or body";
         await supabase
           .from("notification_queue")
-          .update({ status: "failed", error: "Missing to_email, subject, or body", attempts: (item.attempts || 0) + 1 })
+          .update({ status: "failed", error: errMsg, attempts: (item.attempts || 0) + 1 })
           .eq("id", item.id);
+
+        await supabase
+          .from("notification_log")
+          .update({ status: "failed", error_message: errMsg })
+          .eq("queue_id", item.id);
+
         failed++;
         continue;
       }
@@ -77,30 +84,40 @@ Deno.serve(async (req: Request) => {
       });
 
       const resendData = await resendRes.json();
+      const attempts = (item.attempts || 0) + 1;
 
       if (resendRes.ok) {
+        const sentAt = new Date().toISOString();
+
         await supabase
           .from("notification_queue")
-          .update({
-            status: "sent",
-            sent_at: new Date().toISOString(),
-            attempts: (item.attempts || 0) + 1,
-            error: null,
-          })
+          .update({ status: "sent", sent_at: sentAt, attempts, error: null })
           .eq("id", item.id);
+
+        await supabase
+          .from("notification_log")
+          .update({ status: "sent", sent_at: sentAt, rendered_subject: item.rendered_subject, rendered_body: item.rendered_body })
+          .eq("queue_id", item.id);
+
         dispatched++;
       } else {
-        const attempts = (item.attempts || 0) + 1;
+        const errMsg = resendData.message || "Resend API error";
+        const finalStatus = attempts >= 3 ? "failed" : "pending";
+
         await supabase
           .from("notification_queue")
-          .update({
-            status: attempts >= 3 ? "failed" : "pending",
-            error: resendData.message || "Resend API error",
-            attempts,
-          })
+          .update({ status: finalStatus, error: errMsg, attempts })
           .eq("id", item.id);
+
+        if (finalStatus === "failed") {
+          await supabase
+            .from("notification_log")
+            .update({ status: "failed", error_message: errMsg })
+            .eq("queue_id", item.id);
+        }
+
         failed++;
-        console.error(`Failed to send notification ${item.id}:`, resendData);
+        console.error(`Failed to send notification ${item.id} (attempt ${attempts}):`, resendData);
       }
     }
 
@@ -152,7 +169,7 @@ function plaintextToHtml(body: string, subject: string): string {
               <tr>
                 <td style="color:#9ca3af;font-size:12px;text-align:center;line-height:1.6;">
                   BudgetWorks &mdash; Halifax, Nova Scotia<br/>
-                  Questions? Reply to this email or visit your customer portal.
+                  Questions? Reply to this email or call us at (844) 404-1240.
                 </td>
               </tr>
             </table>

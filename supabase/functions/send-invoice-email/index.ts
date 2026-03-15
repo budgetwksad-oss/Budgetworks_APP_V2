@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,6 +15,7 @@ interface InvoiceEmailRequest {
   invoice_total: number;
   due_date: string;
   reminder_type?: string;
+  invoice_link?: string;
 }
 
 const FROM_ADDRESS = "BudgetWorks <invoices@budgetworks.ca>";
@@ -26,6 +28,7 @@ Deno.serve(async (req: Request) => {
   try {
     const body: InvoiceEmailRequest = await req.json();
     const { invoice_id, customer_email, customer_name, invoice_number, invoice_total, due_date, reminder_type } = body;
+    let { invoice_link } = body;
 
     if (!invoice_id || !customer_email || !invoice_number) {
       return new Response(
@@ -37,9 +40,38 @@ Deno.serve(async (req: Request) => {
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) {
       return new Response(
-        JSON.stringify({ success: false, error: "Email service not configured" }),
+        JSON.stringify({ success: false, error: "Email service not configured — RESEND_API_KEY is missing" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    if (!invoice_link) {
+      try {
+        const supabase = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+        const { data: linkData } = await supabase.rpc("create_invoice_magic_link", {
+          p_invoice_id: invoice_id,
+          p_expires_at: expiresAt.toISOString(),
+        });
+        if (linkData?.token) {
+          invoice_link = `${Deno.env.get("SUPABASE_URL")!.replace(".supabase.co", "")}/i/${linkData.token}`;
+          const origin = req.headers.get("origin") || req.headers.get("referer");
+          if (origin) {
+            try {
+              const url = new URL(origin);
+              invoice_link = `${url.origin}/i/${linkData.token}`;
+            } catch {
+              /* keep supabase-based fallback */
+            }
+          }
+        }
+      } catch (linkErr) {
+        console.error("Could not generate invoice magic link:", linkErr);
+      }
     }
 
     const subject = reminder_type
@@ -47,8 +79,8 @@ Deno.serve(async (req: Request) => {
       : `Invoice ${invoice_number} from BudgetWorks`;
 
     const html = reminder_type
-      ? getReminderHtml(customer_name, invoice_number, invoice_total, due_date, reminder_type)
-      : getInvoiceHtml(customer_name, invoice_number, invoice_total, due_date);
+      ? getReminderHtml(customer_name, invoice_number, invoice_total, due_date, reminder_type, invoice_link)
+      : getInvoiceHtml(customer_name, invoice_number, invoice_total, due_date, invoice_link);
 
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -108,7 +140,6 @@ function emailWrapper(content: string): string {
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:40px 0;">
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
-        <!-- Header -->
         <tr>
           <td style="background:#1a1a1a;padding:28px 40px;border-radius:8px 8px 0 0;">
             <table width="100%" cellpadding="0" cellspacing="0">
@@ -120,16 +151,14 @@ function emailWrapper(content: string): string {
             </table>
           </td>
         </tr>
-        <!-- Body -->
         <tr>
           <td style="background:#ffffff;padding:40px;border-radius:0 0 8px 8px;">
             ${content}
-            <!-- Footer -->
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:40px;padding-top:24px;border-top:1px solid #e5e7eb;">
               <tr>
                 <td style="color:#9ca3af;font-size:12px;text-align:center;line-height:1.6;">
                   BudgetWorks &mdash; Halifax, Nova Scotia<br/>
-                  Questions? Reply to this email or visit your customer portal.
+                  Questions? Reply to this email or call us at (844) 404-1240.
                 </td>
               </tr>
             </table>
@@ -142,7 +171,17 @@ function emailWrapper(content: string): string {
 </html>`;
 }
 
-function getInvoiceHtml(customerName: string, invoiceNumber: string, invoiceTotal: number, dueDate: string): string {
+function ctaButton(href: string, label: string): string {
+  return `<table cellpadding="0" cellspacing="0" style="margin:24px 0;">
+    <tr>
+      <td style="background:#f97316;border-radius:8px;">
+        <a href="${href}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;border-radius:8px;">${label}</a>
+      </td>
+    </tr>
+  </table>`;
+}
+
+function getInvoiceHtml(customerName: string, invoiceNumber: string, invoiceTotal: number, dueDate: string, invoiceLink?: string): string {
   const content = `
     <h2 style="margin:0 0 8px;font-size:24px;color:#111827;">Invoice Ready</h2>
     <p style="margin:0 0 24px;color:#6b7280;font-size:15px;">Hi ${customerName},</p>
@@ -163,8 +202,9 @@ function getInvoiceHtml(customerName: string, invoiceNumber: string, invoiceTota
         <td style="padding:8px 0;color:#111827;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e5e7eb;">${formatDate(dueDate)}</td>
       </tr>
     </table>
+    ${invoiceLink ? ctaButton(invoiceLink, "View Invoice") : ""}
     <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 24px;">
-      Log in to your customer portal to view the full invoice details and payment options.
+      ${invoiceLink ? `You can also view your invoice details and payment instructions at: <a href="${invoiceLink}" style="color:#f97316;">${invoiceLink}</a>` : "Log in to your customer portal to view the full invoice details and payment options."}
     </p>
     <p style="color:#374151;font-size:15px;line-height:1.6;margin:0;">
       If you have any questions about this invoice, please don't hesitate to reach out.
@@ -182,7 +222,7 @@ function getReminderSubject(reminderType: string, invoiceNumber: string): string
   }
 }
 
-function getReminderHtml(customerName: string, invoiceNumber: string, invoiceTotal: number, dueDate: string, reminderType: string): string {
+function getReminderHtml(customerName: string, invoiceNumber: string, invoiceTotal: number, dueDate: string, reminderType: string, invoiceLink?: string): string {
   const messages: Record<string, { label: string; text: string; color: string }> = {
     week_before: { label: "Due in 7 Days", text: "This is a friendly reminder that your invoice is due in 7 days.", color: "#3b82f6" },
     day_before: { label: "Due Tomorrow", text: "This is a friendly reminder that your invoice is due tomorrow.", color: "#f59e0b" },
@@ -211,8 +251,9 @@ function getReminderHtml(customerName: string, invoiceNumber: string, invoiceTot
         <td style="padding:8px 0;color:#111827;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #e5e7eb;">${formatDate(dueDate)}</td>
       </tr>
     </table>
+    ${invoiceLink ? ctaButton(invoiceLink, "View & Pay Invoice") : ""}
     <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 24px;">
-      Please log in to your customer portal to view and pay this invoice.
+      ${invoiceLink ? `View and pay your invoice here: <a href="${invoiceLink}" style="color:#f97316;">${invoiceLink}</a>` : "Please log in to your customer portal to view and pay this invoice."}
       If you've already made payment, please disregard this reminder.
     </p>`;
   return emailWrapper(content);
