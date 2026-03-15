@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase, Job, Quote, ServiceRequest, Profile, CrewAssignment, logAudit } from '../../lib/supabase';
+import { supabase, Job, Quote, ServiceRequest, Profile, logAudit } from '../../lib/supabase';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
