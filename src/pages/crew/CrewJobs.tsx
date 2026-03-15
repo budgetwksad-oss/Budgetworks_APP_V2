@@ -5,7 +5,10 @@ import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { ArrowLeft, MapPin, Calendar, Clock, Play, Square, Navigation } from 'lucide-react';
+import {
+  ArrowLeft, MapPin, Calendar, Clock, Play, Square, Navigation,
+  Camera, CheckCircle, AlertCircle, XCircle
+} from 'lucide-react';
 
 type JobWithDetails = Job & {
   quote: Quote;
@@ -24,6 +27,12 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
   const [timeEntry, setTimeEntry] = useState<TimeEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [completing, setCompleting] = useState(false);
+  const [photoError, setPhotoError] = useState('');
+  const [completionError, setCompletionError] = useState('');
+  const [selectedPhotoTab, setSelectedPhotoTab] = useState<'before' | 'after'>('before');
+  const [jobCrewPhotos, setJobCrewPhotos] = useState<{ before: any[]; after: any[] }>({ before: [], after: [] });
 
   useEffect(() => {
     loadMyJobs();
@@ -32,6 +41,7 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
   useEffect(() => {
     if (selectedJob) {
       loadTimeEntry();
+      loadJobPhotos(selectedJob.id);
     }
   }, [selectedJob]);
 
@@ -111,6 +121,98 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
     }
   };
 
+  const loadJobPhotos = async (jobId: string) => {
+    try {
+      const { data } = await supabase
+        .from('jobs')
+        .select('crew_photos')
+        .eq('id', jobId)
+        .maybeSingle();
+      if (data?.crew_photos) {
+        setJobCrewPhotos({
+          before: data.crew_photos.before || [],
+          after: data.crew_photos.after || [],
+        });
+      } else {
+        setJobCrewPhotos({ before: [], after: [] });
+      }
+    } catch {
+      setJobCrewPhotos({ before: [], after: [] });
+    }
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!selectedJob || !user) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    if (!file.type.startsWith('image/')) {
+      setPhotoError('Please select an image file');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setPhotoError('Image must be under 10 MB');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    setPhotoError('');
+
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `${selectedJob.id}/${selectedPhotoTab}/${Date.now()}.${ext}`;
+
+      const { error: storageError } = await supabase.storage
+        .from('job-photos')
+        .upload(path, file, { upsert: false });
+
+      if (storageError) throw storageError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('job-photos')
+        .getPublicUrl(path);
+
+      const { data: result, error: rpcError } = await supabase.rpc('crew_upload_job_photo', {
+        p_job_id: selectedJob.id,
+        p_photo_url: publicUrl,
+        p_type: selectedPhotoTab,
+      });
+
+      if (rpcError) throw rpcError;
+      if (result?.success === false) throw new Error(result.error || 'Upload failed');
+
+      await loadJobPhotos(selectedJob.id);
+    } catch (err: any) {
+      setPhotoError(err.message || 'Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleCompleteJob = async () => {
+    if (!selectedJob) return;
+    setCompleting(true);
+    setCompletionError('');
+
+    try {
+      const { data: result, error } = await supabase.rpc('crew_complete_job', {
+        p_job_id: selectedJob.id,
+        p_completion_notes: null,
+      });
+
+      if (error) throw error;
+      if (result?.success === false) throw new Error(result.error || 'Could not complete job');
+
+      await loadMyJobs();
+      setSelectedJob(null);
+    } catch (err: any) {
+      setCompletionError(err.message || 'Failed to complete job');
+    } finally {
+      setCompleting(false);
+    }
+  };
+
   const handleClockIn = async () => {
     if (!selectedJob || !user) return;
     setUpdating(true);
@@ -163,7 +265,6 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
     }
   };
 
-
   const getServiceLabel = (type: string) => {
     switch (type) {
       case 'moving': return 'Moving';
@@ -175,14 +276,10 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'scheduled':
-        return 'bg-blue-100 text-blue-700';
-      case 'in_progress':
-        return 'bg-yellow-100 text-yellow-700';
-      case 'completed':
-        return 'bg-green-100 text-green-700';
-      default:
-        return 'bg-gray-100 text-gray-700';
+      case 'scheduled': return 'bg-blue-100 text-blue-700';
+      case 'in_progress': return 'bg-yellow-100 text-yellow-700';
+      case 'completed': return 'bg-green-100 text-green-700';
+      default: return 'bg-gray-100 text-gray-700';
     }
   };
 
@@ -219,6 +316,10 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
 
   if (selectedJob) {
     const myRole = getMyRole(selectedJob);
+    const hasBeforePhotos = jobCrewPhotos.before.length > 0;
+    const hasAfterPhotos = jobCrewPhotos.after.length > 0;
+    const isOpenSession = !!timeEntry;
+    const canComplete = hasBeforePhotos && hasAfterPhotos && !isOpenSession;
 
     return (
       <PortalLayout
@@ -336,7 +437,7 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
                     className="w-full text-lg py-4 flex items-center justify-center gap-2"
                   >
                     <Square className="w-6 h-6" />
-                    Clock Out
+                    {updating ? 'Clocking Out...' : 'Clock Out'}
                   </Button>
                 </div>
               ) : (
@@ -347,17 +448,167 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
                   className="w-full text-lg py-4 flex items-center justify-center gap-2"
                 >
                   <Play className="w-6 h-6" />
-                  Clock In
+                  {updating ? 'Clocking In...' : 'Clock In'}
                 </Button>
               )}
             </div>
 
             <div className="border-t pt-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Photos</h3>
-              <div className="p-6 bg-gray-50 rounded-lg text-center">
-                <p className="text-sm text-gray-500">Photos will be enabled later.</p>
-              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-1">Job Photos</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Before and after photos are required to complete the job.
+              </p>
+
+              {photoError && (
+                <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                  <p className="text-red-800 text-sm">{photoError}</p>
+                </div>
+              )}
+
+              {selectedJob.status !== 'completed' && (
+                <>
+                  <div className="flex gap-2 mb-4">
+                    {(['before', 'after'] as const).map(tab => (
+                      <button
+                        key={tab}
+                        onClick={() => setSelectedPhotoTab(tab)}
+                        className={`flex-1 py-3 rounded-lg text-sm font-semibold capitalize transition-colors ${
+                          selectedPhotoTab === tab
+                            ? 'bg-orange-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {tab} Photos
+                        {jobCrewPhotos[tab].length === 0 ? (
+                          <span className={`ml-1 text-xs ${selectedPhotoTab === tab ? 'text-orange-200' : 'text-red-500'}`}>
+                            (required)
+                          </span>
+                        ) : (
+                          <span className={`ml-1 text-xs ${selectedPhotoTab === tab ? 'text-orange-200' : 'text-green-600'}`}>
+                            ({jobCrewPhotos[tab].length})
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    id="crew-photo-upload"
+                    className="hidden"
+                    onChange={handlePhotoUpload}
+                    disabled={uploadingPhoto}
+                  />
+                  <label htmlFor="crew-photo-upload">
+                    <div className={`w-full border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors mb-4 ${
+                      uploadingPhoto
+                        ? 'opacity-50 cursor-not-allowed border-gray-200'
+                        : 'border-gray-300 hover:border-orange-400 hover:bg-orange-50'
+                    }`}>
+                      {uploadingPhoto ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                          <p className="text-sm text-gray-600">Uploading...</p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2">
+                          <Camera className="w-8 h-8 text-gray-400" />
+                          <p className="text-sm font-medium text-gray-700">
+                            Tap to take or choose a {selectedPhotoTab} photo
+                          </p>
+                          <p className="text-xs text-gray-400">Max 10 MB</p>
+                        </div>
+                      )}
+                    </div>
+                  </label>
+                </>
+              )}
+
+              {(['before', 'after'] as const).map(tab => {
+                const photos = jobCrewPhotos[tab];
+                if (photos.length === 0) return null;
+                return (
+                  <div key={tab} className="mb-4">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2 capitalize flex items-center gap-1">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      {tab} Photos ({photos.length})
+                    </h4>
+                    <div className="grid grid-cols-3 gap-2">
+                      {photos.map((p: any, i: number) => (
+                        <div key={i} className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+                          <img
+                            src={typeof p === 'string' ? p : p.url}
+                            alt={`${tab} ${i + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+
+            {selectedJob.status === 'in_progress' && (
+              <div className="border-t pt-6">
+                {completionError && (
+                  <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+                    <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-red-800 text-sm">{completionError}</p>
+                  </div>
+                )}
+
+                {(!hasBeforePhotos || !hasAfterPhotos || isOpenSession) && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2 mb-4">
+                    <p className="text-sm font-semibold text-amber-800">Required before completing:</p>
+                    <ul className="space-y-1">
+                      {isOpenSession && (
+                        <li className="flex items-center gap-2 text-sm text-amber-700">
+                          <XCircle className="w-4 h-4 flex-shrink-0" />
+                          Clock out first
+                        </li>
+                      )}
+                      {!hasBeforePhotos && (
+                        <li className="flex items-center gap-2 text-sm text-amber-700">
+                          <XCircle className="w-4 h-4 flex-shrink-0" />
+                          Upload at least one before photo
+                        </li>
+                      )}
+                      {!hasAfterPhotos && (
+                        <li className="flex items-center gap-2 text-sm text-amber-700">
+                          <XCircle className="w-4 h-4 flex-shrink-0" />
+                          Upload at least one after photo
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+
+                <Button
+                  variant="primary"
+                  onClick={handleCompleteJob}
+                  disabled={completing || !canComplete}
+                  className={`w-full text-lg py-4 flex items-center justify-center gap-2 ${
+                    canComplete ? 'bg-green-600 hover:bg-green-700' : ''
+                  }`}
+                >
+                  <CheckCircle className="w-6 h-6" />
+                  {completing ? 'Completing...' : 'Mark Job Complete'}
+                </Button>
+              </div>
+            )}
+
+            {selectedJob.status === 'completed' && (
+              <div className="border-t pt-6">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+                  <CheckCircle className="w-10 h-10 text-green-600 mx-auto mb-2" />
+                  <p className="font-semibold text-green-800">Job Completed</p>
+                </div>
+              </div>
+            )}
           </Card>
         </div>
       </PortalLayout>
