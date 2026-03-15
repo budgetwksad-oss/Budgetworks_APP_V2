@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { ContractorAgreementModal } from '../../components/ui/ContractorAgreementModal';
 import {
   LayoutDashboard,
   Calendar,
@@ -31,7 +32,7 @@ interface Metrics {
 }
 
 export function CrewPortal() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [selectedJobId, setSelectedJobId] = useState<string>('');
   const [metrics, setMetrics] = useState<Metrics>({
@@ -43,10 +44,13 @@ export function CrewPortal() {
   });
   const [todayJobs, setTodayJobs] = useState<any[]>([]);
   const [, setLoading] = useState(true);
+  const [needsAgreement, setNeedsAgreement] = useState(false);
+  const [agreementSubmitting, setAgreementSubmitting] = useState(false);
 
   useEffect(() => {
     loadMetrics();
     loadTodayJobs();
+    checkAgreement();
   }, [user]);
 
   const loadMetrics = async () => {
@@ -138,6 +142,37 @@ export function CrewPortal() {
     }
   };
 
+  const checkAgreement = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('contractor_agreement_accepted')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (data && !data.contractor_agreement_accepted) {
+      setNeedsAgreement(true);
+    }
+  };
+
+  const acceptAgreement = async () => {
+    if (!user) return;
+    setAgreementSubmitting(true);
+    try {
+      await supabase
+        .from('profiles')
+        .update({
+          contractor_agreement_accepted: true,
+          contractor_agreement_accepted_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+      setNeedsAgreement(false);
+    } catch (err) {
+      console.error('Error saving agreement:', err);
+    } finally {
+      setAgreementSubmitting(false);
+    }
+  };
+
   const sidebarSections: MenuSection[] = [
     {
       items: [
@@ -202,6 +237,14 @@ export function CrewPortal() {
   }
 
   return (
+    <>
+    {needsAgreement && (
+      <ContractorAgreementModal
+        crewName={profile?.full_name}
+        onAccept={acceptAgreement}
+        submitting={agreementSubmitting}
+      />
+    )}
     <PortalLayout
       portalName="Crew Portal"
       sidebarSections={sidebarSections}
@@ -320,5 +363,6 @@ export function CrewPortal() {
         )}
       </div>
     </PortalLayout>
+    </>
   );
 }
