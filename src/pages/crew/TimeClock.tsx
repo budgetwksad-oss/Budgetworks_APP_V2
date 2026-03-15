@@ -15,7 +15,7 @@ interface Job {
 
 interface ActiveTimeLog {
   id: string;
-  clock_in_time: string;
+  clock_in: string;
   job_id: string;
   jobs: {
     service_type: string;
@@ -43,7 +43,7 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     if (activeLog) {
       const interval = setInterval(() => {
-        const start = new Date(activeLog.clock_in_time);
+        const start = new Date(activeLog.clock_in);
         const now = new Date();
         const diff = now.getTime() - start.getTime();
 
@@ -86,7 +86,7 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
         .from('time_entries')
         .select(`
           id,
-          clock_in_time,
+          clock_in,
           job_id,
           jobs!inner(
             service_type,
@@ -94,7 +94,7 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
           )
         `)
         .eq('crew_member_id', user.id)
-        .is('clock_out_time', null)
+        .is('clock_out', null)
         .maybeSingle();
 
       if (error) throw error;
@@ -119,11 +119,11 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
         .insert({
           crew_member_id: user!.id,
           job_id: selectedJobId,
-          clock_in_time: new Date().toISOString()
+          clock_in: new Date().toISOString()
         })
         .select(`
           id,
-          clock_in_time,
+          clock_in,
           job_id,
           jobs!inner(
             service_type,
@@ -151,13 +151,13 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
 
     try {
       const clockOutTime = new Date();
-      const clockInTime = new Date(activeLog.clock_in_time);
+      const clockInTime = new Date(activeLog.clock_in);
       const hoursWorked = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
 
       const { error } = await supabase
         .from('time_entries')
         .update({
-          clock_out_time: clockOutTime.toISOString(),
+          clock_out: clockOutTime.toISOString(),
           hours_worked: parseFloat(hoursWorked.toFixed(4)),
         })
         .eq('id', activeLog.id);

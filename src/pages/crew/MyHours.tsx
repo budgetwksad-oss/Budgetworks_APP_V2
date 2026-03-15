@@ -8,8 +8,8 @@ import { supabase } from '../../lib/supabase';
 
 interface TimeLog {
   id: string;
-  clock_in_time: string;
-  clock_out_time: string | null;
+  clock_in: string;
+  clock_out: string | null;
   job_id: string;
   jobs: {
     service_type: string;
@@ -35,8 +35,8 @@ export function MyHours({ onBack }: { onBack: () => void }) {
         .from('time_entries')
         .select(`
           id,
-          clock_in_time,
-          clock_out_time,
+          clock_in,
+          clock_out,
           job_id,
           jobs!inner(
             service_type,
@@ -44,16 +44,16 @@ export function MyHours({ onBack }: { onBack: () => void }) {
           )
         `)
         .eq('crew_member_id', user.id)
-        .order('clock_in_time', { ascending: false });
+        .order('clock_in', { ascending: false });
 
       if (filter === 'week') {
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
-        query = query.gte('clock_in_time', weekAgo.toISOString());
+        query = query.gte('clock_in', weekAgo.toISOString());
       } else if (filter === 'month') {
         const monthAgo = new Date();
         monthAgo.setMonth(monthAgo.getMonth() - 1);
-        query = query.gte('clock_in_time', monthAgo.toISOString());
+        query = query.gte('clock_in', monthAgo.toISOString());
       }
 
       const { data, error } = await query;
@@ -81,11 +81,11 @@ export function MyHours({ onBack }: { onBack: () => void }) {
   };
 
   const totalHours = timeLogs
-    .filter(log => log.clock_out_time)
-    .reduce((sum, log) => sum + calculateHours(log.clock_in_time, log.clock_out_time), 0);
+    .filter(log => log.clock_out)
+    .reduce((sum, log) => sum + calculateHours(log.clock_in, log.clock_out), 0);
 
   const groupedByWeek = timeLogs.reduce((acc, log) => {
-    const date = new Date(log.clock_in_time);
+    const date = new Date(log.clock_in);
     const weekStart = new Date(date);
     weekStart.setDate(date.getDate() - date.getDay());
     const key = weekStart.toISOString().split('T')[0];
@@ -203,8 +203,8 @@ export function MyHours({ onBack }: { onBack: () => void }) {
           <div className="space-y-6">
             {Object.entries(groupedByWeek).map(([weekStart, logs]) => {
               const weekHours = logs
-                .filter(log => log.clock_out_time)
-                .reduce((sum, log) => sum + calculateHours(log.clock_in_time, log.clock_out_time), 0);
+                .filter(log => log.clock_out)
+                .reduce((sum, log) => sum + calculateHours(log.clock_in, log.clock_out), 0);
 
               return (
                 <Card key={weekStart} className="p-6">
@@ -219,10 +219,10 @@ export function MyHours({ onBack }: { onBack: () => void }) {
 
                   <div className="space-y-3">
                     {logs.map(log => {
-                      const hours = log.clock_out_time
-                        ? calculateHours(log.clock_in_time, log.clock_out_time)
+                      const hours = log.clock_out
+                        ? calculateHours(log.clock_in, log.clock_out)
                         : 0;
-                      const isActive = !log.clock_out_time;
+                      const isActive = !log.clock_out;
 
                       return (
                         <div
@@ -245,12 +245,12 @@ export function MyHours({ onBack }: { onBack: () => void }) {
                               <div className="flex flex-wrap gap-3 text-sm">
                                 <span className="text-gray-600">
                                   <span className="font-medium">In:</span>{' '}
-                                  {new Date(log.clock_in_time).toLocaleString()}
+                                  {new Date(log.clock_in).toLocaleString()}
                                 </span>
-                                {log.clock_out_time ? (
+                                {log.clock_out ? (
                                   <span className="text-gray-600">
                                     <span className="font-medium">Out:</span>{' '}
-                                    {new Date(log.clock_out_time).toLocaleString()}
+                                    {new Date(log.clock_out).toLocaleString()}
                                   </span>
                                 ) : (
                                   <span className="text-green-600 font-medium flex items-center gap-1">

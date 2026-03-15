@@ -86,16 +86,16 @@ export function CrewPortal() {
 
       const { data: timeLogs } = await supabase
         .from('time_entries')
-        .select('clock_in_time, clock_out_time, hours_worked')
+        .select('clock_in, clock_out, hours_worked')
         .eq('crew_member_id', user.id)
-        .gte('clock_in_time', weekAgo.toISOString());
+        .gte('clock_in', weekAgo.toISOString());
 
       const hoursThisWeek = (timeLogs || [])
-        .filter(log => log.clock_out_time)
+        .filter(log => log.clock_out)
         .reduce((sum, log) => {
           if (log.hours_worked) return sum + Number(log.hours_worked);
-          const start = new Date(log.clock_in_time);
-          const end = new Date(log.clock_out_time!);
+          const start = new Date(log.clock_in);
+          const end = new Date(log.clock_out!);
           return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
         }, 0);
 
@@ -103,7 +103,7 @@ export function CrewPortal() {
         .from('time_entries')
         .select('id')
         .eq('crew_member_id', user.id)
-        .is('clock_out_time', null)
+        .is('clock_out', null)
         .maybeSingle();
 
       setMetrics({
