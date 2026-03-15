@@ -4,12 +4,9 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import {
   LayoutDashboard,
-  Users,
   Briefcase,
   DollarSign,
-  TrendingUp,
   FileText,
-  Calendar,
   MapPin,
   Phone,
   ClipboardList,
@@ -20,7 +17,12 @@ import {
   Settings as SettingsIcon,
   Tag,
   Bell,
-  BarChart2
+  BarChart2,
+  Users,
+  RefreshCw,
+  Clock,
+  CheckCircle2,
+  Circle
 } from 'lucide-react';
 import { MenuSection } from '../../components/layout/Sidebar';
 import { supabase, ServiceRequest, PublicQuoteRequest } from '../../lib/supabase';
@@ -34,8 +36,6 @@ import { PricingSettings } from '../admin/PricingSettings';
 import { NotificationsOutbox } from '../admin/NotificationsOutbox';
 import { NotificationsTemplates } from '../admin/NotificationsTemplates';
 import { Reports } from '../admin/Reports';
-import { getDashboardStats, getRevenueByMonth, getRecentActivity } from '../../lib/analytics';
-import { LineChart, DonutChart } from '../../components/ui/Chart';
 
 type Page =
   | 'dashboard'
@@ -49,15 +49,17 @@ type Page =
   | 'reports'
   | 'settings';
 
-interface Metrics {
-  pendingRequests: number;
-  activeQuotes: number;
-  activeJobs: number;
-  totalCustomers: number;
-  crewMembers: number;
+interface OpsData {
+  newLeads: number;
+  pendingQuotes: number;
+  jobsNeedingCrew: number;
+  jobsInProgress: number;
   unpaidInvoices: number;
-  monthlyRevenue: number;
-  todayJobs: number;
+  todayJobs: any[];
+  recentLeads: (ServiceRequest | PublicQuoteRequest & { _kind: 'public' })[];
+  inProgressJobs: any[];
+  needsCrewJobs: any[];
+  overdueInvoices: any[];
 }
 
 type NotificationsSubPage = 'delivery' | 'templates';
@@ -108,88 +110,99 @@ function NotificationsPage({
 
 export function AdminPortal() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
-  const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
-  const [publicQuoteRequests, setPublicQuoteRequests] = useState<PublicQuoteRequest[]>([]);
-  const [todayJobs, setTodayJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [metrics, setMetrics] = useState<Metrics>({
-    pendingRequests: 0,
-    activeQuotes: 0,
-    activeJobs: 0,
-    totalCustomers: 0,
-    crewMembers: 0,
+  const [ops, setOps] = useState<OpsData>({
+    newLeads: 0,
+    pendingQuotes: 0,
+    jobsNeedingCrew: 0,
+    jobsInProgress: 0,
     unpaidInvoices: 0,
-    monthlyRevenue: 0,
-    todayJobs: 0
+    todayJobs: [],
+    recentLeads: [],
+    inProgressJobs: [],
+    needsCrewJobs: [],
+    overdueInvoices: [],
   });
-  const [revenueData, setRevenueData] = useState<any[]>([]);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
 
   useEffect(() => {
-    loadDashboardData();
+    loadOpsData();
   }, []);
 
-  const loadDashboardData = async () => {
+  const loadOpsData = async () => {
+    setLoading(true);
     try {
-      const [stats, revenue, activity, requestsRes, publicRequestsRes, jobsRes] = await Promise.all([
-        getDashboardStats(),
-        getRevenueByMonth(6),
-        getRecentActivity(8),
-        supabase
-          .from('service_requests')
-          .select('*')
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false })
-          .limit(5),
-        supabase
-          .from('public_quote_requests')
-          .select('*')
-          .in('status', ['new', 'in_review'])
-          .order('created_at', { ascending: false })
-          .limit(5),
-        supabase
-          .from('jobs')
-          .select(`
-            id,
-            status,
-            scheduled_date,
-            service_type,
-            service_requests!inner(location_address)
-          `)
-      ]);
-
-      const jobs = jobsRes.data || [];
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      const todayJobsList = jobs.filter(j => {
+      const [
+        customerLeadsRes,
+        guestLeadsRes,
+        quotesRes,
+        jobsRes,
+        invoicesRes,
+      ] = await Promise.all([
+        supabase
+          .from('service_requests')
+          .select('id, service_type, location_address, contact_phone, created_at, status')
+          .in('status', ['pending'])
+          .order('created_at', { ascending: false })
+          .limit(10),
+        supabase
+          .from('public_quote_requests')
+          .select('id, service_type, location_address, contact_phone, contact_name, created_at, status')
+          .in('status', ['new', 'in_review'])
+          .order('created_at', { ascending: false })
+          .limit(10),
+        supabase
+          .from('quotes')
+          .select('id, status, total_min, total_max, created_at')
+          .in('status', ['sent', 'pending'])
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('jobs')
+          .select('id, status, scheduled_date, arrival_start, service_type, crew_ids, service_requests!inner(location_address)')
+          .in('status', ['scheduled', 'in_progress', 'pending_crew'])
+          .order('scheduled_date', { ascending: true }),
+        supabase
+          .from('invoices')
+          .select('id, invoice_number, total_amount, status, due_date, created_at')
+          .in('status', ['sent', 'overdue', 'unpaid'])
+          .order('due_date', { ascending: true })
+          .limit(10),
+      ]);
+
+      const allJobs = jobsRes.data || [];
+      const todayJobsList = allJobs.filter(j => {
         if (!j.scheduled_date) return false;
-        const jobDate = new Date(j.scheduled_date);
-        return jobDate >= today && jobDate < tomorrow;
+        const d = new Date(j.scheduled_date);
+        return d >= today && d < tomorrow;
       });
+      const needsCrew = allJobs.filter(j =>
+        j.status === 'pending_crew' || (j.status === 'scheduled' && (!j.crew_ids || j.crew_ids.length === 0))
+      );
+      const inProgress = allJobs.filter(j => j.status === 'in_progress');
 
-      const thisMonth = revenue[revenue.length - 1]?.revenue || 0;
+      const leads = [
+        ...(customerLeadsRes.data || []),
+        ...(guestLeadsRes.data || []).map((r: any) => ({ ...r, _kind: 'public' })),
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 6);
 
-      setMetrics({
-        pendingRequests: stats.pendingQuotes,
-        activeQuotes: stats.pendingQuotes,
-        activeJobs: stats.activeJobs,
-        totalCustomers: stats.totalCustomers,
-        crewMembers: stats.activeCrewMembers,
-        unpaidInvoices: stats.overdueInvoices,
-        monthlyRevenue: thisMonth,
-        todayJobs: todayJobsList.length
+      setOps({
+        newLeads: (customerLeadsRes.data?.length || 0) + (guestLeadsRes.data?.length || 0),
+        pendingQuotes: quotesRes.data?.length || 0,
+        jobsNeedingCrew: needsCrew.length,
+        jobsInProgress: inProgress.length,
+        unpaidInvoices: invoicesRes.data?.length || 0,
+        todayJobs: todayJobsList,
+        recentLeads: leads as any,
+        inProgressJobs: inProgress.slice(0, 5),
+        needsCrewJobs: needsCrew.slice(0, 5),
+        overdueInvoices: invoicesRes.data || [],
       });
-
-      setRevenueData(revenue);
-      setRecentActivity(activity);
-      setServiceRequests(requestsRes.data || []);
-      setPublicQuoteRequests(publicRequestsRes.data || []);
-      setTodayJobs(todayJobsList);
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
+    } catch (err) {
+      console.error('Error loading ops data:', err);
     } finally {
       setLoading(false);
     }
@@ -209,7 +222,7 @@ export function AdminPortal() {
           label: 'Leads',
           icon: ClipboardList,
           onClick: () => setCurrentPage('service-requests'),
-          badge: metrics.pendingRequests
+          badge: ops.newLeads
         },
         {
           id: 'create-quote',
@@ -222,7 +235,7 @@ export function AdminPortal() {
           label: 'Jobs',
           icon: Briefcase,
           onClick: () => setCurrentPage('jobs'),
-          badge: metrics.todayJobs
+          badge: ops.todayJobs.length
         },
         {
           id: 'crew',
@@ -235,7 +248,7 @@ export function AdminPortal() {
           label: 'Invoices',
           icon: DollarSign,
           onClick: () => setCurrentPage('invoices'),
-          badge: metrics.unpaidInvoices
+          badge: ops.unpaidInvoices
         },
         {
           id: 'pricing',
@@ -340,25 +353,71 @@ export function AdminPortal() {
     );
   }
 
-  const getServiceLabel = (type: string) => {
-    switch (type) {
-      case 'moving':
-        return 'Moving';
-      case 'junk_removal':
-        return 'Junk Removal';
-      case 'demolition':
-        return 'Demolition';
-      default:
-        return type;
-    }
+  const serviceLabel = (type: string) => {
+    if (type === 'moving') return 'Moving';
+    if (type === 'junk_removal') return 'Junk Removal';
+    if (type === 'demolition') return 'Demolition';
+    return type;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric'
+  });
+
+  const fmtJobDate = (d: string | null) => {
+    if (!d) return 'Unscheduled';
+    return new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  };
+
+  const statCards = [
+    {
+      label: 'New Quote Requests',
+      value: ops.newLeads,
+      icon: ClipboardList,
+      color: 'orange',
+      urgent: ops.newLeads > 0,
+      onClick: () => setCurrentPage('service-requests'),
+    },
+    {
+      label: 'Pending Quotes',
+      value: ops.pendingQuotes,
+      icon: FileText,
+      color: 'blue',
+      urgent: false,
+      onClick: () => setCurrentPage('create-quote'),
+    },
+    {
+      label: 'Jobs Needing Crew',
+      value: ops.jobsNeedingCrew,
+      icon: UserPlus,
+      color: 'amber',
+      urgent: ops.jobsNeedingCrew > 0,
+      onClick: () => setCurrentPage('jobs'),
+    },
+    {
+      label: 'Jobs In Progress',
+      value: ops.jobsInProgress,
+      icon: Briefcase,
+      color: 'green',
+      urgent: false,
+      onClick: () => setCurrentPage('jobs'),
+    },
+    {
+      label: 'Unpaid Invoices',
+      value: ops.unpaidInvoices,
+      icon: DollarSign,
+      color: 'red',
+      urgent: ops.unpaidInvoices > 0,
+      onClick: () => setCurrentPage('invoices'),
+    },
+  ] as const;
+
+  const colorMap: Record<string, { bg: string; icon: string; ring: string; num: string }> = {
+    orange: { bg: 'bg-orange-50', icon: 'text-orange-600 bg-orange-100', ring: 'ring-orange-200', num: 'text-orange-700' },
+    blue:   { bg: 'bg-blue-50',   icon: 'text-blue-600 bg-blue-100',     ring: 'ring-blue-200',   num: 'text-blue-700'   },
+    amber:  { bg: 'bg-amber-50',  icon: 'text-amber-600 bg-amber-100',   ring: 'ring-amber-200',  num: 'text-amber-700'  },
+    green:  { bg: 'bg-green-50',  icon: 'text-green-600 bg-green-100',   ring: 'ring-green-200',  num: 'text-green-700'  },
+    red:    { bg: 'bg-red-50',    icon: 'text-red-600 bg-red-100',       ring: 'ring-red-200',    num: 'text-red-700'    },
   };
 
   return (
@@ -368,390 +427,332 @@ export function AdminPortal() {
       activeItemId={currentPage}
     >
       <div className="space-y-6">
+
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Dashboard Overview</h2>
-            <p className="text-gray-600">Manage operations, quotes, and team</p>
+            <h2 className="text-2xl font-bold text-gray-900">Operations</h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </p>
           </div>
-          <Button
-            variant="primary"
-            onClick={() => setCurrentPage('service-requests')}
-            className="flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            View Requests
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={loadOpsData} disabled={loading}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button variant="primary" onClick={() => setCurrentPage('service-requests')}>
+              <Plus className="w-4 h-4 mr-1" />
+              New Lead
+            </Button>
+          </div>
         </div>
 
-        {metrics.pendingRequests > 0 && (
-          <Card className="p-6 bg-orange-50 border-orange-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="bg-orange-100 p-3 rounded-lg">
-                  <AlertCircle className="w-6 h-6 text-orange-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-1">Pending Service Requests</h3>
-                  <p className="text-sm text-gray-600">
-                    You have {metrics.pendingRequests} request{metrics.pendingRequests !== 1 ? 's' : ''} awaiting response
-                  </p>
-                </div>
+        {ops.newLeads > 0 && (
+          <div
+            className="flex items-center justify-between p-4 bg-orange-50 border border-orange-200 rounded-xl cursor-pointer hover:bg-orange-100 transition-colors"
+            onClick={() => setCurrentPage('service-requests')}
+          >
+            <div className="flex items-center gap-3">
+              <div className="bg-orange-100 p-2.5 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-orange-600" />
               </div>
-              <Button
-                variant="primary"
-                onClick={() => setCurrentPage('service-requests')}
-                size="sm"
-              >
-                Review Now
-              </Button>
+              <div>
+                <p className="font-semibold text-gray-900 text-sm">
+                  {ops.newLeads} new quote request{ops.newLeads !== 1 ? 's' : ''} waiting
+                </p>
+                <p className="text-xs text-orange-700">Respond quickly to win the job</p>
+              </div>
             </div>
-          </Card>
+            <ArrowRight className="w-4 h-4 text-orange-500" />
+          </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card
-            className="p-6 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => setCurrentPage('service-requests')}
-          >
-            <div className="flex items-center gap-4">
-              <div className="bg-orange-100 p-3 rounded-lg">
-                <ClipboardList className="w-6 h-6 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{metrics.pendingRequests}</p>
-                <p className="text-sm text-gray-600">Pending Requests</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card
-            className="p-6 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => setCurrentPage('create-quote')}
-          >
-            <div className="flex items-center gap-4">
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <FileText className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{metrics.activeQuotes}</p>
-                <p className="text-sm text-gray-600">Active Quotes</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card
-            className="p-6 hover:shadow-md transition-shadow cursor-pointer"
+        {ops.jobsNeedingCrew > 0 && (
+          <div
+            className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-xl cursor-pointer hover:bg-amber-100 transition-colors"
             onClick={() => setCurrentPage('jobs')}
           >
-            <div className="flex items-center gap-4">
-              <div className="bg-green-100 p-3 rounded-lg">
-                <Briefcase className="w-6 h-6 text-green-600" />
+            <div className="flex items-center gap-3">
+              <div className="bg-amber-100 p-2.5 rounded-lg">
+                <Users className="w-5 h-5 text-amber-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{metrics.activeJobs}</p>
-                <p className="text-sm text-gray-600">Active Jobs</p>
+                <p className="font-semibold text-gray-900 text-sm">
+                  {ops.jobsNeedingCrew} job{ops.jobsNeedingCrew !== 1 ? 's' : ''} need crew assignment
+                </p>
+                <p className="text-xs text-amber-700">Assign crew before the scheduled date</p>
               </div>
             </div>
-          </Card>
+            <ArrowRight className="w-4 h-4 text-amber-500" />
+          </div>
+        )}
 
-          <Card
-            className="p-6 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => setCurrentPage('invoices')}
-          >
-            <div className="flex items-center gap-4">
-              <div className="bg-red-100 p-3 rounded-lg">
-                <DollarSign className="w-6 h-6 text-red-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{metrics.unpaidInvoices}</p>
-                <p className="text-sm text-gray-600">Unpaid Invoices</p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="bg-green-100 p-3 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">${metrics.monthlyRevenue.toFixed(0)}</p>
-                <p className="text-sm text-gray-600">Revenue (Month)</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <Users className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{metrics.totalCustomers}</p>
-                <p className="text-sm text-gray-600">Total Customers</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card
-            className="p-6 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => setCurrentPage('crew')}
-          >
-            <div className="flex items-center gap-4">
-              <div className="bg-orange-100 p-3 rounded-lg">
-                <UserPlus className="w-6 h-6 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{metrics.crewMembers}</p>
-                <p className="text-sm text-gray-600">Crew Members</p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-green-600" />
-              Revenue Trend (Last 6 Months)
-            </h3>
-            <div className="h-64">
-              {revenueData.length > 0 ? (
-                <LineChart
-                  data={revenueData.map(item => ({
-                    label: item.month,
-                    value: item.revenue
-                  }))}
-                  color="#10B981"
-                />
-              ) : (
-                <div className="h-full flex items-center justify-center text-gray-500">
-                  <div className="text-center">
-                    <TrendingUp className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                    <p>No revenue data available</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Briefcase className="w-5 h-5 text-blue-600" />
-              Service Distribution
-            </h3>
-            <div className="h-64 flex items-center justify-center">
-              <DonutChart
-                data={[
-                  { label: 'Moving', value: metrics.activeJobs * 0.4, color: '#3B82F6' },
-                  { label: 'Junk Removal', value: metrics.activeJobs * 0.35, color: '#10B981' },
-                  { label: 'Demolition', value: metrics.activeJobs * 0.25, color: '#F59E0B' }
-                ]}
-                size={180}
-                thickness={25}
-              />
-            </div>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                Recent Quote Requests
-              </h3>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setCurrentPage('service-requests')}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {statCards.map(({ label, value, icon: Icon, color, urgent, onClick }) => {
+            const c = colorMap[color];
+            return (
+              <button
+                key={label}
+                onClick={onClick}
+                className={`p-4 rounded-xl border text-left transition-all hover:shadow-md ${
+                  urgent && value > 0
+                    ? `${c.bg} border-current ring-1 ${c.ring}`
+                    : 'bg-white border-gray-200'
+                }`}
               >
+                <div className={`inline-flex p-2 rounded-lg mb-3 ${c.icon}`}>
+                  <Icon className="w-4 h-4" />
+                </div>
+                <p className={`text-3xl font-bold mb-1 ${urgent && value > 0 ? c.num : 'text-gray-900'}`}>
+                  {loading ? '—' : value}
+                </p>
+                <p className="text-xs text-gray-500 leading-tight">{label}</p>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2 text-sm">
+                <ClipboardList className="w-4 h-4 text-orange-500" />
+                New Quote Requests
+              </h3>
+              <Button variant="secondary" size="sm" onClick={() => setCurrentPage('service-requests')}>
                 View All
               </Button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {loading ? (
-                <p className="text-sm text-gray-500">Loading...</p>
-              ) : serviceRequests.length === 0 && publicQuoteRequests.length === 0 ? (
-                <p className="text-sm text-gray-500">No pending quote requests</p>
+                <p className="text-sm text-gray-400 py-4 text-center">Loading...</p>
+              ) : ops.recentLeads.length === 0 ? (
+                <div className="py-6 text-center">
+                  <CheckCircle2 className="w-8 h-8 text-green-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">No pending requests</p>
+                </div>
               ) : (
-                <>
-                  {serviceRequests.map((request) => (
-                    <div
-                      key={request.id}
-                      className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer"
-                      onClick={() => setCurrentPage('service-requests')}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="inline-block px-2.5 py-1 text-xs font-semibold bg-orange-100 text-orange-700 rounded-full">
-                            {getServiceLabel(request.service_type)}
-                          </span>
-                          <span className="inline-block px-2.5 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
-                            Customer
-                          </span>
-                        </div>
-                        <span className="text-xs text-gray-500">{formatDate(request.created_at)}</span>
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm text-gray-700">
-                          <MapPin className="w-4 h-4 text-gray-400" />
-                          <span className="truncate">{request.location_address}</span>
-                        </div>
-                        {request.contact_phone && (
-                          <div className="flex items-center gap-2 text-sm text-gray-700">
-                            <Phone className="w-4 h-4 text-gray-400" />
-                            <span>{request.contact_phone}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  {publicQuoteRequests.map((request) => (
-                    <div
-                      key={request.id}
-                      className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer"
-                      onClick={() => setCurrentPage('service-requests')}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="inline-block px-2.5 py-1 text-xs font-semibold bg-orange-100 text-orange-700 rounded-full">
-                            {getServiceLabel(request.service_type)}
-                          </span>
-                          <span className="inline-block px-2.5 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">
+                ops.recentLeads.map((lead: any) => (
+                  <div
+                    key={lead.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                    onClick={() => setCurrentPage('service-requests')}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-semibold text-gray-600 bg-white border border-gray-200 px-2 py-0.5 rounded-full">
+                          {serviceLabel(lead.service_type)}
+                        </span>
+                        {lead._kind === 'public' && (
+                          <span className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full font-medium">
                             Guest
                           </span>
-                        </div>
-                        <span className="text-xs text-gray-500">{formatDate(request.created_at)}</span>
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm text-gray-700">
-                          <MapPin className="w-4 h-4 text-gray-400" />
-                          <span className="truncate">{request.location_address}</span>
-                        </div>
-                        {request.contact_phone && (
-                          <div className="flex items-center gap-2 text-sm text-gray-700">
-                            <Phone className="w-4 h-4 text-gray-400" />
-                            <span>{request.contact_phone}</span>
-                          </div>
                         )}
                       </div>
+                      <p className="text-xs text-gray-500 truncate flex items-center gap-1">
+                        <MapPin className="w-3 h-3 flex-shrink-0" />
+                        {lead.location_address}
+                      </p>
                     </div>
-                  ))}
-                </>
-              )}
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                Today's Jobs
-              </h3>
-              <Button variant="secondary" size="sm" onClick={() => setCurrentPage('jobs')}>
-                View All
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {todayJobs.length === 0 ? (
-                <p className="text-sm text-gray-500">No jobs scheduled for today</p>
-              ) : (
-                todayJobs.map((job) => (
-                  <div
-                    key={job.id}
-                    className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                    onClick={() => setCurrentPage('jobs')}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900 capitalize mb-1">
-                          {job.service_type.replace('_', ' ')}
+                    <div className="text-right ml-3 flex-shrink-0">
+                      <p className="text-xs text-gray-400">{fmtDate(lead.created_at)}</p>
+                      {lead.contact_phone && (
+                        <p className="text-xs text-gray-500 flex items-center gap-1 justify-end mt-0.5">
+                          <Phone className="w-3 h-3" />
+                          {lead.contact_phone}
                         </p>
-                        <p className="text-sm text-gray-600 flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {job.service_requests?.location_address || 'No address'}
-                        </p>
-                      </div>
-                      <ArrowRight className="w-5 h-5 text-gray-400" />
+                      )}
                     </div>
                   </div>
                 ))
               )}
             </div>
           </Card>
-        </div>
 
-        <Card className="p-6">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-blue-600" />
-            Recent Activity
-          </h3>
-          <div className="space-y-2">
-            {recentActivity.length === 0 ? (
-              <p className="text-sm text-gray-500">No recent activity</p>
-            ) : (
-              recentActivity.map((activity, index) => (
-                <div
-                  key={`${activity.type}-${activity.id}-${index}`}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                  onClick={() => {
-                    if (activity.type === 'service_request' || activity.type === 'public_quote_request') {
-                      setCurrentPage('service-requests');
-                    } else if (activity.type === 'job') {
-                      setCurrentPage('jobs');
-                    } else if (activity.type === 'invoice') {
-                      setCurrentPage('invoices');
-                    }
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    {activity.type === 'job' && (
-                      <div className="bg-green-100 p-2 rounded">
-                        <Briefcase className="w-4 h-4 text-green-600" />
-                      </div>
-                    )}
-                    {activity.type === 'invoice' && (
-                      <div className="bg-blue-100 p-2 rounded">
-                        <DollarSign className="w-4 h-4 text-blue-600" />
-                      </div>
-                    )}
-                    {activity.type === 'quote' && (
-                      <div className="bg-orange-100 p-2 rounded">
-                        <FileText className="w-4 h-4 text-orange-600" />
-                      </div>
-                    )}
-                    {activity.type === 'service_request' && (
-                      <div className="bg-blue-100 p-2 rounded">
-                        <ClipboardList className="w-4 h-4 text-blue-600" />
-                      </div>
-                    )}
-                    {activity.type === 'public_quote_request' && (
-                      <div className="bg-green-100 p-2 rounded">
-                        <ClipboardList className="w-4 h-4 text-green-600" />
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        {activity.type === 'job' && `Job ${activity.status}`}
-                        {activity.type === 'invoice' && `Invoice ${activity.number} ${activity.status}`}
-                        {activity.type === 'quote' && `Quote ${activity.number} ${activity.status}`}
-                        {activity.type === 'service_request' && `Customer request ${activity.status}`}
-                        {activity.type === 'public_quote_request' && `Guest quote ${activity.status}`}
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2 text-sm">
+                <Briefcase className="w-4 h-4 text-green-500" />
+                Jobs In Progress
+              </h3>
+              <Button variant="secondary" size="sm" onClick={() => setCurrentPage('jobs')}>
+                View All
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {loading ? (
+                <p className="text-sm text-gray-400 py-4 text-center">Loading...</p>
+              ) : ops.inProgressJobs.length === 0 ? (
+                <div className="py-6 text-center">
+                  <Circle className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">No jobs in progress</p>
+                </div>
+              ) : (
+                ops.inProgressJobs.map((job: any) => (
+                  <div
+                    key={job.id}
+                    className="flex items-center justify-between p-3 bg-green-50 border border-green-100 rounded-lg hover:bg-green-100 transition-colors cursor-pointer"
+                    onClick={() => setCurrentPage('jobs')}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 capitalize">
+                        {serviceLabel(job.service_type)}
                       </p>
-                      <p className="text-xs text-gray-500">{activity.customer}</p>
+                      <p className="text-xs text-gray-500 truncate flex items-center gap-1 mt-0.5">
+                        <MapPin className="w-3 h-3 flex-shrink-0" />
+                        {job.service_requests?.location_address || '—'}
+                      </p>
+                    </div>
+                    <div className="ml-3 flex-shrink-0 text-right">
+                      <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                        In Progress
+                      </span>
                     </div>
                   </div>
-                  <span className="text-xs text-gray-400">
-                    {new Date(activity.timestamp).toLocaleDateString()}
-                  </span>
+                ))
+              )}
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2 text-sm">
+                <Users className="w-4 h-4 text-amber-500" />
+                Jobs Needing Crew
+              </h3>
+              <Button variant="secondary" size="sm" onClick={() => setCurrentPage('crew')}>
+                Assign Crew
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {loading ? (
+                <p className="text-sm text-gray-400 py-4 text-center">Loading...</p>
+              ) : ops.needsCrewJobs.length === 0 ? (
+                <div className="py-6 text-center">
+                  <CheckCircle2 className="w-8 h-8 text-green-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">All jobs have crew assigned</p>
                 </div>
-              ))
-            )}
-          </div>
-        </Card>
+              ) : (
+                ops.needsCrewJobs.map((job: any) => (
+                  <div
+                    key={job.id}
+                    className="flex items-center justify-between p-3 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 transition-colors cursor-pointer"
+                    onClick={() => setCurrentPage('jobs')}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900">
+                        {serviceLabel(job.service_type)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                        <Clock className="w-3 h-3 flex-shrink-0" />
+                        {fmtJobDate(job.scheduled_date)}
+                      </p>
+                    </div>
+                    <span className="ml-3 flex-shrink-0 text-xs font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                      No Crew
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2 text-sm">
+                <DollarSign className="w-4 h-4 text-red-500" />
+                Unpaid Invoices
+              </h3>
+              <Button variant="secondary" size="sm" onClick={() => setCurrentPage('invoices')}>
+                View All
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {loading ? (
+                <p className="text-sm text-gray-400 py-4 text-center">Loading...</p>
+              ) : ops.overdueInvoices.length === 0 ? (
+                <div className="py-6 text-center">
+                  <CheckCircle2 className="w-8 h-8 text-green-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">No outstanding invoices</p>
+                </div>
+              ) : (
+                ops.overdueInvoices.slice(0, 5).map((inv: any) => {
+                  const isOverdue = inv.status === 'overdue' ||
+                    (inv.due_date && new Date(inv.due_date) < new Date());
+                  return (
+                    <div
+                      key={inv.id}
+                      className={`flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer hover:opacity-80 ${
+                        isOverdue
+                          ? 'bg-red-50 border-red-100'
+                          : 'bg-gray-50 border-gray-200'
+                      }`}
+                      onClick={() => setCurrentPage('invoices')}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900">
+                          {inv.invoice_number || `INV-${inv.id.slice(0, 6).toUpperCase()}`}
+                        </p>
+                        {inv.due_date && (
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Due {fmtDate(inv.due_date)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="ml-3 text-right flex-shrink-0">
+                        <p className={`text-sm font-semibold ${isOverdue ? 'text-red-700' : 'text-gray-700'}`}>
+                          ${(inv.total_amount || 0).toLocaleString('en-CA', { minimumFractionDigits: 0 })}
+                        </p>
+                        {isOverdue && (
+                          <span className="text-xs text-red-600 font-medium">Overdue</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </Card>
+
+        </div>
+
+        {ops.todayJobs.length > 0 && (
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2 text-sm">
+                <Clock className="w-4 h-4 text-blue-500" />
+                Today's Schedule
+                <span className="ml-1 text-xs font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                  {ops.todayJobs.length}
+                </span>
+              </h3>
+              <Button variant="secondary" size="sm" onClick={() => setCurrentPage('jobs')}>
+                Full Calendar
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {ops.todayJobs.map((job: any) => (
+                <div
+                  key={job.id}
+                  className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer"
+                  onClick={() => setCurrentPage('jobs')}
+                >
+                  <div className="bg-blue-100 p-2 rounded-lg flex-shrink-0">
+                    <Briefcase className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{serviceLabel(job.service_type)}</p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {job.service_requests?.location_address || '—'}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
       </div>
     </PortalLayout>
   );
