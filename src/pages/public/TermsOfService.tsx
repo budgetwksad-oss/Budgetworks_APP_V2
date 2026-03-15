@@ -138,8 +138,7 @@ export function TermsOfService({ onNavigate, onLogin }: Props) {
 
             <h2 className="text-2xl font-bold text-gray-900 mb-4">14. Governing Law</h2>
             <p className="text-gray-700 mb-6">
-              These Terms of Service are governed by the laws of the Province of Ontario and the
-              federal laws of Canada applicable therein.
+              This agreement shall be governed by and interpreted in accordance with the laws of the Province of Nova Scotia, Canada.
             </p>
 
             <h2 className="text-2xl font-bold text-gray-900 mb-4">15. Contact Information</h2>
