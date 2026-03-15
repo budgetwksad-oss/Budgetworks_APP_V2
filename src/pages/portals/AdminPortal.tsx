@@ -32,6 +32,7 @@ import { Settings } from '../admin/Settings';
 import { CreateQuote } from '../admin/CreateQuote';
 import { PricingSettings } from '../admin/PricingSettings';
 import { NotificationsOutbox } from '../admin/NotificationsOutbox';
+import { NotificationsTemplates } from '../admin/NotificationsTemplates';
 import { Reports } from '../admin/Reports';
 import { getDashboardStats, getRevenueByMonth, getRecentActivity } from '../../lib/analytics';
 import { LineChart, DonutChart } from '../../components/ui/Chart';
@@ -57,6 +58,52 @@ interface Metrics {
   unpaidInvoices: number;
   monthlyRevenue: number;
   todayJobs: number;
+}
+
+type NotificationsSubPage = 'delivery' | 'templates';
+
+function NotificationsPage({
+  sidebarSections,
+  onBack,
+}: {
+  sidebarSections: MenuSection[];
+  onBack: () => void;
+}) {
+  const [sub, setSub] = useState<NotificationsSubPage>('delivery');
+
+  return (
+    <PortalLayout
+      portalName="Admin Portal"
+      sidebarSections={sidebarSections}
+      activeItemId="notifications"
+      breadcrumbs={[
+        { label: 'Admin Portal', onClick: onBack },
+        { label: 'Notifications' }
+      ]}
+    >
+      <div className="space-y-6">
+        <div className="flex gap-1 border-b border-gray-200">
+          {([
+            { id: 'delivery', label: 'Delivery Queue' },
+            { id: 'templates', label: 'Templates' },
+          ] as const).map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setSub(id)}
+              className={`px-5 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                sub === id
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {sub === 'delivery' ? <NotificationsOutbox /> : <NotificationsTemplates />}
+      </div>
+    </PortalLayout>
+  );
 }
 
 export function AdminPortal() {
@@ -282,19 +329,7 @@ export function AdminPortal() {
   }
 
   if (currentPage === 'notifications') {
-    return (
-      <PortalLayout
-        portalName="Admin Portal"
-        sidebarSections={sidebarSections}
-        activeItemId={currentPage}
-        breadcrumbs={[
-          { label: 'Admin Portal', onClick: () => setCurrentPage('dashboard') },
-          { label: 'Notifications' }
-        ]}
-      >
-        <NotificationsOutbox />
-      </PortalLayout>
-    );
+    return <NotificationsPage sidebarSections={sidebarSections} onBack={() => setCurrentPage('dashboard')} />;
   }
 
   if (currentPage === 'reports') {

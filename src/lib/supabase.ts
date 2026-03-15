@@ -406,12 +406,14 @@ export async function upsertNotificationTemplateV2(
 ): Promise<{ data: NotificationTemplateV2 | null; error: any }> {
   try {
     if (template.id) {
+      const enabled = template.enabled ?? true;
       const { data, error } = await supabase
         .from('notification_templates')
         .update({
           subject: template.subject,
           body: template.body,
-          enabled: template.enabled,
+          enabled,
+          is_enabled: enabled,
           service_type: template.service_type
         })
         .eq('id', template.id)
@@ -420,15 +422,18 @@ export async function upsertNotificationTemplateV2(
 
       return { data, error };
     } else {
+      const enabled = template.enabled ?? true;
       const { data, error } = await supabase
         .from('notification_templates')
         .insert([{
           event_key: template.event_key,
           audience: template.audience,
+          channel: 'email',
           subject: template.subject,
           body: template.body,
-          enabled: template.enabled ?? true,
-          service_type: template.service_type
+          enabled,
+          is_enabled: enabled,
+          service_type: template.service_type ?? null
         }])
         .select()
         .single();
@@ -448,34 +453,40 @@ export type NotificationQueueItem = {
   event_key: NotificationEventKey;
   audience: NotificationAudience;
   channel: NotificationChannel;
-  destination: string;
+  to_email: string | null;
+  to_phone: string | null;
+  destination: string | null;
   rendered_subject: string | null;
   rendered_body: string;
   status: NotificationQueueStatus;
-  entity_type: string | null;
-  entity_id: string | null;
+  attempts: number;
   created_at: string;
   sent_at: string | null;
-  failed_at: string | null;
+  error: string | null;
   error_message: string | null;
+  scheduled_for: string | null;
 };
 
 export type NotificationLog = {
   id: string;
-  queue_id: string;
+  queue_id: string | null;
   event_key: NotificationEventKey;
   audience: NotificationAudience;
   channel: NotificationChannel;
-  destination: string;
+  to_email: string | null;
+  to_phone: string | null;
+  destination: string | null;
   rendered_subject: string | null;
-  rendered_body: string;
+  rendered_body: string | null;
   status: NotificationQueueStatus;
   sent_at: string | null;
   error_message: string | null;
   created_at: string;
 };
 
-export async function getNotificationQueue(): Promise<{
+export async function getNotificationQueue(
+  statuses: NotificationQueueStatus[] = ['pending', 'failed']
+): Promise<{
   data: NotificationQueueItem[] | null;
   error: any;
 }> {
@@ -483,8 +494,26 @@ export async function getNotificationQueue(): Promise<{
     const { data, error } = await supabase
       .from('notification_queue')
       .select('*')
-      .in('status', ['pending', 'failed'])
-      .order('created_at', { ascending: false });
+      .in('status', statuses)
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    return { data, error };
+  } catch (error) {
+    return { data: null, error };
+  }
+}
+
+export async function getNotificationQueueAll(): Promise<{
+  data: NotificationQueueItem[] | null;
+  error: any;
+}> {
+  try {
+    const { data, error } = await supabase
+      .from('notification_queue')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(500);
 
     return { data, error };
   } catch (error) {
@@ -502,11 +531,9 @@ export async function updateNotificationQueueStatus(
 
     if (status === 'sent') {
       updateData.sent_at = new Date().toISOString();
-    } else if (status === 'failed') {
-      updateData.failed_at = new Date().toISOString();
-      if (errorMessage) {
-        updateData.error_message = errorMessage;
-      }
+    } else if (status === 'failed' && errorMessage) {
+      updateData.error = errorMessage;
+      updateData.error_message = errorMessage;
     }
 
     const { data, error } = await supabase
@@ -614,10 +641,11 @@ export async function logNotification(
         event_key: queueItem.event_key,
         audience: queueItem.audience,
         channel: queueItem.channel,
-        destination: queueItem.destination,
+        to_email: queueItem.to_email,
+        to_phone: queueItem.to_phone,
         rendered_subject: queueItem.rendered_subject,
         rendered_body: queueItem.rendered_body,
-        status: status,
+        status,
         sent_at: status === 'sent' ? new Date().toISOString() : null,
         error_message: errorMessage || null
       }])
@@ -625,6 +653,29 @@ export async function logNotification(
       .single();
 
     return { data, error };
+  } catch (error) {
+    return { data: null, error };
+  }
+}
+
+export async function getNotificationDeliveryStats(): Promise<{
+  data: { pending: number; sent: number; failed: number; cancelled: number } | null;
+  error: any;
+}> {
+  try {
+    const { data, error } = await supabase
+      .from('notification_queue')
+      .select('status');
+
+    if (error) return { data: null, error };
+
+    const counts = { pending: 0, sent: 0, failed: 0, cancelled: 0 };
+    for (const row of data || []) {
+      const s = row.status as NotificationQueueStatus;
+      if (s in counts) counts[s]++;
+    }
+
+    return { data: counts, error: null };
   } catch (error) {
     return { data: null, error };
   }
