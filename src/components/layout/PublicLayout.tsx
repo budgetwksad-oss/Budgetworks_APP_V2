@@ -1,8 +1,8 @@
 import { ReactNode } from 'react';
+import { PublicPage } from '../../types/public';
 import { PublicNavbar } from './PublicNavbar';
 import { Footer } from './Footer';
 
-type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo' | 'terms' | 'privacy';
 
 interface PublicLayoutProps {
   children: ReactNode;

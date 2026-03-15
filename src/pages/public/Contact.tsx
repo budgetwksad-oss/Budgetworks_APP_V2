@@ -4,7 +4,7 @@ import { Mail, Phone, MapPin, Clock, ArrowRight, CheckCircle } from 'lucide-reac
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 
-type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo';
+import { PublicPage } from '../../types/public';
 
 interface ContactProps {
   onNavigate: (page: PublicPage) => void;

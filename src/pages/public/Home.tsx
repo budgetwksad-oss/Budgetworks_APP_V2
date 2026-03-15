@@ -4,7 +4,7 @@ import { ArrowRight, CheckCircle, Star, ChevronDown, ChevronUp, MapPin, FileText
 import { supabase } from '../../lib/supabase';
 import { setSEO } from '../../lib/seo';
 
-type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo';
+import { PublicPage } from '../../types/public';
 
 interface HomeProps {
   onNavigate: (page: PublicPage) => void;

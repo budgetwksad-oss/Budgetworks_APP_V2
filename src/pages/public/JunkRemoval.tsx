@@ -3,7 +3,7 @@ import { PublicLayout } from '../../components/layout/PublicLayout';
 import { ArrowRight, CheckCircle, ChevronDown, ChevronUp, MapPin } from 'lucide-react';
 import { setSEO, setFAQSchema } from '../../lib/seo';
 
-type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo';
+import { PublicPage } from '../../types/public';
 
 interface JunkRemovalProps {
   onNavigate: (page: PublicPage) => void;

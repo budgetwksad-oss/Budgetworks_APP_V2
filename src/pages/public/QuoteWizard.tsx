@@ -7,7 +7,7 @@ import {
   CheckCircle, Loader2, AlertCircle
 } from 'lucide-react';
 
-type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo';
+import { PublicPage } from '../../types/public';
 
 interface QuoteWizardProps {
   onNavigate: (page: PublicPage) => void;

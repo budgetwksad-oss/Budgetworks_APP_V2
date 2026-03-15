@@ -21,9 +21,9 @@ import { TermsOfService } from './pages/public/TermsOfService';
 import { PrivacyPolicy } from './pages/public/PrivacyPolicy';
 import { KeyboardShortcuts } from './components/ui/KeyboardShortcuts';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { PublicPage } from './types/public';
 
 type AuthView = 'login' | 'signup' | 'forgot-password';
-type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo' | 'terms' | 'privacy';
 
 function pathnameToPage(pathname: string): PublicPage | null {
   switch (pathname) {

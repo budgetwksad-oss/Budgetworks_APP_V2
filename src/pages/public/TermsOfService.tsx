@@ -1,7 +1,7 @@
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { Card } from '../../components/ui/Card';
 
-type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo' | 'terms' | 'privacy';
+import { PublicPage } from '../../types/public';
 
 interface Props {
   onNavigate?: (page: PublicPage) => void;

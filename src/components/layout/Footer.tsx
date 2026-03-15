@@ -1,6 +1,6 @@
 import { Truck, Mail, Phone, MapPin } from 'lucide-react';
+import { PublicPage } from '../../types/public';
 
-type PublicPage = 'home' | 'services' | 'about' | 'contact' | 'quote' | 'quote-success' | 'moving' | 'junk-removal' | 'light-demo' | 'terms' | 'privacy';
 
 interface FooterProps {
   onNavigate: (page: PublicPage) => void;
