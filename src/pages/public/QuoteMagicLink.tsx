@@ -27,7 +27,7 @@ interface QuoteData {
 export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLinkProps) {
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<QuoteData | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<'invalid' | 'expired' | null>(null);
   const [responding, setResponding] = useState(false);
   const [response, setResponse] = useState<'accept' | 'decline' | null>(null);
   const [showAgreement, setShowAgreement] = useState(false);
@@ -53,8 +53,8 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
       }
 
       if (!data || !data.success) {
-        console.error('Invalid token or quote not found:', data?.error);
-        setError('invalid');
+        const msg: string = data?.error ?? '';
+        setError(msg.toLowerCase().includes('expir') ? 'expired' : 'invalid');
         return;
       }
 
@@ -187,19 +187,22 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
     );
   }
 
-  if (error === 'invalid' || !quote) {
+  if (error || !quote) {
+    const isExpired = error === 'expired';
     return (
       <PublicLayout currentPage="home" onNavigate={() => {}} onLogin={onLogin}>
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
           <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="w-8 h-8 text-red-600" />
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${isExpired ? 'bg-amber-100' : 'bg-red-100'}`}>
+              <AlertCircle className={`w-8 h-8 ${isExpired ? 'text-amber-600' : 'text-red-600'}`} />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-3">
-              Link No Longer Valid
+              {isExpired ? 'Quote Link Expired' : 'Link Not Found'}
             </h1>
             <p className="text-gray-600 mb-6 leading-relaxed">
-              This link is no longer valid. It may have expired or been used already. Request a fresh quote to get started.
+              {isExpired
+                ? 'This quote link has expired. Please contact us and we can send you a fresh one.'
+                : 'This link is invalid or has already been used. Contact us if you need assistance.'}
             </p>
             <div className="flex flex-col gap-3">
               <button
