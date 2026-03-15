@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Clock, Play, Square, Calendar, MapPin, AlertCircle } from 'lucide-react';
+import { Clock, Play, Square, Calendar, MapPin, AlertCircle, Camera, Upload, CheckCircle, Image } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 
@@ -11,6 +11,7 @@ interface Job {
   service_type: string;
   address: string;
   scheduled_date: string;
+  before_photos: string[];
 }
 
 interface ActiveTimeLog {
@@ -31,12 +32,14 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user) return;
     loadAssignedJobs();
     checkActiveLog();
-    // loadAssignedJobs and checkActiveLog are stable for the lifetime of this component
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
@@ -66,13 +69,13 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
     try {
       const { data, error } = await supabase
         .from('jobs')
-        .select('id, service_type, address, scheduled_date, crew_assignments')
+        .select('id, service_type, address, scheduled_date, crew_assignments, before_photos')
         .contains('crew_assignments', [user.id])
         .in('status', ['scheduled', 'in_progress'])
         .order('scheduled_date', { ascending: true });
 
       if (error) throw error;
-      setJobs(data || []);
+      setJobs((data || []).map(j => ({ ...j, before_photos: j.before_photos || [] })));
     } catch (err) {
       console.error('Error loading jobs:', err);
     }
@@ -104,9 +107,77 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
     }
   };
 
+  const selectedJob = jobs.find(j => j.id === selectedJobId) ?? null;
+  const beforePhotos = selectedJob?.before_photos ?? [];
+  const hasBeforePhotos = beforePhotos.length > 0;
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length || !selectedJobId) return;
+
+    setError('');
+    setUploadSuccess('');
+
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) {
+        setError('Please upload image files only.');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Each photo must be less than 5MB.');
+        return;
+      }
+    }
+
+    setUploading(true);
+    try {
+      const currentPhotos = [...beforePhotos];
+
+      for (const file of files) {
+        const ext = file.name.split('.').pop();
+        const path = `${selectedJobId}/before/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('job-photos')
+          .upload(path, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('job-photos')
+          .getPublicUrl(path);
+
+        currentPhotos.push(publicUrl);
+      }
+
+      const { error: updateError } = await supabase
+        .from('jobs')
+        .update({ before_photos: currentPhotos })
+        .eq('id', selectedJobId);
+
+      if (updateError) throw updateError;
+
+      setJobs(prev =>
+        prev.map(j => j.id === selectedJobId ? { ...j, before_photos: currentPhotos } : j)
+      );
+      setUploadSuccess(`${files.length} photo${files.length > 1 ? 's' : ''} uploaded successfully.`);
+      setTimeout(() => setUploadSuccess(''), 4000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload photo(s). Please try again.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const handleClockIn = async () => {
     if (!selectedJobId) {
       setError('Please select a job');
+      return;
+    }
+
+    if (!hasBeforePhotos) {
+      setError('Please upload before-job photos before starting the job.');
       return;
     }
 
@@ -195,8 +266,17 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
         {error && (
           <Card className="p-4 bg-red-50 border-red-200">
             <div className="flex items-center gap-2 text-red-700">
-              <AlertCircle className="w-5 h-5" />
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
               <p>{error}</p>
+            </div>
+          </Card>
+        )}
+
+        {uploadSuccess && (
+          <Card className="p-4 bg-green-50 border-green-200">
+            <div className="flex items-center gap-2 text-green-700">
+              <CheckCircle className="w-5 h-5 flex-shrink-0" />
+              <p>{uploadSuccess}</p>
             </div>
           </Card>
         )}
@@ -262,7 +342,7 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
                       {jobs.map((job) => (
                         <button
                           key={job.id}
-                          onClick={() => setSelectedJobId(job.id)}
+                          onClick={() => { setSelectedJobId(job.id); setError(''); }}
                           className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${
                             selectedJobId === job.id
                               ? 'border-orange-500 bg-orange-50'
@@ -287,12 +367,90 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
                   )}
                 </div>
 
+                {selectedJobId && (
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <div className={`flex items-center justify-between px-4 py-3 ${hasBeforePhotos ? 'bg-green-50 border-b border-green-100' : 'bg-amber-50 border-b border-amber-100'}`}>
+                      <div className="flex items-center gap-2">
+                        <Camera className={`w-4 h-4 ${hasBeforePhotos ? 'text-green-600' : 'text-amber-600'}`} />
+                        <span className={`text-sm font-medium ${hasBeforePhotos ? 'text-green-800' : 'text-amber-800'}`}>
+                          Before Photos
+                          {hasBeforePhotos
+                            ? ` (${beforePhotos.length} uploaded)`
+                            : ' — Required before clocking in'}
+                        </span>
+                      </div>
+                      {hasBeforePhotos && (
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                      )}
+                    </div>
+
+                    {!hasBeforePhotos && (
+                      <div className="px-4 py-3 bg-amber-50">
+                        <p className="text-sm text-amber-700 mb-3">
+                          Please upload before-job photos before starting the job.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="p-4 bg-white space-y-3">
+                      {beforePhotos.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2">
+                          {beforePhotos.map((url, i) => (
+                            <div key={i} className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+                              <img src={url} alt={`Before photo ${i + 1}`} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={handlePhotoUpload}
+                        disabled={uploading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:border-orange-400 hover:text-orange-600 hover:bg-orange-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {uploading ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-4 h-4" />
+                            {hasBeforePhotos ? 'Add More Photos' : 'Upload Before Photos'}
+                          </>
+                        )}
+                      </button>
+                      <p className="text-xs text-gray-500 text-center">Images only, max 5MB each. Multiple photos allowed.</p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedJobId && !hasBeforePhotos && (
+                  <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <Image className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-amber-800">
+                      Please upload before-job photos before starting the job.
+                    </p>
+                  </div>
+                )}
+
                 <Button
                   variant="primary"
                   size="lg"
                   onClick={handleClockIn}
-                  disabled={loading || !selectedJobId}
+                  disabled={loading || !selectedJobId || !hasBeforePhotos}
                   className="w-full"
+                  title={!hasBeforePhotos && selectedJobId ? 'Upload before photos to enable clock-in' : undefined}
                 >
                   <Play className="w-5 h-5 mr-2" />
                   {loading ? 'Clocking In...' : 'Clock In'}
@@ -308,6 +466,7 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
             <div>
               <h4 className="font-semibold text-gray-900 mb-1">Time Clock Tips</h4>
               <ul className="text-sm text-gray-600 space-y-1">
+                <li>Upload at least one before photo before clocking in</li>
                 <li>Always clock in when you arrive at the job site</li>
                 <li>Clock out when you leave or finish the job</li>
                 <li>Make sure to select the correct job before clocking in</li>
