@@ -6,7 +6,7 @@ import { MenuSection } from '../../components/layout/Sidebar';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { ArrowLeft, Briefcase, Calendar, Users, Clock, MapPin, X, FileText, Copy, Check, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Briefcase, Calendar, Users, Clock, MapPin, X, FileText, Copy, Check, AlertTriangle, CheckCircle } from 'lucide-react';
 
 interface InvoiceModalState {
   open: boolean;
@@ -18,6 +18,8 @@ interface InvoiceModalState {
   notificationWarning: string | null;
   copied: boolean;
   invoiceError: string | null;
+  laborHours: number;
+  markCompleteOnCreate: boolean;
 }
 
 type JobWithDetails = Job & {
@@ -78,6 +80,8 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
     notificationWarning: null,
     copied: false,
     invoiceError: null,
+    laborHours: 0,
+    markCompleteOnCreate: false,
   });
 
   useEffect(() => {
@@ -494,12 +498,24 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
     }
   };
 
-  const openInvoiceModal = () => {
+  const openInvoiceModal = async (markComplete = false) => {
     const defaultTotal = selectedJob?.quote?.expected_price
       ? String(selectedJob.quote.expected_price)
       : selectedJob?.quote?.total_amount
         ? String(selectedJob.quote.total_amount)
         : '';
+
+    let laborHours = 0;
+    if (selectedJob) {
+      const { data: timeData } = await supabase
+        .from('time_entries')
+        .select('hours_worked')
+        .eq('job_id', selectedJob.id);
+      if (timeData && timeData.length > 0) {
+        laborHours = timeData.reduce((sum, e) => sum + (Number(e.hours_worked) || 0), 0);
+      }
+    }
+
     setInvoiceModal({
       open: true,
       total: defaultTotal,
@@ -510,6 +526,8 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
       notificationWarning: null,
       copied: false,
       invoiceError: null,
+      laborHours,
+      markCompleteOnCreate: markComplete,
     });
   };
 
@@ -539,6 +557,33 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
       const taxAmount = parseFloat((totalNum - subtotal).toFixed(2));
 
       const invNumber = `INV-${Date.now().toString().slice(-8)}`;
+      const serviceLabel = getServiceLabel(selectedJob.service_type || 'moving');
+      const laborHours = invoiceModal.laborHours;
+
+      const lineItems = laborHours > 0
+        ? [
+            {
+              description: `${serviceLabel} — Labour (${laborHours.toFixed(2)} hrs)`,
+              quantity: laborHours,
+              unit_price: parseFloat((subtotal / laborHours).toFixed(2)),
+              total: subtotal,
+            },
+          ]
+        : [
+            {
+              description: `${serviceLabel} Service`,
+              quantity: 1,
+              unit_price: subtotal,
+              total: subtotal,
+            },
+          ];
+
+      if (invoiceModal.markCompleteOnCreate) {
+        await supabase
+          .from('jobs')
+          .update({ status: 'completed', completed_at: new Date().toISOString() })
+          .eq('id', selectedJob.id);
+      }
 
       const { data: invData, error: invError } = await supabase
         .from('invoices')
@@ -546,12 +591,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
           job_id: selectedJob.id,
           customer_id: selectedJob.customer_id || null,
           invoice_number: invNumber,
-          line_items: [{
-            description: `${getServiceLabel(selectedJob.service_type || 'moving')} Service`,
-            quantity: 1,
-            unit_price: subtotal,
-            total: subtotal,
-          }],
+          line_items: lineItems,
           subtotal,
           tax_rate: taxRate,
           tax_amount: taxAmount,
@@ -1049,23 +1089,30 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900">Job Information</h3>
               {(selectedJob.customer_email || selectedJob.customer_phone) && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={openInvoiceModal}
-                  className="flex items-center gap-2"
-                >
-                  <FileText className="w-4 h-4" />
-                  Create Invoice
-                </Button>
+                <div className="flex items-center gap-2">
+                  {selectedJob.status !== 'completed' && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => openInvoiceModal(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Check className="w-4 h-4" />
+                      Complete & Invoice
+                    </Button>
+                  )}
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => openInvoiceModal(false)}
+                    className="flex items-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    {selectedJob.status === 'completed' ? 'Create Invoice' : 'Invoice Only'}
+                  </Button>
+                </div>
               )}
             </div>
-            {selectedJob.status !== 'completed' && (
-              <div className="flex items-center gap-2 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                <p className="text-xs text-amber-700">Job is not yet completed. You can still invoice early.</p>
-              </div>
-            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-gray-500 mb-1">Customer</p>
@@ -1256,7 +1303,7 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Invoice Total ($) <span className="text-red-500">*</span>
+                      Invoice Total (CAD) <span className="text-red-500">*</span>
                     </label>
                     <Input
                       type="number"
@@ -1266,8 +1313,22 @@ export function ManageJobs({ sidebarSections, onBack }: ManageJobsProps = {}) {
                       onChange={(e) => setInvoiceModal(s => ({ ...s, total: e.target.value }))}
                       placeholder="0.00"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Tax will be calculated from company settings.</p>
+                    <p className="text-xs text-gray-500 mt-1">Tax (HST) will be calculated from company settings.</p>
                   </div>
+                  {invoiceModal.laborHours > 0 && (
+                    <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <Clock className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                      <p className="text-xs text-blue-700">
+                        <span className="font-semibold">{invoiceModal.laborHours.toFixed(2)} labour hours</span> logged for this job — will be included as a line item.
+                      </p>
+                    </div>
+                  )}
+                  {invoiceModal.markCompleteOnCreate && (
+                    <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                      <p className="text-xs text-green-700">Job will be marked as <span className="font-semibold">completed</span> when the invoice is created.</p>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Due Date</label>

@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { PublicLayout } from '../../components/layout/PublicLayout';
-import { DollarSign, Calendar, User, Phone, AlertCircle, CheckCircle, Clock, XCircle, FileText } from 'lucide-react';
+import { DollarSign, Calendar, User, Phone, AlertCircle, CheckCircle, Clock, XCircle, FileText, Package } from 'lucide-react';
 
 interface InvoiceMagicLinkProps {
   token: string;
   onLogin: () => void;
   onNavigateHome?: () => void;
+}
+
+interface LineItem {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
 }
 
 interface InvoiceData {
@@ -16,12 +23,17 @@ interface InvoiceData {
   total_amount: number;
   amount_paid: number;
   balance_due: number;
+  subtotal: number;
+  tax_rate: number;
+  tax_amount: number;
   status: string;
   due_date: string | null;
   issue_date: string | null;
   notes: string | null;
   company_name: string | null;
   company_phone: string | null;
+  service_type: string | null;
+  line_items: LineItem[];
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
@@ -82,12 +94,17 @@ export function InvoiceMagicLink({ token, onLogin, onNavigateHome }: InvoiceMagi
           total_amount:   Number(inv.total_amount ?? 0),
           amount_paid:    Number(inv.amount_paid ?? inv.paid_amount ?? 0),
           balance_due:    Number(inv.balance_due ?? inv.balance_amount ?? inv.total_amount ?? 0),
+          subtotal:       Number(inv.subtotal ?? 0),
+          tax_rate:       Number(inv.tax_rate ?? 0),
+          tax_amount:     Number(inv.tax_amount ?? 0),
           status:         inv.status ?? 'sent',
           due_date:       inv.due_date ?? null,
           issue_date:     inv.issue_date ?? null,
           notes:          inv.notes ?? null,
           company_name:   company.business_name ?? company.name ?? null,
           company_phone:  company.phone ?? null,
+          service_type:   inv.service_type ?? null,
+          line_items:     Array.isArray(inv.line_items) ? inv.line_items : [],
         });
       } catch (err) {
         console.error('Error loading invoice:', err);
@@ -214,11 +231,42 @@ export function InvoiceMagicLink({ token, onLogin, onNavigateHome }: InvoiceMagi
                 )}
               </div>
 
+              {invoice.line_items.length > 0 && (
+                <div className="border-t pt-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Package className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-semibold text-gray-700">Service Summary</span>
+                  </div>
+                  <div className="space-y-2">
+                    {invoice.line_items.map((item, idx) => (
+                      <div key={idx} className="flex items-start justify-between gap-3 text-sm">
+                        <span className="text-gray-700 flex-1">{item.description}</span>
+                        <span className="font-medium text-gray-900 whitespace-nowrap">{formatCAD(item.total)}</span>
+                      </div>
+                    ))}
+                    {invoice.subtotal > 0 && (
+                      <>
+                        <div className="flex justify-between text-sm text-gray-500 border-t pt-2 mt-2">
+                          <span>Subtotal</span>
+                          <span>{formatCAD(invoice.subtotal)}</span>
+                        </div>
+                        {invoice.tax_amount > 0 && (
+                          <div className="flex justify-between text-sm text-gray-500">
+                            <span>HST ({(invoice.tax_rate * 100).toFixed(0)}%)</span>
+                            <span>{formatCAD(invoice.tax_amount)}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="border-t pt-5">
                 <div className={`rounded-xl p-5 ${isPaid ? 'bg-green-50 border border-green-200' : 'bg-orange-50 border border-orange-200'}`}>
                   <div className="flex items-center gap-3 mb-4">
                     <DollarSign className={`w-6 h-6 ${isPaid ? 'text-green-600' : 'text-orange-600'}`} />
-                    <span className="text-sm font-medium text-gray-700">Payment Summary</span>
+                    <span className="text-sm font-medium text-gray-700">Payment Summary (CAD)</span>
                   </div>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between text-gray-700">
