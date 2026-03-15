@@ -3,7 +3,7 @@ import { PortalLayout } from '../../components/layout/PortalLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { DollarSign, Search, X, Plus, Eye, Calendar, User, FileText, CreditCard, Download, Send, AlertCircle, CheckSquare, Square, Mail, Link, Copy, Check, AlertTriangle, RefreshCw } from 'lucide-react';
+import { DollarSign, Search, X, Plus, Eye, Calendar, User, FileText, CreditCard, Download, Send, AlertCircle, CheckSquare, Square, Mail, Link, Copy, Check, AlertTriangle, RefreshCw, Lock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { downloadInvoicePDF } from '../../lib/invoicePDF';
 import { updateOverdueInvoices, isInvoiceOverdue, getDaysOverdue } from '../../lib/invoiceUtils';
@@ -262,16 +262,29 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
       return;
     }
 
+    const editableIds = selectedInvoices.filter(id => {
+      const inv = invoices.find(i => i.id === id);
+      return inv && !isInvoiceLocked(inv.status);
+    });
+
+    const lockedCount = selectedInvoices.length - editableIds.length;
+
+    if (editableIds.length === 0) {
+      showToast('error', 'This invoice is locked because it has already been sent or paid.');
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('invoices')
         .update({ status: newStatus })
-        .in('id', selectedInvoices);
+        .in('id', editableIds);
 
       if (error) throw error;
 
       await loadInvoices();
-      showToast('success', `Updated ${selectedInvoices.length} invoice(s) to ${newStatus}`);
+      const skippedNote = lockedCount > 0 ? ` (${lockedCount} locked invoice(s) skipped)` : '';
+      showToast('success', `Updated ${editableIds.length} invoice(s) to ${newStatus}${skippedNote}`);
       setSelectedInvoices([]);
     } catch (err: any) {
       console.error('Error updating invoices:', err);
@@ -282,6 +295,16 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
   const handleBulkDelete = async () => {
     if (selectedInvoices.length === 0) {
       showToast('error', 'Please select invoices to delete');
+      return;
+    }
+
+    const lockedIds = selectedInvoices.filter(id => {
+      const inv = invoices.find(i => i.id === id);
+      return inv && isInvoiceLocked(inv.status);
+    });
+
+    if (lockedIds.length > 0) {
+      showToast('error', `${lockedIds.length} invoice(s) are locked and cannot be deleted. This invoice is locked because it has already been sent or paid.`);
       return;
     }
 
@@ -575,6 +598,8 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
     });
   };
 
+  const isInvoiceLocked = (status: string) => status === 'sent' || status === 'paid';
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       draft: 'bg-gray-100 text-gray-700',
@@ -624,6 +649,15 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
               <button onClick={() => setToast(null)} className="ml-auto text-current opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
             </div>
           )}
+          {isInvoiceLocked(selectedInvoice.status) && (
+            <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+              <Lock className="w-5 h-5 text-amber-600 flex-shrink-0" />
+              <p className="text-sm font-medium text-amber-800">
+                This invoice is locked because it has already been sent or paid. To make changes, create a new invoice adjustment or correction.
+              </p>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">{selectedInvoice.invoice_number}</h2>
@@ -1164,9 +1198,14 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
                         <p className="font-medium text-gray-900">{formatCurrency(invoice.total_amount)}</p>
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
-                          {invoice.status}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
+                            {invoice.status}
+                          </span>
+                          {isInvoiceLocked(invoice.status) && (
+                            <Lock className="w-3.5 h-3.5 text-amber-500" title="This invoice is locked" />
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
