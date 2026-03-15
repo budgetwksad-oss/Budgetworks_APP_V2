@@ -142,7 +142,7 @@ export function Home({ onNavigate, onLogin, onSignup }: HomeProps) {
     {
       slug: 'moving',
       title: 'Moving',
-      image: '/images/service-moving.jpg',
+      image: 'https://images.pexels.com/photos/4246120/pexels-photo-4246120.jpeg?auto=compress&cs=tinysrgb&w=600&h=400&fit=crop',
       description: 'Residential and commercial moves handled with care. Whether it\'s a one-bedroom apartment or a full office, we show up on time and get it done.',
       bullets: [
         'Apartments, houses, offices',
@@ -161,7 +161,7 @@ export function Home({ onNavigate, onLogin, onSignup }: HomeProps) {
     {
       slug: 'junk-removal',
       title: 'Junk Removal',
-      image: '/images/service-junk.jpg',
+      image: 'https://images.pexels.com/photos/6646918/pexels-photo-6646918.jpeg?auto=compress&cs=tinysrgb&w=600&h=400&fit=crop',
       description: 'Got stuff that needs to go? We haul it away — furniture, appliances, renovation debris, estate cleanouts. No load too big or too small.',
       bullets: [
         'Estate and garage cleanouts',
@@ -181,7 +181,7 @@ export function Home({ onNavigate, onLogin, onSignup }: HomeProps) {
     {
       slug: 'light-demo',
       title: 'Light Demolition',
-      image: '/images/service-demo.jpg',
+      image: 'https://images.pexels.com/photos/1216589/pexels-photo-1216589.jpeg?auto=compress&cs=tinysrgb&w=600&h=400&fit=crop',
       description: 'Clearing space for a renovation? We handle interior demo work cleanly and safely — walls, decks, fixtures, and more.',
       bullets: [
         'Interior wall removal',
