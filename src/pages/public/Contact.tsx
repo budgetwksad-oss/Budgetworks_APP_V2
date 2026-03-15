@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { Mail, Phone, MapPin, Clock, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { supabase } from '../../lib/supabase';
+import { setSEO } from '../../lib/seo';
 import { PublicPage } from '../../types/public';
 
 interface ContactProps {
@@ -12,6 +13,14 @@ interface ContactProps {
 }
 
 export function Contact({ onNavigate, onLogin }: ContactProps) {
+  useEffect(() => {
+    setSEO({
+      title: 'Contact Us | BudgetWorks Halifax',
+      description: 'Get in touch with the BudgetWorks team in Halifax. Questions about moving, junk removal, or light demo? We respond fast.',
+      canonicalPath: '/contact',
+    });
+  }, []);
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',

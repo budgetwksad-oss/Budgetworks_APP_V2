@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { Truck, Trash2, Hammer, CheckCircle, ArrowRight } from 'lucide-react';
+import { setSEO } from '../../lib/seo';
 
 import { PublicPage } from '../../types/public';
 
@@ -9,6 +11,13 @@ interface ServicesProps {
 }
 
 export function Services({ onNavigate, onLogin }: ServicesProps) {
+  useEffect(() => {
+    setSEO({
+      title: 'Our Services | Moving, Junk Removal & Light Demo — BudgetWorks Halifax',
+      description: 'BudgetWorks provides professional moving, junk removal, and light demolition services throughout Halifax and the HRM. Get a quote today.',
+      canonicalPath: '/services',
+    });
+  }, []);
   const services = [
     {
       icon: Truck,

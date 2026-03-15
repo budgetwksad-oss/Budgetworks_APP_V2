@@ -75,8 +75,13 @@ export function setSEO({ title, description, canonicalPath, ogImagePath }: SEOOp
   upsertMeta('meta[property="og:type"]', 'content', 'website');
   upsertMeta('meta[property="og:url"]', 'content', canonicalUrl);
 
+  upsertMeta('meta[name="twitter:title"]', 'content', title);
+  upsertMeta('meta[name="twitter:description"]', 'content', description);
+
   if (ogImagePath) {
-    upsertMeta('meta[property="og:image"]', 'content', origin + ogImagePath);
+    const imageUrl = origin + ogImagePath;
+    upsertMeta('meta[property="og:image"]', 'content', imageUrl);
+    upsertMeta('meta[name="twitter:image"]', 'content', imageUrl);
   }
 
   upsertLink('canonical', canonicalUrl);

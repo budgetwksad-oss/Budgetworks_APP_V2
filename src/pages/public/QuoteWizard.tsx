@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { supabase } from '../../lib/supabase';
+import { setSEO } from '../../lib/seo';
 import {
   Truck, Trash2, HardHat, ChevronRight, ChevronLeft,
   MapPin, Calendar, Clock, User, Mail, Phone, MessageSquare,
@@ -197,6 +198,14 @@ function buildDetails(s: WizardState) {
 const TOTAL_STEPS = 5;
 
 export function QuoteWizard({ onNavigate, onLogin, onSignup }: QuoteWizardProps) {
+  useEffect(() => {
+    setSEO({
+      title: 'Get a Quote | BudgetWorks Halifax',
+      description: 'Request a free quote for moving, junk removal, or light demolition in Halifax and the HRM. Takes just two minutes.',
+      canonicalPath: '/quote',
+    });
+  }, []);
+
   const [step, setStep] = useState(1);
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
   const [submitting, setSubmitting] = useState(false);

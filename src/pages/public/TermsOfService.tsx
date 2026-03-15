@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { Card } from '../../components/ui/Card';
+import { setSEO } from '../../lib/seo';
 
 import { PublicPage } from '../../types/public';
 
@@ -9,6 +11,14 @@ interface Props {
 }
 
 export function TermsOfService({ onNavigate, onLogin }: Props) {
+  useEffect(() => {
+    setSEO({
+      title: 'Terms of Service | BudgetWorks',
+      description: 'Read the BudgetWorks terms of service. Understand your rights and responsibilities when using our moving, junk removal, and demolition services.',
+      canonicalPath: '/terms',
+    });
+  }, []);
+
   return (
     <PublicLayout currentPage="terms" onNavigate={onNavigate} onLogin={onLogin}>
       <div className="max-w-4xl mx-auto px-4 py-12">

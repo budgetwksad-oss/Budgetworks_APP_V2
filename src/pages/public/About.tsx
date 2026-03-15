@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { Target, Heart, Shield, Users, Award, Clock, ThumbsUp, ArrowRight } from 'lucide-react';
+import { setSEO } from '../../lib/seo';
 
 import { PublicPage } from '../../types/public';
 
@@ -9,6 +11,13 @@ interface AboutProps {
 }
 
 export function About({ onNavigate, onLogin }: AboutProps) {
+  useEffect(() => {
+    setSEO({
+      title: 'About Us | BudgetWorks Halifax',
+      description: 'BudgetWorks is a local Halifax crew offering moving, junk removal, and light demolition services across the HRM. Honest work, fair rates.',
+      canonicalPath: '/about',
+    });
+  }, []);
   const values = [
     {
       icon: Heart,

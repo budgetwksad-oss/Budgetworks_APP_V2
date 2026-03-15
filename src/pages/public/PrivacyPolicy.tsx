@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { Card } from '../../components/ui/Card';
+import { setSEO } from '../../lib/seo';
 
 import { PublicPage } from '../../types/public';
 
@@ -9,6 +11,14 @@ interface Props {
 }
 
 export function PrivacyPolicy({ onNavigate, onLogin }: Props) {
+  useEffect(() => {
+    setSEO({
+      title: 'Privacy Policy | BudgetWorks',
+      description: 'Read the BudgetWorks privacy policy. Learn how we collect, use, and protect your personal information.',
+      canonicalPath: '/privacy',
+    });
+  }, []);
+
   return (
     <PublicLayout currentPage="privacy" onNavigate={onNavigate} onLogin={onLogin}>
       <div className="max-w-4xl mx-auto px-4 py-12">
