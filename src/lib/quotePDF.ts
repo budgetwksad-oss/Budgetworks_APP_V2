@@ -30,7 +30,7 @@ export function downloadQuotePDF(data: QuotePDFData): void {
   const fmt = (n: number) =>
     n.toLocaleString('en-CA', { style: 'currency', currency: 'CAD' });
 
-  const line = (text: string, x: number, size = 10, bold = false) => {
+  const _line = (text: string, x: number, size = 10, bold = false) => {
     doc.setFontSize(size);
     doc.setFont('helvetica', bold ? 'bold' : 'normal');
     doc.text(text, x, y);

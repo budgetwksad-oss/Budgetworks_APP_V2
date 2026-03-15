@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import { PublicLayout } from '../../components/layout/PublicLayout';
 import { supabase } from '../../lib/supabase';
 import { setSEO } from '../../lib/seo';
@@ -112,8 +112,8 @@ function StepHeading({ step, total, title, subtitle }: { step: number; total: nu
 }
 
 function TextInput({
-  label, value, onChange, placeholder, required, type = 'text'
-}: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; required?: boolean; type?: string }) {
+  label, value, onChange, placeholder, required, type = 'text', icon: _icon
+}: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; required?: boolean; type?: string; icon?: ReactNode }) {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1.5">

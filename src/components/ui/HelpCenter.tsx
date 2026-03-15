@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { HelpCircle, X, Search, Book, Keyboard, MessageCircle, FileText, ChevronRight, ExternalLink } from 'lucide-react';
+import { HelpCircle, X, Search, Book, Keyboard, MessageCircle, ChevronRight, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface HelpArticle {

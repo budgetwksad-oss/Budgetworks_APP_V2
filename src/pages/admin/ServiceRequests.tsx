@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase, PublicQuoteRequest, ServiceRequest, logAudit } from '../../lib/supabase';
+import { supabase, logAudit } from '../../lib/supabase';
 import { logActivity } from '../../lib/activityLogger';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { MenuSection } from '../../components/layout/Sidebar';

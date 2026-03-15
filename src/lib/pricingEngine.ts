@@ -76,7 +76,7 @@ export interface EstimateResult {
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
-function applyTax(amount: number, taxRate: number): number {
+function _applyTax(amount: number, taxRate: number): number {
   return amount * (1 + taxRate);
 }
 

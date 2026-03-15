@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Paperclip, Upload, X, Download, Eye, Trash2, FileText, Image as ImageIcon, File } from 'lucide-react';
+import { Paperclip, Upload, Download, Eye, Trash2, FileText, Image as ImageIcon, File } from 'lucide-react';
 import { Button } from './Button';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';

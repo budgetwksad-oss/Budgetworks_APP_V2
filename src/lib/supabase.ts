@@ -15,6 +15,7 @@ export type Profile = {
   role: 'customer' | 'crew' | 'admin';
   full_name: string;
   phone: string | null;
+  address: string | null;
   can_drive: boolean;
   created_at: string;
   updated_at: string;

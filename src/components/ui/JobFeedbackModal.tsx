@@ -26,7 +26,7 @@ export function JobFeedbackModal({
   existingFeedback
 }: JobFeedbackModalProps) {
   const [rating, setRating] = useState(existingFeedback?.rating || 0);
-  const [hoverRating, setHoverRating] = useState(0);
+  const [_hoverRating, _setHoverRating] = useState(0);
   const [comment, setComment] = useState(existingFeedback?.comment || '');
   const [serviceQuality, setServiceQuality] = useState(existingFeedback?.service_quality || 0);
   const [professionalism, setProfessionalism] = useState(existingFeedback?.professionalism || 0);

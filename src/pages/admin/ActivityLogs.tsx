@@ -37,7 +37,7 @@ export function ActivityLogs({ onBack }: ActivityLogsProps) {
     setLoading(true);
     try {
       const data = await getRecentActivity(100);
-      setLogs(data as ActivityLog[]);
+      setLogs(data as unknown as ActivityLog[]);
     } catch (err) {
       console.error('Error loading activity logs:', err);
     } finally {

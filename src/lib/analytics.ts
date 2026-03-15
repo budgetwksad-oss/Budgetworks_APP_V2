@@ -29,7 +29,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       jobsRes,
       customersRes,
       crewRes,
-      quotesRes,
+      _quotesRes,
       serviceRequestsRes,
       publicQuoteRequestsRes
     ] = await Promise.all([

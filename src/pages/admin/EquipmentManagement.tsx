@@ -3,20 +3,7 @@ import { PortalLayout } from '../../components/layout/PortalLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import {
-  Truck,
-  Wrench,
-  Plus,
-  X,
-  Edit2,
-  Trash2,
-  Package,
-  AlertCircle,
-  CheckCircle,
-  Calendar,
-  DollarSign,
-  Hammer
-} from 'lucide-react';
+import { Truck, Wrench, Plus, X, CreditCard as Edit2, Trash2, Package, Calendar, DollarSign, Hammer } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -55,7 +42,7 @@ export function EquipmentManagement({ onBack }: { onBack: () => void }) {
   const [showModal, setShowModal] = useState(false);
   const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
-  const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>('');
+  const [_selectedEquipmentId, _setSelectedEquipmentId] = useState<string>('');
 
   const [formData, setFormData] = useState({
     name: '',

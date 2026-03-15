@@ -123,8 +123,8 @@ function NumInput({
   );
 }
 
-function SectionHeader({ title }: { title: string }) {
-  return <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mt-5 mb-2">{title}</p>;
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mt-5 mb-2">{children}</p>;
 }
 
 // ================================================================

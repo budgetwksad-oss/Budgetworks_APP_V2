@@ -1,16 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getResourceActivity, ResourceType } from '../../lib/activityLogger';
-import {
-  FileText,
-  Send,
-  CheckCircle,
-  XCircle,
-  Eye,
-  Edit,
-  Trash2,
-  Clock,
-  User
-} from 'lucide-react';
+import { FileText, Send, CheckCircle, XCircle, Eye, CreditCard as Edit, Clock, User } from 'lucide-react';
 import { Card } from './Card';
 
 interface ActivityTimelineProps {
@@ -41,7 +31,7 @@ export function ActivityTimeline({ resourceType, resourceId, title = 'Activity H
   const loadActivities = async () => {
     setLoading(true);
     const logs = await getResourceActivity(resourceType, resourceId);
-    setActivities(logs as ActivityLog[]);
+    setActivities(logs as unknown as ActivityLog[]);
     setLoading(false);
   };
 
@@ -126,7 +116,7 @@ export function ActivityTimeline({ resourceType, resourceId, title = 'Activity H
         <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
 
         <div className="space-y-6">
-          {activities.map((activity, index) => (
+          {activities.map((activity) => (
             <div key={activity.id} className="relative flex gap-4">
               <div className="relative z-10 flex-shrink-0 w-8 h-8 bg-white rounded-full border-2 border-gray-200 flex items-center justify-center">
                 {getActionIcon(activity.action)}

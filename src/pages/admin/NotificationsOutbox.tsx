@@ -6,8 +6,7 @@ import {
   getNotificationQueue,
   updateNotificationQueueStatus,
   logNotification,
-  NotificationQueueItem,
-  NotificationQueueStatus
+  NotificationQueueItem
 } from '../../lib/supabase';
 
 const EVENT_LABELS: Record<string, string> = {

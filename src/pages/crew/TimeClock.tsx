@@ -95,7 +95,7 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
         .maybeSingle();
 
       if (error) throw error;
-      setActiveLog(data);
+      setActiveLog(data as unknown as ActiveTimeLog | null);
     } catch (err: any) {
       console.error('Error checking active log:', err);
     }
@@ -131,7 +131,7 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
 
       if (error) throw error;
 
-      setActiveLog(data);
+      setActiveLog(data as unknown as ActiveTimeLog);
       setSelectedJobId('');
     } catch (err: any) {
       setError(err.message || 'Failed to clock in');

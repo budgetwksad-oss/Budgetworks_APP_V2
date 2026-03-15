@@ -105,7 +105,7 @@ interface BarChartProps {
   showValues?: boolean;
 }
 
-export function BarChart({ data, height = 200, showLabels = true, showValues = true }: BarChartProps) {
+export function BarChart({ data, height: _height = 200, showLabels = true, showValues = true }: BarChartProps) {
   const maxValue = useMemo(() => {
     if (data.length === 0) return 0;
     return Math.max(...data.map(d => d.value), 1);

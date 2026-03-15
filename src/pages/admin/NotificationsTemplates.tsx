@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Bell, Plus, Edit2, X, Check } from 'lucide-react';
+import { Bell, Plus, CreditCard as Edit2, X, Check } from 'lucide-react';
 import {
   getNotificationTemplatesV2,
   upsertNotificationTemplateV2,
@@ -196,7 +196,7 @@ function EditModal({ template, eventKey, onClose, onSave }: EditModalProps) {
             </label>
             <select
               value={formData.service_type || ''}
-              onChange={(e) => setFormData({ ...formData, service_type: e.target.value || null as ServiceType | null })}
+              onChange={(e) => setFormData({ ...formData, service_type: (e.target.value || null) as ServiceType | null })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All Services</option>
@@ -289,7 +289,7 @@ export function NotificationsTemplates() {
   const handleSave = async (template: Partial<NotificationTemplateV2>) => {
     setSaving(true);
     try {
-      const { data, error } = await upsertNotificationTemplateV2(template);
+      const { data: _data, error } = await upsertNotificationTemplateV2(template);
       if (error) throw error;
 
       await loadTemplates();

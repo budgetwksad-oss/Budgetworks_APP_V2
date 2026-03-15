@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { FileText, Download, Calendar, TrendingUp, Users, Briefcase, DollarSign, Award } from 'lucide-react';
+import { FileText, Download, Calendar, TrendingUp, Users, Briefcase, DollarSign } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import {
   exportToCSV,

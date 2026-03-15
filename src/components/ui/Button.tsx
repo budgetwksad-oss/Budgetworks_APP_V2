@@ -1,12 +1,13 @@
-import { ButtonHTMLAttributes, forwardRef } from 'react';
+import { ButtonHTMLAttributes, ElementType, forwardRef } from 'react';
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
+  as?: ElementType;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className = '', variant = 'primary', size = 'md', children, ...props }, ref) => {
+  ({ className = '', variant = 'primary', size = 'md', children, as: Tag = 'button', ...props }, ref) => {
     const baseStyles = 'font-semibold rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
 
     const variantStyles = {
@@ -22,13 +23,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     return (
-      <button
+      <Tag
         ref={ref}
         className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
         {...props}
       >
         {children}
-      </button>
+      </Tag>
     );
   }
 );

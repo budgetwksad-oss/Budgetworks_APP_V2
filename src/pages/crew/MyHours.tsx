@@ -59,7 +59,7 @@ export function MyHours({ onBack }: { onBack: () => void }) {
       const { data, error } = await query;
 
       if (error) throw error;
-      setTimeLogs(data || []);
+      setTimeLogs((data || []) as unknown as TimeLog[]);
     } catch (err: any) {
       console.error('Error loading time logs:', err);
     } finally {

@@ -18,7 +18,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [guestLinked, setGuestLinked] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -66,13 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('Profile loaded successfully:', data);
         setProfile(data);
         if (data.role === 'customer') {
-          setGuestLinked(prev => {
-            if (!prev) {
-              supabase.rpc('link_guest_records_to_user').then(() => {}).catch(() => {});
-              return true;
-            }
-            return prev;
-          });
+          void Promise.resolve(supabase.rpc('link_guest_records_to_user')).catch(() => {});
         }
       }
     } catch (error) {
@@ -126,8 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (profileError) return { error: profileError };
 
       if (role === 'customer') {
-        supabase.rpc('link_guest_records_to_user').then(() => {}).catch(() => {});
-        setGuestLinked(true);
+        void Promise.resolve(supabase.rpc('link_guest_records_to_user')).catch(() => {});
       }
 
       return { error: null };
@@ -139,7 +131,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
-    setGuestLinked(false);
   };
 
   const resetPassword = async (email: string) => {
