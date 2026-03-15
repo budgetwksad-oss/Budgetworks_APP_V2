@@ -55,7 +55,7 @@ Deno.serve(async (req: Request) => {
 
     const emailSubject = reminder_type
       ? getReminderSubject(reminder_type, invoice_number)
-      : `Invoice ${invoice_number} from Service Company`;
+      : `Invoice ${invoice_number} from BudgetWorks`;
 
     const emailBody = reminder_type
       ? getReminderEmailBody(customer_name, invoice_number, invoice_total, due_date, reminder_type)
@@ -111,7 +111,7 @@ function getInvoiceEmailBody(
 ): string {
   const formattedTotal = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD'
+    currency: 'CAD'
   }).format(invoiceTotal);
 
   const formattedDueDate = new Date(dueDate).toLocaleDateString('en-US', {
@@ -134,7 +134,7 @@ You can view and pay your invoice online through your customer portal.
 If you have any questions about this invoice, please don't hesitate to contact us.
 
 Best regards,
-Service Company
+BudgetWorks
   `.trim();
 }
 
@@ -162,7 +162,7 @@ function getReminderEmailBody(
 ): string {
   const formattedTotal = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD'
+    currency: 'CAD'
   }).format(invoiceTotal);
 
   const formattedDueDate = new Date(dueDate).toLocaleDateString('en-US', {
@@ -204,6 +204,6 @@ If you've already made payment, please disregard this reminder. If you have any 
 Thank you for your prompt attention to this matter.
 
 Best regards,
-Service Company
+BudgetWorks
   `.trim();
 }

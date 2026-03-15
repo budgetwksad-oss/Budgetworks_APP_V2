@@ -29,10 +29,10 @@ interface CompanyInfo {
 }
 
 const DEFAULT_COMPANY_INFO: CompanyInfo = {
-  name: 'Service Company',
-  address: '123 Business St, City, State 12345',
-  phone: '(555) 123-4567',
-  email: 'info@servicecompany.com'
+  name: 'BudgetWorks',
+  address: 'Halifax, Nova Scotia',
+  phone: '(902) 555-1234',
+  email: 'info@budgetworks.ca'
 };
 
 export function generateInvoicePDF(invoice: InvoiceData, companyInfo: CompanyInfo = DEFAULT_COMPANY_INFO) {
@@ -194,7 +194,7 @@ export function getInvoicePDFBase64(invoice: InvoiceData, companyInfo?: CompanyI
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD'
+    currency: 'CAD'
   }).format(amount);
 }
 

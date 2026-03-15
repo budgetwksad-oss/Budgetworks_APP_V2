@@ -30,10 +30,10 @@ export function Settings({ onBack }: SettingsProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>('company');
   const [settings, setSettings] = useState<CompanySettings>({
-    company_name: 'Service Company',
-    company_email: 'info@servicecompany.com',
-    company_phone: '(555) 123-4567',
-    company_address: '123 Business St, City, State 12345',
+    company_name: 'BudgetWorks',
+    company_email: 'info@budgetworks.ca',
+    company_phone: '(902) 555-1234',
+    company_address: 'Halifax, Nova Scotia',
     tax_rate: 0.08,
     invoice_terms: 'Payment due within 30 days',
     invoice_footer: 'Thank you for your business!'
@@ -60,10 +60,10 @@ export function Settings({ onBack }: SettingsProps) {
 
       if (data) {
         setSettings({
-          company_name: data.business_name || 'Service Company',
-          company_email: data.email || 'info@servicecompany.com',
-          company_phone: data.phone || '(555) 123-4567',
-          company_address: data.address || '123 Business St, City, State 12345',
+          company_name: data.business_name || 'BudgetWorks',
+          company_email: data.email || 'info@budgetworks.ca',
+          company_phone: data.phone || '(902) 555-1234',
+          company_address: data.address || 'Halifax, Nova Scotia',
           tax_rate: data.tax_rate || 0.14,
           invoice_terms: data.invoice_terms || 'Payment due within 30 days',
           invoice_footer: data.invoice_footer || 'Thank you for your business!'
@@ -269,7 +269,7 @@ export function Settings({ onBack }: SettingsProps) {
                 type="text"
                 value={settings.company_name}
                 onChange={(e) => setSettings({ ...settings, company_name: e.target.value })}
-                placeholder="Your Company Name"
+                placeholder="BudgetWorks"
               />
             </div>
 
@@ -283,7 +283,7 @@ export function Settings({ onBack }: SettingsProps) {
                   type="email"
                   value={settings.company_email}
                   onChange={(e) => setSettings({ ...settings, company_email: e.target.value })}
-                  placeholder="info@company.com"
+                  placeholder="info@budgetworks.ca"
                 />
               </div>
 
@@ -296,7 +296,7 @@ export function Settings({ onBack }: SettingsProps) {
                   type="tel"
                   value={settings.company_phone}
                   onChange={(e) => setSettings({ ...settings, company_phone: e.target.value })}
-                  placeholder="(555) 123-4567"
+                  placeholder="(902) 555-1234"
                 />
               </div>
             </div>
@@ -310,7 +310,7 @@ export function Settings({ onBack }: SettingsProps) {
                 type="text"
                 value={settings.company_address}
                 onChange={(e) => setSettings({ ...settings, company_address: e.target.value })}
-                placeholder="123 Business St, City, State 12345"
+                placeholder="Halifax, Nova Scotia"
               />
             </div>
           </div>

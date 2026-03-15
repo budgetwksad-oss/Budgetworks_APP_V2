@@ -142,7 +142,7 @@ function getEmailBody(type: string, recipientName: string, data: any): string {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'CAD'
     }).format(amount);
   };
 
@@ -165,7 +165,7 @@ You can view full details and track progress in your customer portal.
 Thank you for choosing our service!
 
 Best regards,
-Service Company
+BudgetWorks
       `.trim();
       break;
 
@@ -187,7 +187,7 @@ Your feedback helps us improve our services.
 Thank you for your business!
 
 Best regards,
-Service Company
+BudgetWorks
       `.trim();
       break;
 
@@ -205,7 +205,7 @@ You can review the detailed quote and accept it through your customer portal. On
 If you have any questions about the quote, please don't hesitate to contact us.
 
 Best regards,
-Service Company
+BudgetWorks
       `.trim();
       break;
 
@@ -222,7 +222,7 @@ You can view your job details in the customer portal.
 We look forward to serving you!
 
 Best regards,
-Service Company
+BudgetWorks
       `.trim();
       break;
 
@@ -245,7 +245,7 @@ Our crew will arrive prepared to complete your service to the highest standards.
 View full details in your customer portal.
 
 Best regards,
-Service Company
+BudgetWorks
       `.trim();
       break;
 
@@ -265,7 +265,7 @@ Please ensure someone is available to provide access if needed. If you need to r
 See you tomorrow!
 
 Best regards,
-Service Company
+BudgetWorks
       `.trim();
       break;
 
@@ -278,7 +278,7 @@ This is an update regarding your service.
 Please log in to your customer portal for more details.
 
 Best regards,
-Service Company
+BudgetWorks
       `.trim();
   }
 
