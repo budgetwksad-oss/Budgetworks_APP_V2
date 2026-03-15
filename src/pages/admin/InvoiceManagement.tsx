@@ -572,9 +572,9 @@ export function InvoiceManagement({ onBack }: { onBack: () => void }) {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-CA', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'CAD'
     }).format(amount);
   };
 

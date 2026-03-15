@@ -19,6 +19,7 @@ interface InvoiceData {
   total: number;
   notes?: string;
   status: string;
+  hours_worked?: number;
 }
 
 interface CompanyInfo {
@@ -140,17 +141,25 @@ export function generateInvoicePDF(invoice: InvoiceData, companyInfo: CompanyInf
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
+
+  if (invoice.hours_worked && invoice.hours_worked > 0) {
+    doc.setTextColor(100);
+    doc.text(`Hours Worked: ${invoice.hours_worked.toFixed(2)} hrs`, labelX, yPosition);
+    doc.setTextColor(0);
+    yPosition += 6;
+  }
+
   doc.text('Subtotal:', labelX, yPosition);
   doc.text(formatCurrency(invoice.subtotal), rightX, yPosition, { align: 'right' });
 
   yPosition += 6;
-  doc.text('Tax:', labelX, yPosition);
+  doc.text('Tax (HST):', labelX, yPosition);
   doc.text(formatCurrency(invoice.tax_amount), rightX, yPosition, { align: 'right' });
 
   yPosition += 8;
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text('Total:', labelX, yPosition);
+  doc.text('Total (CAD):', labelX, yPosition);
   doc.text(formatCurrency(invoice.total), rightX, yPosition, { align: 'right' });
 
   if (invoice.notes) {

@@ -45,6 +45,10 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function formatCAD(amount: number): string {
+  return new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(amount);
+}
+
 function formatDate(dateStr: string | null) {
   if (!dateStr) return '—';
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -219,18 +223,18 @@ export function InvoiceMagicLink({ token, onLogin, onNavigateHome }: InvoiceMagi
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between text-gray-700">
                       <span>Invoice Total</span>
-                      <span className="font-semibold">${invoice.total_amount.toFixed(2)}</span>
+                      <span className="font-semibold">{formatCAD(invoice.total_amount)}</span>
                     </div>
                     {invoice.amount_paid > 0 && (
                       <div className="flex justify-between text-green-700">
                         <span>Amount Paid</span>
-                        <span className="font-semibold">-${invoice.amount_paid.toFixed(2)}</span>
+                        <span className="font-semibold">-{formatCAD(invoice.amount_paid)}</span>
                       </div>
                     )}
                     <div className={`flex justify-between pt-2 border-t ${isPaid ? 'border-green-200' : 'border-orange-200'}`}>
                       <span className="font-bold text-gray-900 text-base">Balance Due</span>
                       <span className={`font-bold text-xl ${isPaid ? 'text-green-700' : 'text-orange-700'}`}>
-                        ${invoice.balance_due.toFixed(2)}
+                        {formatCAD(invoice.balance_due)}
                       </span>
                     </div>
                   </div>

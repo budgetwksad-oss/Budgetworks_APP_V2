@@ -9,7 +9,8 @@ import { useAuth } from '../../contexts/AuthContext';
 interface Invoice {
   id: string;
   invoice_number: string;
-  sent_date: string;
+  issue_date: string | null;
+  created_at: string;
   due_date: string;
   total_amount: number;
   tax_amount: number;
@@ -18,6 +19,10 @@ interface Invoice {
   jobs: {
     service_type: string;
   } | null;
+}
+
+function formatCAD(amount: number): string {
+  return new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(amount);
 }
 
 export function InvoicesList({ onBack, onViewDetail }: { onBack: () => void; onViewDetail: (invoiceId: string) => void }) {
@@ -118,7 +123,7 @@ export function InvoicesList({ onBack, onViewDetail }: { onBack: () => void; onV
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900 mb-1">Outstanding Balance</h3>
-                <p className="text-2xl font-bold text-orange-600">${totalOwed.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-orange-600">{formatCAD(totalOwed)}</p>
                 <p className="text-sm text-gray-600 mt-1">You have unpaid invoices requiring attention</p>
               </div>
             </div>
@@ -191,7 +196,9 @@ export function InvoicesList({ onBack, onViewDetail }: { onBack: () => void; onV
                           Sent
                         </p>
                         <p className="font-medium text-gray-900">
-                          {invoice.sent_date ? new Date(invoice.sent_date).toLocaleDateString() : 'Not sent'}
+                          {(invoice.issue_date || invoice.created_at)
+                            ? new Date(invoice.issue_date || invoice.created_at).toLocaleDateString()
+                            : 'N/A'}
                         </p>
                       </div>
                       <div>
@@ -209,13 +216,13 @@ export function InvoicesList({ onBack, onViewDetail }: { onBack: () => void; onV
                           Amount
                         </p>
                         <p className="font-semibold text-gray-900">
-                          ${invoice.total_amount.toFixed(2)}
+                          {formatCAD(invoice.total_amount)}
                         </p>
                       </div>
                       <div>
                         <p className="text-gray-500 mb-1">Tax</p>
                         <p className="font-medium text-gray-900">
-                          ${invoice.tax_amount.toFixed(2)}
+                          {formatCAD(invoice.tax_amount)}
                         </p>
                       </div>
                     </div>

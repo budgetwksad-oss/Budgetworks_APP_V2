@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { PortalLayout } from '../../components/layout/PortalLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Download, Printer, CheckCircle, Clock, Calendar } from 'lucide-react';
+import { Download, CheckCircle, Clock, Calendar } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { downloadInvoicePDF } from '../../lib/invoicePDF';
 
 interface InvoiceData {
   id: string;
   invoice_number: string;
-  sent_date: string;
+  issue_date: string | null;
+  created_at: string;
   due_date: string;
   subtotal: number;
   tax_amount: number;
@@ -21,6 +23,7 @@ interface InvoiceData {
     unit_price: number;
     total: number;
   }>;
+  customer_id: string;
   jobs: {
     service_type: string;
     scheduled_date: string;
@@ -33,9 +36,15 @@ interface InvoiceData {
   }>;
 }
 
+function formatCAD(amount: number): string {
+  return new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(amount);
+}
+
 export function InvoiceDetail({ invoiceId, onBack }: { invoiceId: string; onBack: () => void }) {
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [customerName, setCustomerName] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
 
   useEffect(() => {
     loadInvoice();
@@ -47,7 +56,7 @@ export function InvoiceDetail({ invoiceId, onBack }: { invoiceId: string; onBack
         .from('invoices')
         .select(`
           *,
-          jobs!inner(
+          jobs(
             service_type,
             scheduled_date
           )
@@ -65,6 +74,16 @@ export function InvoiceDetail({ invoiceId, onBack }: { invoiceId: string; onBack
 
       if (paymentsError) throw paymentsError;
 
+      if (invoiceData?.customer_id) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('full_name, email')
+          .eq('id', invoiceData.customer_id)
+          .maybeSingle();
+        setCustomerName(profileData?.full_name || '');
+        setCustomerEmail(profileData?.email || '');
+      }
+
       setInvoice({
         ...invoiceData,
         payments: paymentsData || []
@@ -74,6 +93,40 @@ export function InvoiceDetail({ invoiceId, onBack }: { invoiceId: string; onBack
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!invoice) return;
+    const { data: companyData } = await supabase
+      .from('company_settings')
+      .select('business_name, address, phone, email')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    downloadInvoicePDF(
+      {
+        invoice_number: invoice.invoice_number,
+        created_at: invoice.issue_date || invoice.created_at,
+        due_date: invoice.due_date,
+        customer_name: customerName || 'Customer',
+        customer_email: customerEmail,
+        line_items: invoice.line_items || [],
+        subtotal: invoice.subtotal,
+        tax_amount: invoice.tax_amount,
+        total: invoice.total_amount,
+        notes: invoice.notes || '',
+        status: invoice.status,
+      },
+      companyData
+        ? {
+            name: companyData.business_name || 'BudgetWorks',
+            address: companyData.address || 'Halifax, Nova Scotia',
+            phone: companyData.phone || '',
+            email: companyData.email || '',
+          }
+        : undefined
+    );
   };
 
   if (loading) {
@@ -112,7 +165,7 @@ export function InvoiceDetail({ invoiceId, onBack }: { invoiceId: string; onBack
       paid: { bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircle },
       closed: { bg: 'bg-gray-100', text: 'text-gray-700', icon: CheckCircle }
     };
-    const { bg, text, icon: Icon } = config[status as keyof typeof config];
+    const { bg, text, icon: Icon } = config[status as keyof typeof config] ?? config.sent;
     return (
       <span className={`inline-flex items-center gap-1 px-3 py-1 text-sm font-semibold rounded-full ${bg} ${text}`}>
         <Icon className="w-4 h-4" />
@@ -123,6 +176,7 @@ export function InvoiceDetail({ invoiceId, onBack }: { invoiceId: string; onBack
 
   const totalPaid = invoice.payments.reduce((sum, p) => sum + p.amount, 0);
   const balanceDue = invoice.total_amount - totalPaid;
+  const issueDate = invoice.issue_date || invoice.created_at;
 
   return (
     <PortalLayout
@@ -142,11 +196,7 @@ export function InvoiceDetail({ invoiceId, onBack }: { invoiceId: string; onBack
             {getStatusBadge(invoice.status)}
           </div>
           <div className="flex gap-2">
-            <Button variant="secondary" size="sm">
-              <Printer className="w-4 h-4 mr-2" />
-              Print
-            </Button>
-            <Button variant="secondary" size="sm">
+            <Button variant="secondary" size="sm" onClick={handleDownloadPDF}>
               <Download className="w-4 h-4 mr-2" />
               Download PDF
             </Button>
@@ -161,9 +211,9 @@ export function InvoiceDetail({ invoiceId, onBack }: { invoiceId: string; onBack
             <h3 className="font-semibold text-gray-900 mb-4">Invoice Details</h3>
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-gray-600">Sent Date:</span>
+                <span className="text-gray-600">Issue Date:</span>
                 <span className="font-medium text-gray-900">
-                  {invoice.sent_date ? new Date(invoice.sent_date).toLocaleDateString() : 'Not sent'}
+                  {new Date(issueDate).toLocaleDateString()}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -173,22 +223,22 @@ export function InvoiceDetail({ invoiceId, onBack }: { invoiceId: string; onBack
                 </span>
               </div>
               {invoice.jobs && (
-              <>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Service Type:</span>
-                <span className="font-medium text-gray-900 capitalize">
-                  {invoice.jobs.service_type?.replace('_', ' ')}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Service Date:</span>
-                <span className="font-medium text-gray-900">
-                  {invoice.jobs.scheduled_date
-                    ? new Date(invoice.jobs.scheduled_date).toLocaleDateString()
-                    : 'Not scheduled'}
-                </span>
-              </div>
-              </>
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Service Type:</span>
+                    <span className="font-medium text-gray-900 capitalize">
+                      {invoice.jobs.service_type?.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Service Date:</span>
+                    <span className="font-medium text-gray-900">
+                      {invoice.jobs.scheduled_date
+                        ? new Date(invoice.jobs.scheduled_date).toLocaleDateString()
+                        : 'Not scheduled'}
+                    </span>
+                  </div>
+                </>
               )}
             </div>
           </Card>
@@ -199,19 +249,19 @@ export function InvoiceDetail({ invoiceId, onBack }: { invoiceId: string; onBack
               <div className="flex justify-between">
                 <span className="text-gray-600">Total Amount:</span>
                 <span className="font-semibold text-gray-900">
-                  ${invoice.total_amount.toFixed(2)}
+                  {formatCAD(invoice.total_amount)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Amount Paid:</span>
                 <span className="font-medium text-green-600">
-                  ${totalPaid.toFixed(2)}
+                  {formatCAD(totalPaid)}
                 </span>
               </div>
               <div className="pt-3 border-t flex justify-between">
                 <span className="font-semibold text-gray-900">Balance Due:</span>
                 <span className={`font-bold text-lg ${balanceDue > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  ${balanceDue.toFixed(2)}
+                  {formatCAD(balanceDue)}
                 </span>
               </div>
             </div>
@@ -231,27 +281,27 @@ export function InvoiceDetail({ invoiceId, onBack }: { invoiceId: string; onBack
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {invoice.line_items && invoice.line_items.map((item, index) => (
+                {(invoice.line_items || []).map((item, index) => (
                   <tr key={index} className="text-sm">
                     <td className="py-3 text-gray-900">{item.description}</td>
                     <td className="py-3 text-center text-gray-600">{item.quantity}</td>
-                    <td className="py-3 text-right text-gray-600">${item.unit_price.toFixed(2)}</td>
-                    <td className="py-3 text-right font-medium text-gray-900">${item.total.toFixed(2)}</td>
+                    <td className="py-3 text-right text-gray-600">{formatCAD(item.unit_price)}</td>
+                    <td className="py-3 text-right font-medium text-gray-900">{formatCAD(item.total)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot className="border-t">
                 <tr className="text-sm">
                   <td colSpan={3} className="pt-3 text-right font-medium text-gray-600">Subtotal:</td>
-                  <td className="pt-3 text-right font-medium text-gray-900">${invoice.subtotal.toFixed(2)}</td>
+                  <td className="pt-3 text-right font-medium text-gray-900">{formatCAD(invoice.subtotal)}</td>
                 </tr>
                 <tr className="text-sm">
-                  <td colSpan={3} className="pt-2 text-right font-medium text-gray-600">Tax:</td>
-                  <td className="pt-2 text-right font-medium text-gray-900">${invoice.tax_amount.toFixed(2)}</td>
+                  <td colSpan={3} className="pt-2 text-right font-medium text-gray-600">Tax (HST):</td>
+                  <td className="pt-2 text-right font-medium text-gray-900">{formatCAD(invoice.tax_amount)}</td>
                 </tr>
                 <tr className="text-base">
-                  <td colSpan={3} className="pt-3 text-right font-bold text-gray-900">Total:</td>
-                  <td className="pt-3 text-right font-bold text-gray-900">${invoice.total_amount.toFixed(2)}</td>
+                  <td colSpan={3} className="pt-3 text-right font-bold text-gray-900">Total (CAD):</td>
+                  <td className="pt-3 text-right font-bold text-gray-900">{formatCAD(invoice.total_amount)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -271,7 +321,7 @@ export function InvoiceDetail({ invoiceId, onBack }: { invoiceId: string; onBack
                     <Calendar className="w-5 h-5 text-gray-400" />
                     <div>
                       <p className="font-medium text-gray-900">
-                        ${payment.amount.toFixed(2)}
+                        {formatCAD(payment.amount)}
                       </p>
                       <p className="text-sm text-gray-600 capitalize">
                         {payment.payment_method.replace('_', ' ')}
