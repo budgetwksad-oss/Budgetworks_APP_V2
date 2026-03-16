@@ -433,7 +433,7 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
                     Create Quote
                   </Button>
                 )}
-                {(selectedRequest.status === 'new' || selectedRequest.status === 'pending') && (
+                {selectedRequest.type === 'public_quote_request' && selectedRequest.status === 'new' && (
                   <Button
                     variant="secondary"
                     onClick={() => updateRequestStatus(selectedRequest.id, selectedRequest.type, 'in_review')}
@@ -441,12 +441,20 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
                     Mark In Review
                   </Button>
                 )}
+                {selectedRequest.type === 'service_request' && selectedRequest.status === 'pending' && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => updateRequestStatus(selectedRequest.id, selectedRequest.type, 'quoted')}
+                  >
+                    Mark Quoted
+                  </Button>
+                )}
                 {selectedRequest.status === 'quoted' && (
                   <div className="px-4 py-2 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm font-medium">
                     Quote sent
                   </div>
                 )}
-                {(['quoted', 'in_review', 'accepted'].includes(selectedRequest.status)) && (
+                {selectedRequest.type === 'public_quote_request' && ['quoted', 'in_review'].includes(selectedRequest.status) && (
                   <Button
                     variant="secondary"
                     onClick={() => updateRequestStatus(selectedRequest.id, selectedRequest.type, 'closed')}
@@ -454,10 +462,26 @@ export function ServiceRequests({ sidebarSections, onBack }: ServiceRequestsProp
                     Close Lead
                   </Button>
                 )}
-                {selectedRequest.status === 'closed' && (
+                {selectedRequest.type === 'service_request' && ['quoted', 'accepted'].includes(selectedRequest.status) && (
                   <Button
                     variant="secondary"
-                    onClick={() => updateRequestStatus(selectedRequest.id, selectedRequest.type, selectedRequest.type === 'public_quote_request' ? 'new' : 'pending')}
+                    onClick={() => updateRequestStatus(selectedRequest.id, selectedRequest.type, 'cancelled')}
+                  >
+                    Cancel Request
+                  </Button>
+                )}
+                {selectedRequest.type === 'public_quote_request' && selectedRequest.status === 'closed' && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => updateRequestStatus(selectedRequest.id, selectedRequest.type, 'new')}
+                  >
+                    Reopen
+                  </Button>
+                )}
+                {selectedRequest.type === 'service_request' && selectedRequest.status === 'cancelled' && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => updateRequestStatus(selectedRequest.id, selectedRequest.type, 'pending')}
                   >
                     Reopen
                   </Button>

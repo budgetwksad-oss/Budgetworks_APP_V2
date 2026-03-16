@@ -21,7 +21,7 @@ export async function checkAndSendReminders() {
       .select(`
         id,
         invoice_number,
-        total,
+        total_amount,
         due_date,
         status,
         customer_id,
@@ -76,7 +76,7 @@ export async function checkAndSendReminders() {
         customer_id: invoice.customer_id,
         customer_name: profile?.full_name || 'Valued Customer',
         customer_email: profile?.email || '',
-        total_amount: invoice.total,
+        total_amount: invoice.total_amount,
         due_date: invoice.due_date,
         reminder_type: reminderType
       });

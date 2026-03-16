@@ -45,8 +45,8 @@ export function Reports({ onBack }: ReportsProps) {
           profiles!customer_id(full_name),
           quotes!quote_id(total_amount)
         `)
-        .gte('created_at', dateRange.start)
-        .lte('created_at', dateRange.end)
+        .gte('created_at', `${dateRange.start}T00:00:00`)
+        .lte('created_at', `${dateRange.end}T23:59:59`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -86,12 +86,12 @@ export function Reports({ onBack }: ReportsProps) {
           issue_date,
           due_date,
           status,
-          total,
+          total_amount,
           amount_paid,
           profiles!customer_id(full_name)
         `)
-        .gte('issue_date', dateRange.start)
-        .lte('issue_date', dateRange.end)
+        .gte('issue_date', `${dateRange.start}T00:00:00`)
+        .lte('issue_date', `${dateRange.end}T23:59:59`)
         .order('issue_date', { ascending: false });
 
       if (error) throw error;
@@ -102,8 +102,8 @@ export function Reports({ onBack }: ReportsProps) {
         issue_date: inv.issue_date,
         due_date: inv.due_date,
         status: inv.status,
-        total: inv.total,
-        balance_due: inv.total - (inv.amount_paid || 0)
+        total_amount: inv.total_amount,
+        balance_due: (inv.total_amount || 0) - (inv.amount_paid || 0)
       }));
 
       const reportData = prepareInvoicesReport(formattedInvoices);

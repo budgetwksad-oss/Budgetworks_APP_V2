@@ -75,7 +75,7 @@ export function ActivityLogs({ onBack }: ActivityLogsProps) {
   };
 
   const getResourceLabel = (type: string) => {
-    return type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   const formatDate = (dateString: string) => {

@@ -303,8 +303,11 @@ export function NotificationCenter() {
 
           {notifications.length > 0 && (
             <div className="p-3 border-t border-gray-200 text-center">
-              <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                View All Notifications
+              <button
+                onClick={markAllAsRead}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Mark All as Read
               </button>
             </div>
           )}

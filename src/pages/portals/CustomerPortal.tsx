@@ -66,25 +66,16 @@ export function CustomerPortal() {
       const [quotesRes, jobsRes, invoicesRes] = await Promise.all([
         supabase
           .from('quotes')
-          .select(`
-            id,
-            status,
-            service_requests!inner(customer_id)
-          `)
-          .eq('service_requests.customer_id', user.id),
+          .select('id, status')
+          .eq('customer_user_id', user.id),
         supabase
           .from('jobs')
           .select('id, status')
           .eq('customer_id', user.id),
         supabase
           .from('invoices')
-          .select(`
-            id,
-            total_amount,
-            status,
-            jobs!inner(customer_id)
-          `)
-          .eq('jobs.customer_id', user.id)
+          .select('id, total_amount, status')
+          .eq('customer_user_id', user.id)
       ]);
 
       const quotes = quotesRes.data || [];
@@ -119,14 +110,8 @@ export function CustomerPortal() {
     try {
       const { data: quotes } = await supabase
         .from('quotes')
-        .select(`
-          id,
-          created_at,
-          status,
-          total_amount,
-          service_requests!inner(customer_id)
-        `)
-        .eq('service_requests.customer_id', user.id)
+        .select('id, created_at, status, total_amount')
+        .eq('customer_user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(3);
 
@@ -375,7 +360,7 @@ export function CustomerPortal() {
                     </div>
                   </div>
                   <button
-                    onClick={() => setCurrentPage('quotes')}
+                    onClick={() => setCurrentPage(item.type === 'quote' ? 'quotes' : 'jobs')}
                     className="text-orange-600 hover:text-orange-700"
                   >
                     <ArrowRight className="w-5 h-5" />

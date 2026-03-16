@@ -196,7 +196,7 @@ export function QuoteTemplates({ onBack }: QuoteTemplatesProps) {
   };
 
   const getServiceLabel = (type: string) => {
-    return type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   const calculateTotal = (items: LineItem[], taxRate: number) => {

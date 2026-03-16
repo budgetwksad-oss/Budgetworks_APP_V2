@@ -452,7 +452,7 @@ export function NotificationsTemplates() {
                             </span>
                             {template.service_type && (
                               <span className="text-xs text-gray-600 bg-blue-100 px-2 py-0.5 rounded">
-                                {template.service_type.replace('_', ' ')}
+                                {template.service_type.replace(/_/g, ' ')}
                               </span>
                             )}
                             {!template.enabled && (

@@ -227,7 +227,7 @@ export function InvoiceDetail({ invoiceId, onBack }: { invoiceId: string; onBack
                   <div className="flex justify-between">
                     <span className="text-gray-600">Service Type:</span>
                     <span className="font-medium text-gray-900 capitalize">
-                      {invoice.jobs.service_type?.replace('_', ' ')}
+                      {invoice.jobs.service_type?.replace(/_/g, ' ')}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -324,7 +324,7 @@ export function InvoiceDetail({ invoiceId, onBack }: { invoiceId: string; onBack
                         {formatCAD(payment.amount)}
                       </p>
                       <p className="text-sm text-gray-600 capitalize">
-                        {payment.payment_method.replace('_', ' ')}
+                        {payment.payment_method.replace(/_/g, ' ')}
                       </p>
                     </div>
                   </div>

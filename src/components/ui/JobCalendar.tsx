@@ -104,13 +104,13 @@ export function JobCalendar({ jobs, onJobClick }: JobCalendarProps) {
               key={job.id}
               onClick={() => onJobClick?.(job)}
               className={`w-full text-left text-xs px-2 py-1 rounded ${getStatusColor(job.status)} text-white hover:opacity-80 transition-opacity`}
-              title={`${job.service_type.replace('_', ' ')} - ${job.customer_name || ''}`}
+              title={`${job.service_type.replace(/_/g, ' ')} - ${job.customer_name || ''}`}
             >
               <div className="truncate font-medium">
                 {job.scheduled_time || 'TBD'}
               </div>
               <div className="truncate opacity-90">
-                {job.service_type.replace('_', ' ')}
+                {job.service_type.replace(/_/g, ' ')}
               </div>
             </button>
           ))}

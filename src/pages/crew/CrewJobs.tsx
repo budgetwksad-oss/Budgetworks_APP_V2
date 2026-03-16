@@ -361,7 +361,7 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
                   {getServiceLabel(selectedJob.service_request?.service_type || selectedJob.service_type || '')}
                 </span>
                 <span className={`px-4 py-2 text-sm font-bold rounded-full ${getStatusBadge(selectedJob.status)}`}>
-                  {selectedJob.status.replace('_', ' ').toUpperCase()}
+                  {selectedJob.status.replace(/_/g, ' ').toUpperCase()}
                 </span>
                 <span className="px-4 py-2 text-sm font-bold bg-gray-100 text-gray-700 rounded-full capitalize">
                   {myRole}
@@ -678,7 +678,7 @@ export function CrewJobs({ sidebarSections, onBack }: CrewJobsProps = {}) {
                           {getServiceLabel(job.service_request?.service_type || job.service_type || '')}
                         </span>
                         <span className={`px-3 py-1.5 text-sm font-bold rounded-full ${getStatusBadge(job.status)}`}>
-                          {job.status.replace('_', ' ').toUpperCase()}
+                          {job.status.replace(/_/g, ' ').toUpperCase()}
                         </span>
                         <span className="px-3 py-1.5 text-sm font-bold bg-gray-100 text-gray-700 rounded-full capitalize">
                           {myRole}

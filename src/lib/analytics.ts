@@ -173,7 +173,7 @@ export async function getRecentActivity(limit: number = 10) {
         .limit(limit),
       supabase
         .from('quotes')
-        .select('id, quote_number, status, created_at, customer_id, profiles:customer_id(full_name)')
+        .select('id, quote_number, status, created_at, customer_user_id, profiles:customer_user_id(full_name)')
         .order('created_at', { ascending: false })
         .limit(limit),
       supabase

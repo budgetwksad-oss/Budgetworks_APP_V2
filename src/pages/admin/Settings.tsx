@@ -70,7 +70,7 @@ export function Settings({ onBack }: SettingsProps) {
           company_email: data.email || 'info@budgetworks.ca',
           company_phone: data.phone || '(844) 404-1240',
           company_address: data.address || 'Halifax, Nova Scotia',
-          tax_rate: data.tax_rate || 0.14,
+          tax_rate: data.tax_rate || 0.15,
           invoice_terms: data.invoice_terms || 'Payment due within 30 days',
           invoice_footer: data.invoice_footer || 'Thank you for your business!'
         });

@@ -73,18 +73,8 @@ export function CrewManagement({ onBack }: { onBack: () => void }) {
 
       if (error) throw error;
 
-      const crewWithEmail = await Promise.all(
-        (data || []).map(async (profile) => {
-          const { data: authData } = await supabase.auth.admin.getUserById(profile.id);
-          return {
-            ...profile,
-            email: authData?.user?.email || 'N/A'
-          };
-        })
-      );
-
-      setCrewMembers(crewWithEmail);
-      setFilteredCrew(crewWithEmail);
+      setCrewMembers(data || []);
+      setFilteredCrew(data || []);
     } catch (err: any) {
       console.error('Error loading crew members:', err);
     } finally {
@@ -103,13 +93,13 @@ export function CrewManagement({ onBack }: { onBack: () => void }) {
       const { data: jobs, error: jobsError } = await supabase
         .from('jobs')
         .select('id, service_type, status, scheduled_date, crew_assignments')
-        .contains('crew_assignments', [crewId]);
+        .contains('assigned_crew_ids', [crewId]);
 
       if (jobsError) throw jobsError;
 
       const crewJobs = (jobs || []).map(job => {
         const assignments = Array.isArray(job.crew_assignments) ? job.crew_assignments : [];
-        const assignment = assignments.find((a: any) => a.crew_member_id === crewId);
+        const assignment = assignments.find((a: any) => a.user_id === crewId);
         return {
           ...job,
           role: assignment?.role || 'helper'
@@ -118,17 +108,14 @@ export function CrewManagement({ onBack }: { onBack: () => void }) {
 
       const { data: timeEntries, error: timeError } = await supabase
         .from('time_entries')
-        .select('clock_in_time, clock_out_time')
+        .select('hours_worked')
         .eq('crew_member_id', crewId)
-        .not('clock_out_time', 'is', null);
+        .not('clock_out', 'is', null);
 
       if (timeError) throw timeError;
 
       const totalHours = (timeEntries || []).reduce((sum, entry) => {
-        const start = new Date(entry.clock_in_time);
-        const end = new Date(entry.clock_out_time);
-        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-        return sum + hours;
+        return sum + (entry.hours_worked || 0);
       }, 0);
 
       const completedJobs = crewJobs.filter(j => j.status === 'completed').length;
@@ -386,7 +373,7 @@ export function CrewManagement({ onBack }: { onBack: () => void }) {
                   <div key={job.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                     <div>
                       <p className="font-medium text-gray-900 capitalize">
-                        {job.service_type.replace('_', ' ')}
+                        {job.service_type.replace(/_/g, ' ')}
                       </p>
                       <p className="text-sm text-gray-600">
                         {job.scheduled_date ? new Date(job.scheduled_date).toLocaleDateString() : 'Not scheduled'}
@@ -397,7 +384,7 @@ export function CrewManagement({ onBack }: { onBack: () => void }) {
                         {job.role}
                       </span>
                       <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
-                        {job.status.replace('_', ' ')}
+                        {job.status.replace(/_/g, ' ')}
                       </span>
                     </div>
                   </div>

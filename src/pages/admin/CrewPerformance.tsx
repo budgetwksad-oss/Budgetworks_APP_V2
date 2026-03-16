@@ -315,7 +315,7 @@ export function CrewPerformance({ onBack }: CrewPerformanceProps) {
                       >
                         <div>
                           <p className="font-medium text-gray-900 capitalize">
-                            {job.service_type.replace('_', ' ')}
+                            {job.service_type.replace(/_/g, ' ')}
                           </p>
                           <p className="text-sm text-gray-600">
                             {new Date(job.scheduled_date).toLocaleDateString()}

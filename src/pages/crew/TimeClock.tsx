@@ -9,9 +9,9 @@ import { supabase } from '../../lib/supabase';
 interface Job {
   id: string;
   service_type: string;
-  address: string;
   scheduled_date: string;
-  before_photos: string[];
+  crew_photos: { before: any[]; after: any[] } | null;
+  service_request: { location_address: string } | null;
 }
 
 interface ActiveTimeLog {
@@ -20,7 +20,7 @@ interface ActiveTimeLog {
   job_id: string;
   jobs: {
     service_type: string;
-    address: string;
+    service_request: { location_address: string } | null;
   };
 }
 
@@ -69,13 +69,13 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
     try {
       const { data, error } = await supabase
         .from('jobs')
-        .select('id, service_type, address, scheduled_date, crew_assignments, before_photos')
-        .contains('crew_assignments', [user.id])
+        .select('id, service_type, scheduled_date, crew_photos, service_request:service_requests(location_address)')
+        .contains('assigned_crew_ids', [user.id])
         .in('status', ['scheduled', 'in_progress'])
         .order('scheduled_date', { ascending: true });
 
       if (error) throw error;
-      setJobs((data || []).map(j => ({ ...j, before_photos: j.before_photos || [] })));
+      setJobs(data || []);
     } catch (err) {
       console.error('Error loading jobs:', err);
     }
@@ -93,7 +93,7 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
           job_id,
           jobs!inner(
             service_type,
-            address
+            service_request:service_requests(location_address)
           )
         `)
         .eq('crew_member_id', user.id)
@@ -108,7 +108,7 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
   };
 
   const selectedJob = jobs.find(j => j.id === selectedJobId) ?? null;
-  const beforePhotos = selectedJob?.before_photos ?? [];
+  const beforePhotos = selectedJob?.crew_photos?.before ?? [];
   const hasBeforePhotos = beforePhotos.length > 0;
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,7 +131,8 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
 
     setUploading(true);
     try {
-      const currentPhotos = [...beforePhotos];
+      const currentCrewPhotos = selectedJob?.crew_photos || { before: [], after: [] };
+      const currentPhotos = [...(currentCrewPhotos.before || [])];
 
       for (const file of files) {
         const ext = file.name.split('.').pop();
@@ -150,15 +151,17 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
         currentPhotos.push(publicUrl);
       }
 
+      const updatedCrewPhotos = { ...currentCrewPhotos, before: currentPhotos };
+
       const { error: updateError } = await supabase
         .from('jobs')
-        .update({ before_photos: currentPhotos })
+        .update({ crew_photos: updatedCrewPhotos })
         .eq('id', selectedJobId);
 
       if (updateError) throw updateError;
 
       setJobs(prev =>
-        prev.map(j => j.id === selectedJobId ? { ...j, before_photos: currentPhotos } : j)
+        prev.map(j => j.id === selectedJobId ? { ...j, crew_photos: updatedCrewPhotos } : j)
       );
       setUploadSuccess(`${files.length} photo${files.length > 1 ? 's' : ''} uploaded successfully.`);
       setTimeout(() => setUploadSuccess(''), 4000);
@@ -198,7 +201,7 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
           job_id,
           jobs!inner(
             service_type,
-            address
+            service_request:service_requests(location_address)
           )
         `)
         .single();
@@ -289,11 +292,11 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">Currently Clocked In</h3>
               <p className="text-gray-600 mb-1 capitalize">
-                {activeLog.jobs.service_type.replace('_', ' ')}
+                {activeLog.jobs.service_type.replace(/_/g, ' ')}
               </p>
               <p className="text-sm text-gray-500 flex items-center justify-center gap-1 mb-6">
                 <MapPin className="w-4 h-4" />
-                {activeLog.jobs.address}
+                {activeLog.jobs.service_request?.location_address || 'Address not available'}
               </p>
 
               <div className="bg-white rounded-lg p-6 mb-6">
@@ -350,11 +353,11 @@ export function TimeClock({ onBack }: { onBack: () => void }) {
                           }`}
                         >
                           <p className="font-semibold text-gray-900 capitalize mb-1">
-                            {job.service_type.replace('_', ' ')}
+                            {job.service_type.replace(/_/g, ' ')}
                           </p>
                           <p className="text-sm text-gray-600 flex items-center gap-1 mb-1">
                             <MapPin className="w-3 h-3" />
-                            {job.address}
+                            {job.service_request?.location_address || 'Address not available'}
                           </p>
                           <p className="text-xs text-gray-500">
                             {job.scheduled_date

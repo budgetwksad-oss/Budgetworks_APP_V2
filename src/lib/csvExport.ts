@@ -70,7 +70,7 @@ export async function exportInvoicesCsv(): Promise<{ error: string | null }> {
   try {
     const { data, error } = await supabase
       .from('invoices')
-      .select('id, invoice_number, customer_id, subtotal, tax_amount, total_amount, status, due_date, sent_date, created_at')
+      .select('id, invoice_number, customer_id, subtotal, tax_amount, total_amount, status, due_date, issue_date, created_at')
       .order('created_at', { ascending: false })
       .limit(5000);
 
@@ -88,7 +88,7 @@ export async function exportOutboxCsv(): Promise<{ error: string | null }> {
   try {
     const { data, error } = await supabase
       .from('notification_queue')
-      .select('id, event_key, audience, channel, destination, status, entity_type, entity_id, created_at, sent_at, failed_at, error_message')
+      .select('id, event_key, audience, channel, destination, status, created_at, sent_at, error_message, attempts')
       .order('created_at', { ascending: false })
       .limit(5000);
 

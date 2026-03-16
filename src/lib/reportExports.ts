@@ -76,15 +76,14 @@ export async function exportToPDF(data: ReportData, includeDate: boolean = true)
 export function prepareJobsReport(jobs: any[]): ReportData {
   return {
     title: 'Jobs Report',
-    headers: ['Job ID', 'Service Type', 'Customer', 'Status', 'Scheduled Date', 'Location', 'Total Amount'],
+    headers: ['Job ID', 'Service Type', 'Customer', 'Status', 'Scheduled Date', 'Quoted Amount'],
     rows: jobs.map(job => [
-      job.id.substring(0, 8),
-      job.service_type.replace('_', ' '),
+      job.id?.substring(0, 8) || '',
+      (job.service_type || '').replace(/_/g, ' '),
       job.customer_name || 'N/A',
-      job.status,
+      job.status || '',
       job.scheduled_date || 'N/A',
-      job.location || 'N/A',
-      `$${job.total_amount?.toFixed(2) || '0.00'}`
+      `$${(job.quoted_amount || 0).toFixed(2)}`
     ])
   };
 }
@@ -92,15 +91,15 @@ export function prepareJobsReport(jobs: any[]): ReportData {
 export function prepareInvoicesReport(invoices: any[]): ReportData {
   return {
     title: 'Invoices Report',
-    headers: ['Invoice #', 'Customer', 'Issue Date', 'Due Date', 'Status', 'Total', 'Balance Due'],
+    headers: ['Invoice #', 'Customer', 'Created', 'Due Date', 'Status', 'Total', 'Balance Due'],
     rows: invoices.map(inv => [
-      inv.invoice_number,
-      inv.customer_name || 'N/A',
-      new Date(inv.issue_date).toLocaleDateString(),
-      new Date(inv.due_date).toLocaleDateString(),
-      inv.status,
-      `$${inv.total?.toFixed(2) || '0.00'}`,
-      `$${inv.balance_due?.toFixed(2) || '0.00'}`
+      inv.invoice_number || '',
+      inv.profiles?.full_name || 'N/A',
+      inv.created_at ? new Date(inv.created_at).toLocaleDateString() : 'N/A',
+      inv.due_date ? new Date(inv.due_date).toLocaleDateString() : 'N/A',
+      inv.status || '',
+      `$${(inv.total_amount || 0).toFixed(2)}`,
+      `$${(inv.balance_due || 0).toFixed(2)}`
     ])
   };
 }
@@ -108,14 +107,12 @@ export function prepareInvoicesReport(invoices: any[]): ReportData {
 export function prepareCustomersReport(customers: any[]): ReportData {
   return {
     title: 'Customers Report',
-    headers: ['Name', 'Email', 'Phone', 'Total Jobs', 'Total Spent', 'Join Date'],
+    headers: ['Name', 'Email', 'Phone', 'Join Date'],
     rows: customers.map(customer => [
-      customer.full_name,
-      customer.email,
+      customer.full_name || 'N/A',
+      customer.email || 'N/A',
       customer.phone || 'N/A',
-      customer.total_jobs || 0,
-      `$${customer.total_spent?.toFixed(2) || '0.00'}`,
-      new Date(customer.created_at).toLocaleDateString()
+      customer.created_at ? new Date(customer.created_at).toLocaleDateString() : 'N/A'
     ])
   };
 }
@@ -136,13 +133,12 @@ export function prepareRevenueReport(revenueData: any[]): ReportData {
 export function prepareCrewPerformanceReport(crewData: any[]): ReportData {
   return {
     title: 'Crew Performance Report',
-    headers: ['Crew Member', 'Total Jobs', 'Completed Jobs', 'Hours Worked', 'Average Rating'],
+    headers: ['Crew Member', 'Total Jobs', 'Completed Jobs', 'Total Hours'],
     rows: crewData.map(crew => [
-      crew.full_name,
+      crew.full_name || 'N/A',
       crew.total_jobs || 0,
       crew.completed_jobs || 0,
-      crew.hours_worked?.toFixed(1) || '0.0',
-      crew.average_rating ? crew.average_rating.toFixed(1) : 'N/A'
+      crew.total_hours ? String(crew.total_hours) : '0'
     ])
   };
 }

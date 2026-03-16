@@ -195,11 +195,11 @@ export function NotificationsOutbox() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {([
-          { key: 'pending', label: 'Pending', color: 'amber', icon: Clock },
-          { key: 'sent', label: 'Sent', color: 'green', icon: CheckCircle },
-          { key: 'failed', label: 'Failed', color: 'red', icon: AlertCircle },
-          { key: 'cancelled', label: 'Cancelled', color: 'gray', icon: Ban },
-        ] as const).map(({ key, label, color, icon: Icon }) => (
+          { key: 'pending', label: 'Pending', bgClass: 'bg-amber-100', textClass: 'text-amber-600', icon: Clock },
+          { key: 'sent', label: 'Sent', bgClass: 'bg-green-100', textClass: 'text-green-600', icon: CheckCircle },
+          { key: 'failed', label: 'Failed', bgClass: 'bg-red-100', textClass: 'text-red-600', icon: AlertCircle },
+          { key: 'cancelled', label: 'Cancelled', bgClass: 'bg-gray-100', textClass: 'text-gray-600', icon: Ban },
+        ] as const).map(({ key, label, bgClass, textClass, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setTab(key === 'cancelled' ? 'all' : key)}
@@ -207,8 +207,8 @@ export function NotificationsOutbox() {
               tab === key ? 'ring-2 ring-offset-1' : 'hover:bg-gray-50'
             } border-gray-200 bg-white`}
           >
-            <div className={`inline-flex p-2 rounded-lg mb-2 bg-${color}-100`}>
-              <Icon className={`w-4 h-4 text-${color}-600`} />
+            <div className={`inline-flex p-2 rounded-lg mb-2 ${bgClass}`}>
+              <Icon className={`w-4 h-4 ${textClass}`} />
             </div>
             <p className="text-2xl font-bold text-gray-900">{stats[key] ?? 0}</p>
             <p className="text-xs text-gray-500">{label}</p>

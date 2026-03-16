@@ -159,7 +159,7 @@ export function JobCalendarView({ onBack }: JobCalendarViewProps) {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 capitalize mb-1">
-                    {selectedJob.service_type.replace('_', ' ')}
+                    {selectedJob.service_type.replace(/_/g, ' ')}
                   </h3>
                   <span className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${getStatusBadge(selectedJob.status)}`}>
                     {selectedJob.status}

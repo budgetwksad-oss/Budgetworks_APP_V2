@@ -26,9 +26,8 @@ interface CustomerDetail extends Customer {
   stats: CustomerStats;
   recent_quotes: Array<{
     id: string;
-    service_type: string;
     status: string;
-    total: number;
+    total_amount: number;
     created_at: string;
   }>;
   recent_jobs: Array<{
@@ -40,7 +39,7 @@ interface CustomerDetail extends Customer {
   recent_invoices: Array<{
     id: string;
     invoice_number: string;
-    total: number;
+    total_amount: number;
     status: string;
     due_date: string;
   }>;
@@ -77,18 +76,8 @@ export function CustomerManagement({ onBack }: { onBack: () => void }) {
 
       if (error) throw error;
 
-      const customersWithEmail = await Promise.all(
-        (data || []).map(async (profile) => {
-          const { data: authData } = await supabase.auth.admin.getUserById(profile.id);
-          return {
-            ...profile,
-            email: authData?.user?.email || 'N/A'
-          };
-        })
-      );
-
-      setCustomers(customersWithEmail);
-      setFilteredCustomers(customersWithEmail);
+      setCustomers(data || []);
+      setFilteredCustomers(data || []);
     } catch (err: any) {
       console.error('Error loading customers:', err);
     } finally {
@@ -105,8 +94,8 @@ export function CustomerManagement({ onBack }: { onBack: () => void }) {
       const [quotesRes, jobsRes, invoicesRes] = await Promise.all([
         supabase
           .from('quotes')
-          .select('id, service_type, status, total, created_at')
-          .eq('customer_id', customerId)
+          .select('id, status, total_amount, created_at')
+          .eq('customer_user_id', customerId)
           .order('created_at', { ascending: false })
           .limit(5),
         supabase
@@ -117,7 +106,7 @@ export function CustomerManagement({ onBack }: { onBack: () => void }) {
           .limit(5),
         supabase
           .from('invoices')
-          .select('id, invoice_number, total, status, due_date')
+          .select('id, invoice_number, total_amount, status, due_date')
           .eq('customer_id', customerId)
           .order('created_at', { ascending: false })
           .limit(5)
@@ -127,14 +116,14 @@ export function CustomerManagement({ onBack }: { onBack: () => void }) {
         supabase
           .from('quotes')
           .select('id', { count: 'exact', head: true })
-          .eq('customer_id', customerId),
+          .eq('customer_user_id', customerId),
         supabase
           .from('jobs')
           .select('id', { count: 'exact', head: true })
           .eq('customer_id', customerId),
         supabase
           .from('invoices')
-          .select('total')
+          .select('total_amount')
           .eq('customer_id', customerId)
           .eq('status', 'paid'),
         supabase
@@ -144,7 +133,7 @@ export function CustomerManagement({ onBack }: { onBack: () => void }) {
           .in('status', ['sent', 'partial'])
       ]);
 
-      const totalSpent = (totalSpentRes.data || []).reduce((sum, inv) => sum + (inv.total || 0), 0);
+      const totalSpent = (totalSpentRes.data || []).reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
 
       setSelectedCustomer({
         ...customer,
@@ -313,8 +302,8 @@ export function CustomerManagement({ onBack }: { onBack: () => void }) {
                 {selectedCustomer.recent_quotes.map((quote) => (
                   <div key={quote.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                     <div>
-                      <p className="font-medium text-gray-900 capitalize">
-                        {quote.service_type.replace('_', ' ')}
+                      <p className="font-medium text-gray-900">
+                        Quote
                       </p>
                       <p className="text-sm text-gray-600">
                         {new Date(quote.created_at).toLocaleDateString()}
@@ -324,7 +313,7 @@ export function CustomerManagement({ onBack }: { onBack: () => void }) {
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(quote.status)}`}>
                         {quote.status}
                       </span>
-                      <p className="font-bold text-gray-900">${quote.total.toLocaleString()}</p>
+                      <p className="font-bold text-gray-900">${(quote.total_amount || 0).toLocaleString()}</p>
                     </div>
                   </div>
                 ))}
@@ -342,14 +331,14 @@ export function CustomerManagement({ onBack }: { onBack: () => void }) {
                   <div key={job.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                     <div>
                       <p className="font-medium text-gray-900 capitalize">
-                        {job.service_type.replace('_', ' ')}
+                        {job.service_type.replace(/_/g, ' ')}
                       </p>
                       <p className="text-sm text-gray-600">
                         {job.scheduled_date ? new Date(job.scheduled_date).toLocaleDateString() : 'Not scheduled'}
                       </p>
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
-                      {job.status.replace('_', ' ')}
+                      {job.status.replace(/_/g, ' ')}
                     </span>
                   </div>
                 ))}
@@ -375,7 +364,7 @@ export function CustomerManagement({ onBack }: { onBack: () => void }) {
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>
                         {invoice.status}
                       </span>
-                      <p className="font-bold text-gray-900">${invoice.total.toLocaleString()}</p>
+                      <p className="font-bold text-gray-900">${(invoice.total_amount || 0).toLocaleString()}</p>
                     </div>
                   </div>
                 ))}

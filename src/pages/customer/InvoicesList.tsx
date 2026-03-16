@@ -215,7 +215,7 @@ export function InvoicesList({ onBack, onViewDetail }: { onBack: () => void; onV
                         </h3>
                         {invoice.jobs && (
                           <p className="text-sm text-gray-600 capitalize">
-                            {invoice.jobs.service_type.replace('_', ' ')}
+                            {invoice.jobs.service_type.replace(/_/g, ' ')}
                           </p>
                         )}
                       </div>

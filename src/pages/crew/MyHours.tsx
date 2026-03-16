@@ -236,7 +236,7 @@ export function MyHours({ onBack }: { onBack: () => void }) {
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div className="flex-1">
                               <p className="font-medium text-gray-900 capitalize mb-1">
-                                {log.jobs.service_type.replace('_', ' ')}
+                                {log.jobs.service_type.replace(/_/g, ' ')}
                               </p>
                               <p className="text-sm text-gray-600 flex items-center gap-1 mb-2">
                                 <MapPin className="w-3 h-3" />

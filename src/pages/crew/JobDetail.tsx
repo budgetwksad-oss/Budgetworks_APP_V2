@@ -16,26 +16,26 @@ import {
 import { supabase } from '../../lib/supabase';
 import { FileAttachments } from '../../components/ui/FileAttachments';
 
-interface JobDetail {
+interface JobDetailData {
   id: string;
   service_type: string;
-  address: string;
   scheduled_date: string;
   status: string;
   notes: string | null;
-  crew_assignments: string[];
-  before_photos: string[];
-  during_photos: string[];
-  after_photos: string[];
+  crew_assignments: any[];
+  crew_photos: { before: any[]; after: any[] } | null;
+  service_request: {
+    location_address: string;
+  } | null;
 }
 
 export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void }) {
-  const [job, setJob] = useState<JobDetail | null>(null);
+  const [job, setJob] = useState<JobDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [selectedPhotoType, setSelectedPhotoType] = useState<'before' | 'during' | 'after'>('before');
+  const [selectedPhotoType, setSelectedPhotoType] = useState<'before' | 'after'>('before');
   const [confirmingComplete, setConfirmingComplete] = useState(false);
 
   useEffect(() => {
@@ -46,18 +46,23 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
     try {
       const { data, error } = await supabase
         .from('jobs')
-        .select('*')
+        .select('id, service_type, scheduled_date, status, notes, crew_assignments, crew_photos, service_request:service_requests(location_address)')
         .eq('id', jobId)
         .single();
 
       if (error) throw error;
-      setJob(data);
+      setJob(data as unknown as JobDetailData);
     } catch (err: any) {
       console.error('Error loading job:', err);
       setError('Failed to load job details');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getPhotos = (type: 'before' | 'after'): any[] => {
+    if (!job?.crew_photos) return [];
+    return job.crew_photos[type] || [];
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,13 +97,15 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
         .from('job-photos')
         .getPublicUrl(fileName);
 
-      const fieldName = `${selectedPhotoType}_photos`;
-      const currentPhotos = job?.[fieldName as keyof JobDetail] || [];
-      const updatedPhotos = [...(currentPhotos as string[]), publicUrl];
+      const currentPhotos = job?.crew_photos || { before: [], after: [] };
+      const updatedPhotos = {
+        ...currentPhotos,
+        [selectedPhotoType]: [...(currentPhotos[selectedPhotoType] || []), publicUrl]
+      };
 
       const { error: updateError } = await supabase
         .from('jobs')
-        .update({ [fieldName]: updatedPhotos })
+        .update({ crew_photos: updatedPhotos })
         .eq('id', jobId);
 
       if (updateError) throw updateError;
@@ -138,7 +145,10 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
   const handleCompleteJob = () => {
     if (!job) return;
 
-    if ((job.before_photos || []).length === 0 || (job.after_photos || []).length === 0) {
+    const beforePhotos = getPhotos('before');
+    const afterPhotos = getPhotos('after');
+
+    if (beforePhotos.length === 0 || afterPhotos.length === 0) {
       setError('Please upload before and after photos before completing the job');
       return;
     }
@@ -178,6 +188,8 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
     );
   }
 
+  const address = job.service_request?.location_address || 'Address not available';
+
   const getStatusBadge = (status: string) => {
     const config: Record<string, { bg: string; text: string; icon: any }> = {
       scheduled: { bg: 'bg-blue-100', text: 'text-blue-700', icon: Calendar },
@@ -188,7 +200,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
     return (
       <span className={`inline-flex items-center gap-1 px-3 py-1 text-sm font-semibold rounded-full ${bg} ${text}`}>
         <Icon className="w-4 h-4" />
-        {status.replace('_', ' ').charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
+        {status.replace(/_/g, ' ').charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ')}
       </span>
     );
   };
@@ -206,7 +218,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
         <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2 capitalize">
-              {job.service_type.replace('_', ' ')}
+              {job.service_type.replace(/_/g, ' ')}
             </h2>
             {getStatusBadge(job.status)}
           </div>
@@ -243,7 +255,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
               <div>
                 <p className="text-sm text-gray-600 mb-1">Service Type</p>
                 <p className="font-medium text-gray-900 capitalize">
-                  {job.service_type.replace('_', ' ')}
+                  {job.service_type.replace(/_/g, ' ')}
                 </p>
               </div>
               <div>
@@ -251,7 +263,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
                   <MapPin className="w-4 h-4" />
                   Location
                 </p>
-                <p className="font-medium text-gray-900">{job.address}</p>
+                <p className="font-medium text-gray-900">{address}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
@@ -329,7 +341,7 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
           {job.status !== 'completed' && (
             <div className="mb-6 p-4 bg-blue-50 rounded-lg">
               <div className="flex gap-2 mb-3">
-                {(['before', 'during', 'after'] as const).map(type => (
+                {(['before', 'after'] as const).map(type => (
                   <button
                     key={type}
                     onClick={() => setSelectedPhotoType(type)}
@@ -370,8 +382,8 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
           )}
 
           <div className="space-y-6">
-            {(['before', 'during', 'after'] as const).map(type => {
-              const photos = job[`${type}_photos`] || [];
+            {(['before', 'after'] as const).map(type => {
+              const photos = getPhotos(type);
               return (
                 <div key={type}>
                   <h4 className="font-medium text-gray-900 mb-3 capitalize flex items-center gap-2">
@@ -387,10 +399,10 @@ export function JobDetail({ jobId, onBack }: { jobId: string; onBack: () => void
                     <p className="text-sm text-gray-500 italic">No {type} photos uploaded</p>
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {photos.map((url, index) => (
+                      {photos.map((photo: any, index: number) => (
                         <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
                           <img
-                            src={url}
+                            src={typeof photo === 'string' ? photo : photo.url}
                             alt={`${type} photo ${index + 1}`}
                             className="w-full h-full object-cover"
                           />

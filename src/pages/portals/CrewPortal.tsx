@@ -357,7 +357,7 @@ export function CrewPortal() {
                     <Calendar className="w-5 h-5 text-orange-600" />
                     <div>
                       <p className="font-medium text-gray-900 capitalize">
-                        {job.service_type.replace('_', ' ')}
+                        {job.service_type.replace(/_/g, ' ')}
                       </p>
                       <p className="text-sm text-gray-600 flex items-center gap-1">
                         <MapPin className="w-3 h-3" />
