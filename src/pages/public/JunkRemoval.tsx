@@ -102,9 +102,15 @@ export function JunkRemoval({ onNavigate }: JunkRemovalProps) {
     <PublicLayout currentPage="junk-removal" onNavigate={onNavigate}>
 
       {/* Hero */}
-      <section className="relative bg-gray-950 text-white overflow-hidden">
+      <section className="relative text-white overflow-hidden min-h-[580px] flex items-center">
+        <img
+          src="https://images.pexels.com/photos/4246120/pexels-photo-4246120.jpeg?auto=compress&cs=tinysrgb&w=1600"
+          alt="Junk removal truck being loaded"
+          className="absolute inset-0 w-full h-full object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-gray-950/92 via-gray-950/75 to-gray-950/30" />
         <div className="absolute left-0 top-0 bottom-0 w-1 bg-orange-500" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32 w-full">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/30 text-orange-400 text-sm font-medium px-4 py-2 rounded-full mb-8 tracking-wide uppercase">
               <MapPin className="w-4 h-4" />
@@ -114,7 +120,7 @@ export function JunkRemoval({ onNavigate }: JunkRemovalProps) {
               Junk Removal<br />
               <span className="text-orange-500">in Halifax.</span>
             </h1>
-            <p className="text-xl text-gray-400 mb-10 leading-relaxed max-w-xl">
+            <p className="text-xl text-gray-300 mb-10 leading-relaxed max-w-xl">
               If it needs to go, we haul it. Furniture, appliances, renovation debris, full cleanouts — we load it up and take it off your hands.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
@@ -127,7 +133,7 @@ export function JunkRemoval({ onNavigate }: JunkRemovalProps) {
               </button>
               <a
                 href="tel:+18444041240"
-                className="bg-white/5 border border-white/20 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                className="bg-white/10 border border-white/30 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/20 transition-all flex items-center justify-center gap-2 backdrop-blur-sm"
               >
                 Call Us
               </a>

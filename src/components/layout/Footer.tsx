@@ -1,4 +1,4 @@
-import { Truck, Mail, Phone, MapPin } from 'lucide-react';
+import { Mail, Phone, MapPin } from 'lucide-react';
 import { PublicPage } from '../../types/public';
 
 
@@ -14,13 +14,12 @@ export function Footer({ onNavigate }: FooterProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="bg-orange-500 p-2 rounded-lg">
-                <Truck className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-xl font-bold">
-                Budget<span className="text-orange-500">Works</span>
-              </h3>
+            <div className="mb-4">
+              <img
+                src="/Main_logo.webp"
+                alt="BudgetWorks"
+                className="h-16 w-auto object-contain"
+              />
             </div>
             <p className="text-gray-400 text-sm leading-relaxed">
               Fast, reliable moving, hauling, and junk removal services in Halifax and Nova Scotia.
