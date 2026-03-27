@@ -15,11 +15,11 @@ export function Footer({ onNavigate }: FooterProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
             <div className="mb-4">
-              <div className="inline-block bg-white rounded-xl px-3 py-2">
+              <div className="inline-block bg-white rounded-xl px-4 py-3">
                 <img
                   src="/Main_logo.webp"
                   alt="BudgetWorks"
-                  className="h-12 w-auto object-contain"
+                  className="h-16 w-auto object-contain"
                 />
               </div>
             </div>
