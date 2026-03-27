@@ -337,7 +337,7 @@ export function Home({ onNavigate }: HomeProps) {
     {
       slug: 'junk-removal',
       title: 'Junk Removal',
-      image: 'https://images.pexels.com/photos/6195122/pexels-photo-6195122.jpeg?auto=compress&cs=tinysrgb&w=600&h=400&fit=crop',
+      image: '/Screenshot_2026-03-26_224617.png',
       description: 'Got stuff that needs to go? We haul it away — furniture, appliances, renovation debris, estate cleanouts. No load too big or too small.',
       bullets: [
         'Estate and garage cleanouts',
@@ -357,7 +357,7 @@ export function Home({ onNavigate }: HomeProps) {
     {
       slug: 'light-demo',
       title: 'Light Demolition',
-      image: 'https://images.pexels.com/photos/8092358/pexels-photo-8092358.jpeg?auto=compress&cs=tinysrgb&w=600&h=400&fit=crop',
+      image: '/Screenshot_2026-03-26_225012.png',
       description: 'Clearing space for a renovation? We handle interior demo work cleanly and safely — walls, decks, fixtures, and more.',
       bullets: [
         'Interior wall removal',
