@@ -5,8 +5,6 @@ import { About } from './pages/public/About';
 import { Contact } from './pages/public/Contact';
 import { QuoteWizard } from './pages/public/QuoteWizard';
 import { QuoteSuccess } from './pages/public/QuoteSuccess';
-import { QuoteMagicLink } from './pages/public/QuoteMagicLink';
-import { InvoiceMagicLink } from './pages/public/InvoiceMagicLink';
 import { Moving } from './pages/public/Moving';
 import { JunkRemoval } from './pages/public/JunkRemoval';
 import { LightDemo } from './pages/public/LightDemo';
@@ -37,25 +35,11 @@ function App() {
     const page = pathnameToPage(window.location.pathname);
     return page ?? 'home';
   });
-  const [magicLinkToken, setMagicLinkToken] = useState<string | null>(() => {
-    const pathname = window.location.pathname;
-    if (pathname.startsWith('/q/')) return pathname.split('/q/')[1] || null;
-    return null;
-  });
-  const [invoiceToken, setInvoiceToken] = useState<string | null>(() => {
-    const pathname = window.location.pathname;
-    if (pathname.startsWith('/i/')) return pathname.split('/i/')[1] || null;
-    return null;
-  });
 
   const navigate = useCallback((path: string) => {
     window.history.pushState({}, '', path);
     const page = pathnameToPage(path);
-    if (page) {
-      setPublicPage(page);
-      setMagicLinkToken(null);
-      setInvoiceToken(null);
-    }
+    if (page) setPublicPage(page);
   }, []);
 
   const navigateTo = useCallback((page: PublicPage) => {
@@ -75,49 +59,16 @@ function App() {
     const path = pathMap[page] ?? '/';
     window.history.pushState({}, '', path);
     setPublicPage(page);
-    setMagicLinkToken(null);
-    setInvoiceToken(null);
   }, []);
 
   useEffect(() => {
     const onPopState = () => {
-      const pathname = window.location.pathname;
-      if (pathname.startsWith('/q/')) {
-        const token = pathname.split('/q/')[1];
-        if (token) { setMagicLinkToken(token); return; }
-      }
-      if (pathname.startsWith('/i/')) {
-        const token = pathname.split('/i/')[1];
-        if (token) { setInvoiceToken(token); return; }
-      }
-      const page = pathnameToPage(pathname);
-      if (page) {
-        setPublicPage(page);
-        setMagicLinkToken(null);
-        setInvoiceToken(null);
-      }
+      const page = pathnameToPage(window.location.pathname);
+      if (page) setPublicPage(page);
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
-
-  if (invoiceToken) {
-    return (
-      <InvoiceMagicLink
-        token={invoiceToken}
-        onNavigateHome={() => { setInvoiceToken(null); navigate('/'); }}
-      />
-    );
-  }
-
-  if (magicLinkToken) {
-    return (
-      <QuoteMagicLink
-        token={magicLinkToken}
-        onNavigateHome={() => { setMagicLinkToken(null); navigate('/'); }}
-      />
-    );
-  }
 
   switch (publicPage) {
     case 'moving':
