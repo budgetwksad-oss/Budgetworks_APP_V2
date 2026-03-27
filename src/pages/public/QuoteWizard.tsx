@@ -13,8 +13,6 @@ import { checkQuoteRateLimit } from '../../lib/quoteRateLimit';
 
 interface QuoteWizardProps {
   onNavigate: (page: PublicPage) => void;
-  onLogin: () => void;
-  onSignup: () => void;
 }
 
 type ServiceType = 'moving' | 'junk_removal' | 'demolition';
@@ -198,7 +196,7 @@ function buildDetails(s: WizardState) {
 
 const TOTAL_STEPS = 5;
 
-export function QuoteWizard({ onNavigate, onLogin, onSignup }: QuoteWizardProps) {
+export function QuoteWizard({ onNavigate }: QuoteWizardProps) {
   useEffect(() => {
     setSEO({
       title: 'Get a Quote | BudgetWorks Halifax',
@@ -276,7 +274,7 @@ export function QuoteWizard({ onNavigate, onLogin, onSignup }: QuoteWizardProps)
   const progressPct = Math.round(((step - 1) / (TOTAL_STEPS - 1)) * 100);
 
   return (
-    <PublicLayout currentPage="quote" onNavigate={onNavigate} onLogin={onLogin}>
+    <PublicLayout currentPage="quote" onNavigate={onNavigate}>
       <section className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4">
         <div className="max-w-2xl mx-auto">
           {/* Header */}
@@ -698,13 +696,6 @@ export function QuoteWizard({ onNavigate, onLogin, onSignup }: QuoteWizardProps)
             </div>
           </div>
 
-          {/* Bottom note */}
-          <p className="text-center text-sm text-gray-400 mt-6">
-            Already have an account?{' '}
-            <button onClick={onLogin} className="text-orange-500 hover:text-orange-600 font-medium">Sign in</button>
-            {' · '}
-            <button onClick={onSignup} className="text-orange-500 hover:text-orange-600 font-medium">Create account</button>
-          </p>
         </div>
       </section>
     </PublicLayout>

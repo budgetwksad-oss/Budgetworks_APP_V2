@@ -8,8 +8,6 @@ import { PublicPage } from '../../types/public';
 
 interface HomeProps {
   onNavigate: (page: PublicPage) => void;
-  onLogin: () => void;
-  onSignup?: () => void;
 }
 
 const SERVICE_LABEL: Record<string, string> = {
@@ -64,7 +62,7 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
   );
 }
 
-export function Home({ onNavigate, onLogin, onSignup }: HomeProps) {
+export function Home({ onNavigate }: HomeProps) {
   const [testimonialSettings, setTestimonialSettings] = useState<any>(null);
   const [testimonials, setTestimonials] = useState<any[]>([]);
 
@@ -217,13 +215,6 @@ export function Home({ onNavigate, onLogin, onSignup }: HomeProps) {
     },
   ];
 
-  const accountBenefits = [
-    'Track your quotes and invoices in one place',
-    'Faster repeat bookings — your info is already saved',
-    'See job updates and crew arrival times',
-    'Download invoices anytime',
-  ];
-
   const faqs = [
     {
       question: 'How fast can you schedule?',
@@ -245,7 +236,7 @@ export function Home({ onNavigate, onLogin, onSignup }: HomeProps) {
   ];
 
   return (
-    <PublicLayout currentPage="home" onNavigate={onNavigate} onLogin={onLogin}>
+    <PublicLayout currentPage="home" onNavigate={onNavigate}>
 
       {/* ── HERO ── */}
       <section className="relative bg-gray-950 text-white overflow-hidden min-h-[90vh] flex items-center">
@@ -405,67 +396,6 @@ export function Home({ onNavigate, onLogin, onSignup }: HomeProps) {
               Request a Quote Now
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
-          </div>
-        </div>
-      </section>
-
-      {/* ── ACCOUNT BENEFITS ── */}
-      <section className="py-20 md:py-28 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 gap-12 md:gap-20 items-center">
-            <div>
-              <p className="text-orange-500 font-semibold uppercase tracking-widest text-sm mb-3">Optional — but handy</p>
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-5 leading-tight">
-                An account makes<br />repeat jobs easier.
-              </h2>
-              <p className="text-gray-500 text-lg leading-relaxed mb-8">
-                You don't need an account to get a quote or book a job. But if you work with us more than once, having one saves time.
-              </p>
-              <ul className="space-y-4 mb-10">
-                {accountBenefits.map((b) => (
-                  <li key={b} className="flex items-center gap-3 text-gray-700">
-                    <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                      <CheckCircle className="w-4 h-4 text-orange-500" />
-                    </div>
-                    {b}
-                  </li>
-                ))}
-              </ul>
-              <div className="flex flex-col sm:flex-row gap-3">
-                {onSignup ? (
-                  <button
-                    onClick={onSignup}
-                    className="bg-gray-900 text-white px-7 py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors inline-flex items-center gap-2 w-fit"
-                  >
-                    Create a Free Account
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={onLogin}
-                    className="bg-gray-900 text-white px-7 py-3.5 rounded-xl font-semibold hover:bg-gray-800 transition-colors inline-flex items-center gap-2 w-fit"
-                  >
-                    Sign In
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                )}
-                <p className="text-sm text-gray-400 self-center">No account needed to get a quote.</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { label: 'Track quotes', sub: 'See status in real time' },
-                { label: 'Job summaries', sub: 'Details in one place' },
-                { label: 'Invoice history', sub: 'Download anytime' },
-                { label: 'Fast rebooking', sub: 'Your info is saved' },
-              ].map((item) => (
-                <div key={item.label} className="bg-gray-50 border border-gray-100 rounded-xl p-5 hover:border-orange-200 transition-colors">
-                  <p className="font-bold text-gray-900 mb-1">{item.label}</p>
-                  <p className="text-sm text-gray-500">{item.sub}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </section>

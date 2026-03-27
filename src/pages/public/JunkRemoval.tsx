@@ -7,7 +7,6 @@ import { PublicPage } from '../../types/public';
 
 interface JunkRemovalProps {
   onNavigate: (page: PublicPage) => void;
-  onLogin: () => void;
 }
 
 function FAQItem({ question, answer }: { question: string; answer: string }) {
@@ -87,7 +86,7 @@ const priceFactors = [
   },
 ];
 
-export function JunkRemoval({ onNavigate, onLogin }: JunkRemovalProps) {
+export function JunkRemoval({ onNavigate }: JunkRemovalProps) {
   useEffect(() => {
     setSEO({
       title: 'Junk Removal in Halifax & HRM | BudgetWorks',
@@ -100,7 +99,7 @@ export function JunkRemoval({ onNavigate, onLogin }: JunkRemovalProps) {
   }, []);
 
   return (
-    <PublicLayout currentPage="junk-removal" onNavigate={onNavigate} onLogin={onLogin}>
+    <PublicLayout currentPage="junk-removal" onNavigate={onNavigate}>
 
       {/* Hero */}
       <section className="relative bg-gray-950 text-white overflow-hidden">

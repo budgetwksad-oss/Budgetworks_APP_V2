@@ -7,7 +7,6 @@ import { PublicPage } from '../../types/public';
 
 interface MovingProps {
   onNavigate: (page: PublicPage) => void;
-  onLogin: () => void;
 }
 
 function FAQItem({ question, answer }: { question: string; answer: string }) {
@@ -87,7 +86,7 @@ const priceFactors = [
   },
 ];
 
-export function Moving({ onNavigate, onLogin }: MovingProps) {
+export function Moving({ onNavigate }: MovingProps) {
   useEffect(() => {
     setSEO({
       title: 'Moving Services in Halifax & HRM | BudgetWorks',
@@ -100,7 +99,7 @@ export function Moving({ onNavigate, onLogin }: MovingProps) {
   }, []);
 
   return (
-    <PublicLayout currentPage="moving" onNavigate={onNavigate} onLogin={onLogin}>
+    <PublicLayout currentPage="moving" onNavigate={onNavigate}>
 
       {/* Hero */}
       <section className="relative bg-gray-950 text-white overflow-hidden">

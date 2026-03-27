@@ -5,12 +5,11 @@ import { PublicPage } from '../../types/public';
 
 interface QuoteSuccessProps {
   onNavigate: (page: PublicPage) => void;
-  onLogin: () => void;
 }
 
-export function QuoteSuccess({ onNavigate, onLogin }: QuoteSuccessProps) {
+export function QuoteSuccess({ onNavigate }: QuoteSuccessProps) {
   return (
-    <PublicLayout currentPage="quote" onNavigate={onNavigate} onLogin={onLogin}>
+    <PublicLayout currentPage="quote" onNavigate={onNavigate}>
       <section className="py-16 md:py-24 bg-gradient-to-br from-white to-gray-50 min-h-[70vh] flex items-center">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           <div className="text-center mb-12">
@@ -97,29 +96,21 @@ export function QuoteSuccess({ onNavigate, onLogin }: QuoteSuccessProps) {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-gray-900 to-black rounded-2xl p-8 md:p-12 text-white text-center shadow-2xl">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">
-              Create an Account for Easy Tracking
-            </h2>
-            <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
-              Sign up to track your quotes, schedule services, and manage your jobs all in one place.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button
-                onClick={onLogin}
-                className="group bg-orange-500 text-white px-8 py-3 rounded-xl font-bold hover:bg-orange-600 transition-all inline-flex items-center justify-center space-x-2 shadow-lg shadow-orange-500/30"
-              >
-                <span>Sign Up / Login</span>
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-              <button
-                onClick={() => onNavigate('home')}
-                className="bg-white text-black px-8 py-3 rounded-xl font-bold hover:bg-gray-100 transition-all inline-flex items-center justify-center space-x-2"
-              >
-                <Home className="w-5 h-5" />
-                <span>Back to Home</span>
-              </button>
-            </div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => onNavigate('quote')}
+              className="group bg-orange-500 text-white px-8 py-3 rounded-xl font-bold hover:bg-orange-600 transition-all inline-flex items-center justify-center space-x-2 shadow-lg shadow-orange-500/30"
+            >
+              <span>Get Another Quote</span>
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </button>
+            <button
+              onClick={() => onNavigate('home')}
+              className="bg-gray-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-gray-800 transition-all inline-flex items-center justify-center space-x-2"
+            >
+              <Home className="w-5 h-5" />
+              <span>Back to Home</span>
+            </button>
           </div>
         </div>
       </section>

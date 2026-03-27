@@ -9,10 +9,9 @@ import { PublicPage } from '../../types/public';
 
 interface ContactProps {
   onNavigate: (page: PublicPage) => void;
-  onLogin: () => void;
 }
 
-export function Contact({ onNavigate, onLogin }: ContactProps) {
+export function Contact({ onNavigate }: ContactProps) {
   useEffect(() => {
     setSEO({
       title: 'Contact Us | BudgetWorks Halifax',
@@ -105,7 +104,7 @@ export function Contact({ onNavigate, onLogin }: ContactProps) {
   ];
 
   return (
-    <PublicLayout currentPage="contact" onNavigate={onNavigate} onLogin={onLogin}>
+    <PublicLayout currentPage="contact" onNavigate={onNavigate}>
       <section className="relative bg-gradient-to-br from-gray-900 to-black text-white py-20 md:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">

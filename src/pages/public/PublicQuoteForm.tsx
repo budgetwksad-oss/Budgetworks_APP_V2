@@ -10,11 +10,9 @@ import { PublicPage } from '../../types/public';
 
 interface PublicQuoteFormProps {
   onNavigate: (page: PublicPage) => void;
-  onLogin: () => void;
-  onSignup: () => void;
 }
 
-export function PublicQuoteForm({ onNavigate, onLogin }: PublicQuoteFormProps) {
+export function PublicQuoteForm({ onNavigate }: PublicQuoteFormProps) {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -109,7 +107,7 @@ export function PublicQuoteForm({ onNavigate, onLogin }: PublicQuoteFormProps) {
   };
 
   return (
-    <PublicLayout currentPage="quote" onNavigate={onNavigate} onLogin={onLogin}>
+    <PublicLayout currentPage="quote" onNavigate={onNavigate}>
       <section className="relative bg-gradient-to-br from-gray-900 to-black text-white py-20 md:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">
@@ -254,17 +252,6 @@ export function PublicQuoteForm({ onNavigate, onLogin }: PublicQuoteFormProps) {
             </form>
           </div>
 
-          <div className="mt-8 text-center">
-            <p className="text-gray-600 mb-4">
-              Already have an account?{' '}
-              <button onClick={onLogin} className="text-orange-500 hover:text-orange-600 font-semibold">
-                Sign in
-              </button>
-            </p>
-            <p className="text-sm text-gray-500">
-              Create an account to track your quotes and jobs in real-time
-            </p>
-          </div>
         </div>
       </section>
 

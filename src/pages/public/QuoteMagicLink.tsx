@@ -6,7 +6,6 @@ import { CheckCircle, XCircle, Clock, DollarSign, MapPin, Briefcase, AlertCircle
 
 interface QuoteMagicLinkProps {
   token: string;
-  onLogin: () => void;
   onNavigateHome?: () => void;
 }
 
@@ -24,7 +23,7 @@ interface QuoteData {
   lead_id?: string;
 }
 
-export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLinkProps) {
+export function QuoteMagicLink({ token, onNavigateHome }: QuoteMagicLinkProps) {
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [error, setError] = useState<'invalid' | 'expired' | null>(null);
@@ -201,7 +200,7 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
 
   if (loading) {
     return (
-      <PublicLayout currentPage="home" onNavigate={() => {}} onLogin={onLogin}>
+      <PublicLayout currentPage="home" onNavigate={() => {}}>
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -215,7 +214,7 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
   if (error || !quote) {
     const isExpired = error === 'expired';
     return (
-      <PublicLayout currentPage="home" onNavigate={() => {}} onLogin={onLogin}>
+      <PublicLayout currentPage="home" onNavigate={() => {}}>
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
           <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
             <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${isExpired ? 'bg-amber-100' : 'bg-red-100'}`}>
@@ -236,12 +235,6 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
               >
                 Back to Home
               </button>
-              <button
-                onClick={onLogin}
-                className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
-              >
-                Login
-              </button>
             </div>
           </div>
         </div>
@@ -251,7 +244,7 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
 
   if (response) {
     return (
-      <PublicLayout currentPage="home" onNavigate={() => {}} onLogin={onLogin}>
+      <PublicLayout currentPage="home" onNavigate={() => {}}>
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
           <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
             {response === 'accept' ? (
@@ -299,7 +292,7 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
 
   if (quote.status === 'expired' || quote.status === 'accepted' || quote.status === 'declined') {
     return (
-      <PublicLayout currentPage="home" onNavigate={() => {}} onLogin={onLogin}>
+      <PublicLayout currentPage="home" onNavigate={() => {}}>
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
           <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8">
             <div className="text-center mb-6">
@@ -387,7 +380,7 @@ export function QuoteMagicLink({ token, onLogin, onNavigateHome }: QuoteMagicLin
 
   return (
     <>
-      <PublicLayout currentPage="home" onNavigate={() => {}} onLogin={onLogin}>
+      <PublicLayout currentPage="home" onNavigate={() => {}}>
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
           <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8">
             <div className="text-center mb-6">

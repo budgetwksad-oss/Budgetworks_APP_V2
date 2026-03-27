@@ -7,10 +7,9 @@ import { PublicPage } from '../../types/public';
 
 interface AboutProps {
   onNavigate: (page: PublicPage) => void;
-  onLogin: () => void;
 }
 
-export function About({ onNavigate, onLogin }: AboutProps) {
+export function About({ onNavigate }: AboutProps) {
   useEffect(() => {
     setSEO({
       title: 'About Us | BudgetWorks Halifax',
@@ -60,7 +59,7 @@ export function About({ onNavigate, onLogin }: AboutProps) {
   ];
 
   return (
-    <PublicLayout currentPage="about" onNavigate={onNavigate} onLogin={onLogin}>
+    <PublicLayout currentPage="about" onNavigate={onNavigate}>
       <section className="relative bg-gradient-to-br from-gray-900 to-black text-white py-20 md:py-28">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto">

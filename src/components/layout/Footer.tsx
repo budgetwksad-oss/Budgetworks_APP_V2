@@ -4,10 +4,9 @@ import { PublicPage } from '../../types/public';
 
 interface FooterProps {
   onNavigate: (page: PublicPage) => void;
-  onLogin: () => void;
 }
 
-export function Footer({ onNavigate, onLogin }: FooterProps) {
+export function Footer({ onNavigate }: FooterProps) {
   const currentYear = new Date().getFullYear();
 
   return (
@@ -62,14 +61,6 @@ export function Footer({ onNavigate, onLogin }: FooterProps) {
                   className="text-gray-400 hover:text-orange-500 transition-colors text-sm"
                 >
                   Contact
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={onLogin}
-                  className="text-gray-400 hover:text-orange-500 transition-colors text-sm"
-                >
-                  Customer Login
                 </button>
               </li>
             </ul>

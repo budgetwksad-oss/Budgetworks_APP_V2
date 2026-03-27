@@ -6,7 +6,6 @@ import { PublicPage } from '../../types/public';
 interface PublicNavbarProps {
   currentPage: PublicPage;
   onNavigate: (page: PublicPage) => void;
-  onLogin: () => void;
 }
 
 const serviceItems: { id: PublicPage; label: string; description: string; icon: React.ReactNode }[] = [
@@ -30,7 +29,7 @@ const serviceItems: { id: PublicPage; label: string; description: string; icon: 
   },
 ];
 
-export function PublicNavbar({ currentPage, onNavigate, onLogin }: PublicNavbarProps) {
+export function PublicNavbar({ currentPage, onNavigate }: PublicNavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
   const [mobileServicesOpen, setMobileServicesOpen] = useState(false);
@@ -149,12 +148,6 @@ export function PublicNavbar({ currentPage, onNavigate, onLogin }: PublicNavbarP
             >
               Get Quote
             </button>
-            <button
-              onClick={onLogin}
-              className="text-gray-700 hover:text-orange-500 font-medium transition-colors"
-            >
-              Login
-            </button>
           </div>
 
           <button
@@ -239,12 +232,6 @@ export function PublicNavbar({ currentPage, onNavigate, onLogin }: PublicNavbarP
                 Get Quote
               </button>
             </div>
-            <button
-              onClick={() => { onLogin(); setMobileMenuOpen(false); }}
-              className="block w-full text-gray-700 px-4 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors text-center"
-            >
-              Login
-            </button>
           </div>
         </div>
       )}

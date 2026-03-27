@@ -7,10 +7,9 @@ import { PublicPage } from '../../types/public';
 
 interface Props {
   onNavigate?: (page: PublicPage) => void;
-  onLogin?: () => void;
 }
 
-export function TermsOfService({ onNavigate, onLogin }: Props) {
+export function TermsOfService({ onNavigate }: Props) {
   useEffect(() => {
     setSEO({
       title: 'Terms of Service | BudgetWorks',
@@ -20,7 +19,7 @@ export function TermsOfService({ onNavigate, onLogin }: Props) {
   }, []);
 
   return (
-    <PublicLayout currentPage="terms" onNavigate={onNavigate} onLogin={onLogin}>
+    <PublicLayout currentPage="terms" onNavigate={onNavigate}>
       <div className="max-w-4xl mx-auto px-4 py-12">
         <h1 className="text-4xl font-bold text-gray-900 mb-4">Terms of Service</h1>
         <p className="text-gray-600 mb-8">Last updated: February 10, 2026</p>

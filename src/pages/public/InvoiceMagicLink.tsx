@@ -5,7 +5,6 @@ import { DollarSign, Calendar, User, Phone, AlertCircle, CheckCircle, Clock, XCi
 
 interface InvoiceMagicLinkProps {
   token: string;
-  onLogin: () => void;
   onNavigateHome?: () => void;
 }
 
@@ -66,7 +65,7 @@ function formatDate(dateStr: string | null) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
-export function InvoiceMagicLink({ token, onLogin, onNavigateHome }: InvoiceMagicLinkProps) {
+export function InvoiceMagicLink({ token, onNavigateHome }: InvoiceMagicLinkProps) {
   const [loading, setLoading] = useState(true);
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [error, setError] = useState<'invalid' | 'expired' | null>(null);
@@ -119,7 +118,7 @@ export function InvoiceMagicLink({ token, onLogin, onNavigateHome }: InvoiceMagi
 
   if (loading) {
     return (
-      <PublicLayout currentPage="home" onNavigate={() => {}} onLogin={onLogin}>
+      <PublicLayout currentPage="home" onNavigate={() => {}}>
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
@@ -132,7 +131,7 @@ export function InvoiceMagicLink({ token, onLogin, onNavigateHome }: InvoiceMagi
 
   if (error || !invoice) {
     return (
-      <PublicLayout currentPage="home" onNavigate={() => {}} onLogin={onLogin}>
+      <PublicLayout currentPage="home" onNavigate={() => {}}>
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
           <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -161,7 +160,7 @@ export function InvoiceMagicLink({ token, onLogin, onNavigateHome }: InvoiceMagi
   const isPaid = invoice.status === 'paid';
 
   return (
-    <PublicLayout currentPage="home" onNavigate={() => {}} onLogin={onLogin}>
+    <PublicLayout currentPage="home" onNavigate={() => {}}>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
         <div className="max-w-lg w-full space-y-4">
 

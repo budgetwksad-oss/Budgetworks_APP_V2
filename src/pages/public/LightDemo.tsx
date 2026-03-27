@@ -7,7 +7,6 @@ import { PublicPage } from '../../types/public';
 
 interface LightDemoProps {
   onNavigate: (page: PublicPage) => void;
-  onLogin: () => void;
 }
 
 function FAQItem({ question, answer }: { question: string; answer: string }) {
@@ -87,7 +86,7 @@ const priceFactors = [
   },
 ];
 
-export function LightDemo({ onNavigate, onLogin }: LightDemoProps) {
+export function LightDemo({ onNavigate }: LightDemoProps) {
   useEffect(() => {
     setSEO({
       title: 'Light Demolition Services in Halifax & HRM | BudgetWorks',
@@ -100,7 +99,7 @@ export function LightDemo({ onNavigate, onLogin }: LightDemoProps) {
   }, []);
 
   return (
-    <PublicLayout currentPage="light-demo" onNavigate={onNavigate} onLogin={onLogin}>
+    <PublicLayout currentPage="light-demo" onNavigate={onNavigate}>
 
       {/* Hero */}
       <section className="relative bg-gray-950 text-white overflow-hidden">
