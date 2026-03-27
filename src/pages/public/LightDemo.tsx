@@ -104,8 +104,8 @@ export function LightDemo({ onNavigate }: LightDemoProps) {
       {/* Hero */}
       <section className="relative text-white overflow-hidden min-h-[580px] flex items-center">
         <img
-          src="https://images.pexels.com/photos/8961049/pexels-photo-8961049.jpeg?auto=compress&cs=tinysrgb&w=1600"
-          alt="Workers demolishing a wooden structure"
+          src="/Screenshot_2026-03-26_225012.png"
+          alt="Worker demolishing a brick wall with a sledgehammer"
           className="absolute inset-0 w-full h-full object-cover object-center"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-gray-950/92 via-gray-950/75 to-gray-950/30" />

@@ -104,8 +104,8 @@ export function JunkRemoval({ onNavigate }: JunkRemovalProps) {
       {/* Hero */}
       <section className="relative text-white overflow-hidden min-h-[580px] flex items-center">
         <img
-          src="https://images.pexels.com/photos/4246120/pexels-photo-4246120.jpeg?auto=compress&cs=tinysrgb&w=1600"
-          alt="Junk removal truck being loaded"
+          src="/Screenshot_2026-03-26_224617.png"
+          alt="Junk removal skip bin loaded with scrap"
           className="absolute inset-0 w-full h-full object-cover object-center"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-gray-950/92 via-gray-950/75 to-gray-950/30" />
