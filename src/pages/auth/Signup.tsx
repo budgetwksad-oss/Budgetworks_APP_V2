@@ -15,7 +15,6 @@ export function Signup({ onSwitchToLogin, onGoHome }: SignupProps) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'customer' | 'crew'>('customer');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -31,7 +30,7 @@ export function Signup({ onSwitchToLogin, onGoHome }: SignupProps) {
       return;
     }
 
-    const { error } = await signUp(email, password, fullName, role);
+    const { error } = await signUp(email, password, fullName);
 
     if (error) {
       setError(error.message);
@@ -116,38 +115,6 @@ export function Signup({ onSwitchToLogin, onGoHome }: SignupProps) {
             required
             autoComplete="new-password"
           />
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              I am a
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setRole('customer')}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  role === 'customer'
-                    ? 'border-orange-500 bg-orange-50 text-orange-700'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-                }`}
-              >
-                <div className="font-semibold">Customer</div>
-                <div className="text-xs mt-1">Request services</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole('crew')}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  role === 'crew'
-                    ? 'border-orange-500 bg-orange-50 text-orange-700'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-                }`}
-              >
-                <div className="font-semibold">Crew</div>
-                <div className="text-xs mt-1">Join the team</div>
-              </button>
-            </div>
-          </div>
 
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg">

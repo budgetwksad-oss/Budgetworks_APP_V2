@@ -5,8 +5,6 @@ import { Signup } from './pages/auth/Signup';
 import { ForgotPassword } from './pages/auth/ForgotPassword';
 import { ResetPassword } from './pages/auth/ResetPassword';
 import { CustomerPortal } from './pages/portals/CustomerPortal';
-import { CrewPortal } from './pages/portals/CrewPortal';
-import { AdminPortal } from './pages/portals/AdminPortal';
 import { Home } from './pages/public/Home';
 import { Services } from './pages/public/Services';
 import { About } from './pages/public/About';
@@ -233,24 +231,36 @@ function App() {
     }
   }
 
+  const { signOut } = useAuth();
+
   const renderPortal = () => {
-    switch (profile.role) {
-      case 'customer':
-        return <CustomerPortal />;
-      case 'crew':
-        return <CrewPortal />;
-      case 'admin':
-        return <AdminPortal />;
-      default:
-        return (
-          <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Invalid Role</h2>
-              <p className="text-gray-600">Please contact support for assistance.</p>
-            </div>
-          </div>
-        );
+    if (profile.role === 'customer') {
+      return <CustomerPortal />;
     }
+
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-10">
+            <div className="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-5">
+              <svg className="w-7 h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0-6v2m0-6V5m6 14a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Customer Portal Only</h2>
+            <p className="text-gray-600 mb-6">
+              This app is for customers only. Admin and crew portals are available as separate applications.
+            </p>
+            <button
+              onClick={signOut}
+              className="w-full py-2.5 px-4 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
