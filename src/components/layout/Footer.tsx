@@ -15,11 +15,13 @@ export function Footer({ onNavigate }: FooterProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
             <div className="mb-4">
-              <img
-                src="/Main_logo.webp"
-                alt="BudgetWorks"
-                className="h-16 w-auto object-contain"
-              />
+              <div className="inline-block bg-white rounded-xl px-3 py-2">
+                <img
+                  src="/Main_logo.webp"
+                  alt="BudgetWorks"
+                  className="h-12 w-auto object-contain"
+                />
+              </div>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed">
               Fast, reliable moving, hauling, and junk removal services in Halifax and Nova Scotia.
