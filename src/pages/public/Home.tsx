@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { PublicLayout } from '../../components/layout/PublicLayout';
-import { ArrowRight, CheckCircle, Star, ChevronDown, ChevronUp, MapPin, FileText, Calendar, Wrench } from 'lucide-react';
+import { ArrowRight, CheckCircle, Star, ChevronDown, ChevronUp, MapPin, FileText, Calendar, Wrench, ChevronLeft, ChevronRight as ChevronRightIcon, Quote } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { setSEO } from '../../lib/seo';
 
@@ -59,6 +59,184 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
         <p className="pb-5 text-gray-600 leading-relaxed">{answer}</p>
       )}
     </div>
+  );
+}
+
+function StarRow({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'md' }) {
+  const cls = size === 'md' ? 'w-5 h-5' : 'w-4 h-4';
+  return (
+    <div className="flex items-center gap-0.5">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star
+          key={i}
+          className={`${cls} ${i < rating ? 'fill-yellow-400 text-yellow-400' : 'fill-gray-200 text-gray-200'}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ReviewCard({ t, featured }: { t: any; featured?: boolean }) {
+  const initials = t.customer_name
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  const colors = [
+    'bg-orange-500', 'bg-sky-500', 'bg-emerald-500',
+    'bg-rose-500', 'bg-amber-500', 'bg-teal-500',
+  ];
+  const colorIdx = t.customer_name.charCodeAt(0) % colors.length;
+  const avatarColor = colors[colorIdx];
+
+  return (
+    <div
+      className={`relative bg-white rounded-2xl p-7 flex flex-col h-full border transition-all duration-300 group
+        ${featured
+          ? 'border-orange-200 shadow-lg shadow-orange-500/8'
+          : 'border-gray-100 shadow-sm hover:shadow-md hover:border-orange-200'
+        }`}
+    >
+      <Quote className="absolute top-5 right-6 w-8 h-8 text-orange-100 group-hover:text-orange-200 transition-colors" />
+
+      <div className="mb-4">
+        <StarRow rating={t.rating} />
+      </div>
+
+      <p className="text-gray-700 leading-relaxed flex-1 text-[15px] mb-6 pr-4">
+        {t.content}
+      </p>
+
+      <div className="flex items-center justify-between pt-5 border-t border-gray-100">
+        <div className="flex items-center gap-3">
+          <div className={`${avatarColor} w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0`}>
+            <span className="text-white text-xs font-bold tracking-wide">{initials}</span>
+          </div>
+          <div>
+            <p className="font-semibold text-gray-900 text-sm leading-tight">{t.customer_name}</p>
+            {t.service_type && (
+              <p className="text-xs text-gray-400 mt-0.5">{SERVICE_LABEL[t.service_type] ?? t.service_type}</p>
+            )}
+          </div>
+        </div>
+        <svg viewBox="0 0 24 24" className="w-5 h-5 flex-shrink-0" aria-label="Google">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+function ReviewsSection({ testimonials, settings }: { testimonials: any[]; settings: any }) {
+  const [active, setActive] = useState(0);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const total = testimonials.length;
+
+  const prev = () => setActive((a) => (a - 1 + total) % total);
+  const next = () => setActive((a) => (a + 1) % total);
+
+  useEffect(() => {
+    if (!trackRef.current) return;
+    trackRef.current.style.transform = `translateX(-${active * 100}%)`;
+  }, [active]);
+
+  return (
+    <section className="py-20 md:py-28 bg-gray-950 text-white overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 mb-14">
+          <div>
+            <p className="text-orange-500 font-semibold uppercase tracking-widest text-sm mb-3">Customer reviews</p>
+            <h2 className="text-4xl md:text-5xl font-bold leading-tight">
+              Real people.<br />Real results.
+            </h2>
+          </div>
+
+          {settings.rating_value && settings.review_count && (
+            <div className="flex-shrink-0 bg-white/5 border border-white/10 rounded-2xl px-6 py-5 flex items-center gap-5">
+              <div className="text-center">
+                <p className="text-4xl font-black text-white leading-none mb-1">
+                  {Number(settings.rating_value).toFixed(1)}
+                </p>
+                <StarRow rating={Math.round(settings.rating_value)} size="md" />
+              </div>
+              <div className="w-px h-12 bg-white/10" />
+              <div>
+                <p className="text-white font-semibold text-lg leading-tight">{settings.review_count}+ reviews</p>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 flex-shrink-0" aria-label="Google">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                  </svg>
+                  <span className="text-gray-400 text-sm">{settings.source_label || 'Google Reviews'}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop grid */}
+        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {testimonials.map((t, i) => (
+            <ReviewCard key={t.id} t={t} featured={t.featured || i === 0} />
+          ))}
+        </div>
+
+        {/* Mobile carousel */}
+        <div className="md:hidden relative">
+          <div className="overflow-hidden rounded-2xl">
+            <div
+              ref={trackRef}
+              className="flex transition-transform duration-500 ease-in-out"
+              style={{ willChange: 'transform' }}
+            >
+              {testimonials.map((t) => (
+                <div key={t.id} className="w-full flex-shrink-0">
+                  <ReviewCard t={t} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-4 mt-6">
+            <button
+              onClick={prev}
+              className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
+              aria-label="Previous review"
+            >
+              <ChevronLeft className="w-5 h-5 text-white" />
+            </button>
+            <div className="flex gap-1.5">
+              {testimonials.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActive(i)}
+                  className={`rounded-full transition-all ${
+                    i === active ? 'w-6 h-2 bg-orange-500' : 'w-2 h-2 bg-white/30 hover:bg-white/50'
+                  }`}
+                  aria-label={`Go to review ${i + 1}`}
+                />
+              ))}
+            </div>
+            <button
+              onClick={next}
+              className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors"
+              aria-label="Next review"
+            >
+              <ChevronRightIcon className="w-5 h-5 text-white" />
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
   );
 }
 
@@ -400,67 +578,12 @@ export function Home({ onNavigate }: HomeProps) {
         </div>
       </section>
 
-      {/* ── TESTIMONIALS ── */}
+      {/* ── REVIEWS ── */}
       {testimonialSettings?.is_enabled && testimonials.length > 0 && (
-        <section className="py-20 md:py-28 bg-gray-50 border-y border-gray-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
-              <div>
-                <p className="text-orange-500 font-semibold uppercase tracking-widest text-sm mb-3">Real customers</p>
-                <h2 className="text-4xl md:text-5xl font-bold text-gray-900">What people say<br />about us.</h2>
-              </div>
-              {testimonialSettings.rating_value && testimonialSettings.review_count && (
-                <div className="flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-4 flex items-center gap-4">
-                  <div>
-                    <div className="flex items-center gap-1 mb-1">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`w-5 h-5 ${
-                            i < Math.floor(testimonialSettings.rating_value)
-                              ? 'fill-yellow-400 text-yellow-400'
-                              : 'text-gray-200 fill-gray-200'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <p className="text-sm text-gray-500">
-                      <span className="font-bold text-gray-900 text-lg">{testimonialSettings.rating_value.toFixed(1)}</span>
-                      {' '}out of 5 &mdash; {testimonialSettings.review_count} reviews
-                    </p>
-                    {testimonialSettings.source_label && (
-                      <p className="text-xs text-gray-400 mt-0.5">{testimonialSettings.source_label}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {testimonials.map((t) => (
-                <div
-                  key={t.id}
-                  className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md hover:border-orange-200 transition-all flex flex-col"
-                >
-                  <div className="flex items-center gap-1 mb-4">
-                    {Array.from({ length: t.rating }).map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    ))}
-                  </div>
-                  <p className="text-gray-700 leading-relaxed flex-1 text-[15px] mb-5">"{t.content}"</p>
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                    <p className="font-semibold text-gray-900 text-sm">{t.customer_name}</p>
-                    {t.service_type && (
-                      <span className="text-xs px-2.5 py-1 bg-orange-50 text-orange-600 rounded-full font-medium border border-orange-100">
-                        {SERVICE_LABEL[t.service_type] ?? t.service_type}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        <ReviewsSection
+          testimonials={testimonials}
+          settings={testimonialSettings}
+        />
       )}
 
       {/* ── SERVICE AREAS ── */}
